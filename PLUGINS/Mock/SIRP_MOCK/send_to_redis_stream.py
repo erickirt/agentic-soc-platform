@@ -1,6 +1,6 @@
-from Docker.mock.SIRP_MOCK.alert import get_mock_alerts
 from Lib.api import generate_four_random_timestamps
 from Lib.redis_stream_api import RedisStreamAPI
+from PLUGINS.Mock.SIRP_MOCK.alert import get_mock_alerts
 
 if __name__ == "__main__":
 

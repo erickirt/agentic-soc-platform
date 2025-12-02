@@ -1,6 +1,6 @@
-from Docker.mock.SIRP_MOCK.alert import get_mock_alerts
-from Docker.mock.SIRP_MOCK.rule import rule_list
 from Lib.api import get_current_time_string, string_to_timestamp, generate_four_random_timestamps
+from PLUGINS.Mock.SIRP_MOCK.alert import get_mock_alerts
+from PLUGINS.Mock.SIRP_MOCK.rule import rule_list
 from PLUGINS.SIRP.grouprule import GroupRule
 from PLUGINS.SIRP.nocolyapi import OptionSet
 from PLUGINS.SIRP.sirpapi import Alert, Artifact, Case, create_alert_with_group_rule
