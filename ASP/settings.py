@@ -28,9 +28,9 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'ASF.urls'
+ROOT_URLCONF = 'ASP.urls'
 
-WSGI_APPLICATION = 'ASF.wsgi.application'
+WSGI_APPLICATION = 'ASP.wsgi.application'
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -128,7 +128,7 @@ TEMPLATES = [
     },
 ]
 
-ASGI_APPLICATION = 'ASF.asgi.application'
+ASGI_APPLICATION = 'ASP.asgi.application'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 

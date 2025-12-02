@@ -1,7 +1,7 @@
 import importlib
 import os
 
-from ASF import settings
+from ASP import settings
 from Lib.api import data_return
 from Lib.apsmodule import aps_module
 from Lib.baseplaybook import BasePlaybook

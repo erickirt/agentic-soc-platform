@@ -577,7 +577,7 @@ if __name__ == "__main__":
     import os
     import django
 
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASF.settings")
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
     django.setup()
 
     params_debug = {'rowid': 'e07f7b79-caac-43aa-b7d3-d99d2354c5c9', 'worksheet': 'case', "user_input": "Has the host in the case been infected"}

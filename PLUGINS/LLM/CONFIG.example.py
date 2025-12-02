@@ -6,7 +6,7 @@
 # Doc: https://asp.viperrtp.com/asf/PLUGINS/LLM/
 # `get_model(tag="xxx")` will search for and use the first configuration containing the tag "xxx" in order. The tag can be customized.
 # If no tag is provided, the first configuration in the list will be used by default.
-# Tags currently used in ASF: "cheap", "fast", "powerful", "function_calling", "structured_output"
+# Tags currently used in ASP: "cheap", "fast", "powerful", "function_calling", "structured_output"
 
 LLM_CONFIGS = [
     {

@@ -1,5 +1,5 @@
 [server]
-app = "ASF.asgi:application"
+app = "ASP.asgi:application"
 
 # 监听的主机地址
 host = "0.0.0.0"

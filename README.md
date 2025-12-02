@@ -41,12 +41,12 @@
 
 ## Architecture Overview
 
-ASF processes security alerts and incidents through a simplified multi-stage process:
+ASP processes security alerts and incidents through a simplified multi-stage process:
 
 1. **SIEM/Alert Sources**: EDR, NDR, or other security tools send alerts to a SIEM (e.g., Splunk, Kibana).
-2. **Webhook Forwarder**: The SIEM forwards these alerts via Webhook to the ASF's built-in Webhook receiver.
+2. **Webhook Forwarder**: The SIEM forwards these alerts via Webhook to the ASP's built-in Webhook receiver.
 3. **Redis Stream**: The receiver pushes the alerts to the corresponding Redis Stream, serving as a persistent message queue. Each alert type has its own stream.
-4. **Module Engine**: ASF **modules** consume alerts from their designated streams, perform analysis (often using AI Agents), enrich data, and determine outcomes.
+4. **Module Engine**: ASP **modules** consume alerts from their designated streams, perform analysis (often using AI Agents), enrich data, and determine outcomes.
 5. **SIRP Platform**: The output of the modules (now formatted into standardized security records) is sent to the **SIRP** platform, where cases, alerts, and artifacts are created or updated.
 6. **Playbook Engine**: Analysts can trigger **playbooks** from the SIRP user interface against cases, alerts, or artifacts to perform further automated actions, such as threat intelligence enrichment or remediation.
 

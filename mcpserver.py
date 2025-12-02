@@ -9,7 +9,7 @@ sys.path.insert(0, project_root)
 from mcp.server import FastMCP
 
 if __name__ == "__main__":
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASF.settings")
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
     import django
 
     django.setup()
@@ -28,7 +28,7 @@ if __name__ == "__main__":
         with open(uuid_file_path, 'w') as f:
             f.write(uuid_str)
 
-    mcp = FastMCP("ASF-MCP")
+    mcp = FastMCP("ASP-MCP")
     host = "0.0.0.0"
     port = 7001
     mcp.settings.sse_path = f"/{uuid_str}/sse"
