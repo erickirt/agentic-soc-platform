@@ -14,9 +14,15 @@
 
 ### 3. 技术发现（收集的证据）
 
-<findings>
+<all_findings>
 {findings}
-</findings>
+</all_findings>
+
+### 4. 其他信息
+
+<additional_info>
+{additional_info}
+</additional_info>
 
 ---
 基于上述内容，请撰写最终威胁猎杀报告。

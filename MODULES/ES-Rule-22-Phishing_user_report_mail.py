@@ -4,7 +4,7 @@ from typing import Optional, Union, Dict, Any
 
 from pydantic import BaseModel, Field
 
-from Lib.api import string_to_string_time, get_current_time_string
+from Lib.api import string_to_string_time, get_current_time_str
 from Lib.basemodule import BaseModule
 from PLUGINS.Dify.dify import Dify
 from PLUGINS.SIRP.grouprule import GroupRule
@@ -86,7 +86,7 @@ class Module(BaseModule):
             "rule_name": rule_name,
             "name": f"User Reported Phishing Email: {mail_subject}",
             "alert_date": alert_date,
-            "created_date": get_current_time_string(),
+            "created_date": get_current_time_str(),
             "tags": ["phishing", "user-report"],
             "severity": severity,
             "description": description,
@@ -96,17 +96,17 @@ class Module(BaseModule):
                 {
                     "type": "mail_to",
                     "value": mail_to,
-                    "enrichment": {"update_time": get_current_time_string()}  # just for test, no meaning, data should come from TI or other cmdb
+                    "enrichment": {"update_time": get_current_time_str()}  # just for test, no meaning, data should come from TI or other cmdb
                 },
                 {
                     "type": "mail_subject",
                     "value": mail_subject,
-                    "enrichment": {"update_time": get_current_time_string()}
+                    "enrichment": {"update_time": get_current_time_str()}
                 },
                 {
                     "type": "mail_from",
                     "value": mail_from,
-                    "enrichment": {"update_time": get_current_time_string()}
+                    "enrichment": {"update_time": get_current_time_str()}
                 },
             ],
             "raw_log": alert_raw

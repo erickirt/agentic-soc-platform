@@ -1,4 +1,4 @@
-from Lib.api import get_current_time_string, string_to_timestamp, generate_four_random_timestamps
+from Lib.api import get_current_time_str, string_to_timestamp, generate_four_random_timestamps
 from PLUGINS.Mock.SIRP_MOCK.alert import get_mock_alerts
 from PLUGINS.Mock.SIRP_MOCK.rule import rule_list
 from PLUGINS.SIRP.grouprule import GroupRule
@@ -69,14 +69,14 @@ def old():
             artifact_fields = [
                 {"id": "type", "value": artifact["type"]},
                 {"id": "value", "value": artifact["value"]},
-                {"id": "enrichment", "value": {"update_time": get_current_time_string()}},
+                {"id": "enrichment", "value": {"update_time": get_current_time_str()}},
             ]
-            artifact_dict = {"type": artifact["type"], "value": artifact["value"], "enrichment": {"update_time": get_current_time_string()}}
+            artifact_dict = {"type": artifact["type"], "value": artifact["value"], "enrichment": {"update_time": get_current_time_str()}}
 
             fields = [
                 {"id": "type", "value": artifact["type"], "type": 2},
                 {"id": "value", "value": artifact["value"]},
-                {"id": "enrichment", "value": {"update_time": get_current_time_string()}},
+                {"id": "enrichment", "value": {"update_time": get_current_time_str()}},
             ]
 
             artifact_filter = {

@@ -7,7 +7,7 @@ from langgraph.graph import StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from pydantic import BaseModel, Field, ConfigDict
 
-from Lib.api import get_current_time_string
+from Lib.api import get_current_time_str
 from Lib.basemodule import LanggraphModule
 from Lib.llmapi import AgentState
 from PLUGINS.LLM.llmapi import LLMAPI
@@ -81,7 +81,7 @@ class Module(LanggraphModule):
                 "rule_name": rule_name,
                 "name": f"{rule_name} hostname: {hostname}",
                 "alert_date": alert_date,
-                "created_date": get_current_time_string(),
+                "created_date": get_current_time_str(),
                 "tags": tags,
                 "severity": severity,
                 "description": description,

@@ -8,7 +8,7 @@ from langgraph.graph import StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from pydantic import BaseModel, Field
 
-from Lib.api import string_to_string_time, get_current_time_string
+from Lib.api import string_to_string_time, get_current_time_str
 from Lib.basemodule import LanggraphModule
 from Lib.llmapi import AgentState
 from PLUGINS.LLM.llmapi import LLMAPI
@@ -168,7 +168,7 @@ class Module(LanggraphModule):
                 "rule_name": rule_name,
                 "name": f"User Reported Phishing Email: {mail_subject}",
                 "alert_date": alert_date,
-                "created_date": get_current_time_string(),
+                "created_date": get_current_time_str(),
                 "tags": ["phishing", "user-report"],
                 "severity": severity,
                 "description": description,
@@ -179,19 +179,19 @@ class Module(LanggraphModule):
                         "type": "mail_to",
                         "value": mail_to,
                         # "deduplication_key": f"mail_to-{mail_to}",
-                        "enrichment": {"update_time": get_current_time_string()}  # just for test, no meaning, data should come from TI or other cmdb
+                        "enrichment": {"update_time": get_current_time_str()}  # just for test, no meaning, data should come from TI or other cmdb
                     },
                     {
                         "type": "mail_subject",
                         "value": mail_subject,
                         # "deduplication_key": f"mail_subject-{mail_subject}",
-                        "enrichment": {"update_time": get_current_time_string()}
+                        "enrichment": {"update_time": get_current_time_str()}
                     },
                     {
                         "type": "mail_from",
                         "value": mail_from,
                         # "deduplication_key": f"mail_from-{mail_from}",
-                        "enrichment": {"update_time": get_current_time_string()}
+                        "enrichment": {"update_time": get_current_time_str()}
                     },
                 ],
                 "raw_log": alert_raw

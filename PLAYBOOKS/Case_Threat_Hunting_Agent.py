@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from AGENTS.cmdb_agent import CMDBAgent
 from AGENTS.siem_agent import SIEMAgent
 from AGENTS.ti_agent import TIAgent
+from Lib.api import get_current_time_str
 from Lib.baseplaybook import LanggraphPlaybook
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.sirpapi import Case
@@ -57,13 +58,6 @@ class Finding(BaseModel):
         return (f"\n"
                 f"**Question:** {self.question}\n"
                 f"**Reasoning:** {self.reasoning}\n"
-                f"**Answer:** {self.answer}\n"
-                f"\n\n\n"
-                )
-
-    def to_markdown_for_planning(self) -> str:
-        return (f"\n"
-                f"**Question:** {self.question}\n"
                 f"**Answer:** {self.answer}\n"
                 f"\n\n\n"
                 )
@@ -398,15 +392,13 @@ class Playbook(LanggraphPlaybook):
             for record in findings:
                 record: Finding
                 # 调用对象自己的方法，或者在这里自定义格式
-                history_md_list.append(record.to_markdown_for_planning())
+                history_md_list.append(record.to_markdown())
 
             findings_str = "\n".join(history_md_list)
-
-            human_message = self.load_human_prompt_template("Planner_Human", lang=PROMPT_LANG).format(case=state.case,
-                                                                                                      hunting_objective=hunting_objective,
-                                                                                                      findings=findings_str,
-                                                                                                      iteration_count=iteration_count,
-                                                                                                      )
+            additional_info = f"Report Time: {get_current_time_str()} \n Reporter: ASF CSIRT Team"
+            human_message = self.load_human_prompt_template("Planner_Human", lang=PROMPT_LANG).format(case=state.case, hunting_objective=hunting_objective,
+                                                                                                      findings=findings_str, iteration_count=iteration_count,
+                                                                                                      additional_info=additional_info)
             # 构建few-shot示例
             few_shot_examples = [
             ]

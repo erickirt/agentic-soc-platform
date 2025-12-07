@@ -74,14 +74,14 @@ def get_current_timestamp() -> int:
     return int(time.time())
 
 
-def get_current_time_string(format_str: str = "%Y-%m-%dT%H:%M:%SZ") -> str:
+def get_current_time_str(format_str: str = "%Y-%m-%dT%H:%M:%SZ") -> str:
     """
     # 示例
     # 默认格式
-    current_time_str = get_current_time_string()
+    current_time_str = get_current_time_str()
 
     # 自定义格式：年-月-日
-    current_date_str = get_current_time_string("%Y-%m-%d")
+    current_date_str = get_current_time_str("%Y-%m-%d")
     """
     return datetime.datetime.now().strftime(format_str)
 

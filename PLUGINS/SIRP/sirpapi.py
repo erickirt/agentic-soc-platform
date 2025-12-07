@@ -4,7 +4,7 @@ from typing import TypedDict, List, Optional, Union, Dict, Any, NotRequired, Lit
 
 import requests
 
-from Lib.api import string_to_timestamp, get_current_time_string
+from Lib.api import string_to_timestamp, get_current_time_str
 from Lib.log import logger
 from PLUGINS.Embeddings.embeddingsapi import EmbeddingsAPI
 from PLUGINS.SIRP.CONFIG import SIRP_NOTICE_WEBHOOK
@@ -157,7 +157,7 @@ class Alert(object):
             artifact_rowid_list.extend(row_id_list)
 
         if alert.get("created_date") is None:
-            alert["created_date"] = get_current_time_string()
+            alert["created_date"] = get_current_time_str()
 
         alert_fields = [
             {"id": "tags", "value": alert.get("tags"), "type": 2},
@@ -424,7 +424,7 @@ def create_alert_with_group_rule(alert: InputAlert, rule_def: GroupRule) -> str:
             "deduplication_key": deduplication_key,
             "alert": [row_id_alert],
             "case_status": case_status_new,
-            "created_date": get_current_time_string(),
+            "created_date": get_current_time_str(),
             "tags": alert["tags"],
             "severity": alert["severity"],
             "type": rule_def.source,
