@@ -2,7 +2,7 @@ import json
 
 from Lib.baseplaybook import BasePlaybook
 from PLUGINS.AlienVaultOTX.alienvaultotx import AlienVaultOTX
-from PLUGINS.SIRP.nocolyapi import WorksheetRow
+from PLUGINS.SIRP.sirpapi import Artifact
 
 
 class Playbook(BasePlaybook):
@@ -12,9 +12,8 @@ class Playbook(BasePlaybook):
         super().__init__()  # do not delete this code
 
     def run(self):
-        worksheet = self.param("worksheet")
-        rowid = self.param("rowid")
-        artifact = WorksheetRow.get(worksheet, rowid)
+        artifact = Artifact.get(self.param_rowid)
+
         self.logger.info(f"Querying threat intelligence for : {artifact}")
 
         if artifact.get("type") == "ip" or artifact.get("type") == "vm_ip":

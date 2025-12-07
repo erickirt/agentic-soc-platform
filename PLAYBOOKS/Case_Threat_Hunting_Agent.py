@@ -16,7 +16,6 @@ from AGENTS.ti_agent import TIAgent
 from Lib.baseplaybook import LanggraphPlaybook
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.sirpapi import Case
-from PLUGINS.SIRP.sirpapi import Playbook as SIRPPlaybook
 
 MAX_ITERATIONS = 3
 PROMPT_LANG = None
@@ -173,7 +172,7 @@ class MainState(BaseModel):
     )
 
     planning_history: Annotated[
-        List[PlanningRecord],  # 这里改为 PlanningRecord
+        List[PlanningRecord],
         operator.add
     ] = Field(
         default_factory=list,
@@ -227,9 +226,9 @@ class Playbook(LanggraphPlaybook):
 
             # update record
             for message in messages:
-                self.add_message_to_playbook(message, self.param("playbook_rowid"), node="analyst_node")
+                self.add_message_to_playbook(message, node="analyst_node")
 
-            self.add_message_to_playbook(response, self.param("playbook_rowid"), node="analyst_node")
+            self.add_message_to_playbook(response, node="analyst_node")
 
             # 返回更新的消息列表，LangGraph 会自动追加到 state.messages
             return {"messages": [response]}
@@ -281,9 +280,9 @@ class Playbook(LanggraphPlaybook):
 
             # update record
             for message in messages:
-                self.add_message_to_playbook(message, self.param("playbook_rowid"), node="final_answer_node")
+                self.add_message_to_playbook(message, node="final_answer_node")
 
-            self.add_message_to_playbook(response, self.param("playbook_rowid"), node="final_answer_node")
+            self.add_message_to_playbook(response, node="final_answer_node")
 
             return {
                 "answer": response.answer,
@@ -324,20 +323,19 @@ class Playbook(LanggraphPlaybook):
             """意图识别：确定总目标"""
             self.logger.info("Intent Node Invoked")
 
-            # 获取数据
-            rowid = self.param("rowid")
+            # 获取 Case 数据
+            case = Case.get_raw_data(rowid=self.param_rowid)
 
-            case = Case.get_raw_data(rowid=rowid)
-
-            user_intent = self.param("user_input")
+            # 用户意图
+            user_intent = self.param_user_input
 
             if not user_intent:
                 user_intent = "None (Auto-Pilot Mode)"
 
             # 加载system prompt
             system_prompt_template = self.load_system_prompt_template("Intent_System", lang=PROMPT_LANG)
-
             system_message = system_prompt_template.format()
+
             human_message = self.load_human_prompt_template("Intent_Human", lang=PROMPT_LANG).format(case=case, user_intent=user_intent)
 
             # 构建few-shot示例
@@ -358,9 +356,9 @@ class Playbook(LanggraphPlaybook):
 
             # update record
             for message in messages:
-                self.add_message_to_playbook(message, self.param("playbook_rowid"), node="intent_node")
+                self.add_message_to_playbook(message, node="intent_node")
 
-            self.add_message_to_playbook(response, self.param("playbook_rowid"), node="intent_node")
+            self.add_message_to_playbook(response, node="intent_node")
 
             node_out = {
                 "case": case,
@@ -438,8 +436,8 @@ class Playbook(LanggraphPlaybook):
 
             # update record
             for message in messages:
-                self.add_message_to_playbook(message, self.param("playbook_rowid"), node="planner_node")
-            self.add_message_to_playbook(response, self.param("playbook_rowid"), node="planner_node")
+                self.add_message_to_playbook(message, node="planner_node")
+            self.add_message_to_playbook(response, node="planner_node")
 
             node_out = {
                 "current_plan": current_plan,
@@ -534,25 +532,22 @@ class Playbook(LanggraphPlaybook):
             llm = llm_api.get_model(tag=["powerful"])
             response = llm.invoke(messages)
 
-            case_row_id = self.param("rowid")
-
             case_field = [
                 {"id": "threat_hunting_report", "value": response.content},
                 {"id": "threat_hunting_tool_calls", "value": json.dumps(total_tool_calls)},
             ]
 
-            Case.update(case_row_id, case_field)
+            Case.update(self.param_rowid, case_field)
 
             # update record
             for message in messages:
-                self.add_message_to_playbook(message, self.param("playbook_rowid"), node="planner_node")
-            self.add_message_to_playbook(response, self.param("playbook_rowid"), node="planner_node")
+                self.add_message_to_playbook(message, node="planner_node")
+            self.add_message_to_playbook(response, node="planner_node")
 
             node_out = {"report": response.content}
 
             # update playbook status
-            SIRPPlaybook.update_status_and_remark(self.param("playbook_rowid"), "Success", "Get suggestion by ai agent completed.")  # Success/Failed
-
+            self.update_playbook("Success", "Threat Hunting Agent Finish.")
             return node_out
 
         # --- 构建主图 ---

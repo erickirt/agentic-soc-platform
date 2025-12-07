@@ -15,7 +15,8 @@ from pydantic import BaseModel
 from Lib.baseapi import BaseAPI
 from Lib.llmapi import AgentState
 from Lib.log import logger
-from PLUGINS.SIRP.sirpapi import PlaybookMessage
+from PLUGINS.SIRP.sirpapi import Playbook as SIRPPlaybook, Notice
+from PLUGINS.SIRP.sirpapi import PlaybookMessage, PlaybookStatusType
 
 
 class BasePlaybook(BaseAPI):
@@ -31,6 +32,35 @@ class BasePlaybook(BaseAPI):
     def param(self, key, default=None):
         return self._params.get(key, default)
 
+    # 定义内部参数
+    @property
+    def param_playbook_rowid(self):
+        return self.param("playbook_rowid")
+
+    @property
+    def param_rowid(self):
+        return self.param("rowid")
+
+    @property
+    def param_worksheet(self):
+        return self.param("worksheet")
+
+    @property
+    def param_user(self):
+        return self.param("user")
+
+    @property
+    def param_user_input(self):
+        return self.param("user_input")
+
+    def update_playbook(self, status: PlaybookStatusType, remark: str):
+        rowid = SIRPPlaybook.update_status_and_remark(self.param_playbook_rowid, status, remark)
+        return rowid
+
+    def send_notice(self, title: str, body: str):
+        result = Notice.send(self.param_user, title, body)
+        return result
+
 
 class LanggraphPlaybook(BasePlaybook):
     def __init__(self):
@@ -43,16 +73,10 @@ class LanggraphPlaybook(BasePlaybook):
         checkpointer = MemorySaver()
         return checkpointer
 
-    def run_graph(self):
-        self.graph.checkpointer.delete_thread(self.module_name)
-        config = RunnableConfig()
-        config["configurable"] = {"thread_id": self.module_name}
-        if self.agent_state is None:
-            self.agent_state = AgentState()
-        for event in self.graph.stream(self.agent_state, config, stream_mode="values"):
-            self.logger.debug(event)
-
     def add_message_to_playbook(self, message: BaseMessage | BaseModel, playbook_rowid=None, node=None):
+        if playbook_rowid is None:
+            playbook_rowid = self.param_playbook_rowid
+
         if isinstance(message, SystemMessage):
             fields = [
                 {"id": "type", "value": "SystemMessage"},
@@ -116,6 +140,16 @@ class LanggraphPlaybook(BasePlaybook):
             ]
         row_id = PlaybookMessage.create(fields)
         return row_id
+
+    # langgraph interface
+    def run_graph(self):
+        self.graph.checkpointer.delete_thread(self.module_name)
+        config = RunnableConfig()
+        config["configurable"] = {"thread_id": self.module_name}
+        if self.agent_state is None:
+            self.agent_state = AgentState()
+        for event in self.graph.stream(self.agent_state, config, stream_mode="values"):
+            self.logger.debug(event)
 
     def run(self):
         self.run_graph()

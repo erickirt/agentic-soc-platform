@@ -10,11 +10,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from Lib.baseplaybook import LanggraphPlaybook
 from Lib.llmapi import AgentState
 from PLUGINS.LLM.llmapi import LLMAPI
-from PLUGINS.SIRP.nocolyapi import WorksheetRow
-from PLUGINS.SIRP.sirpapi import Alert, Artifact
 from PLUGINS.SIRP.sirpapi import Case
-from PLUGINS.SIRP.sirpapi import Notice
-from PLUGINS.SIRP.sirpapi import Playbook as SIRPPlaybook
 
 
 class ConfidenceLevel(str, Enum):
@@ -57,17 +53,7 @@ class Playbook(LanggraphPlaybook):
     def init(self):
         def preprocess_node(state: AgentState):
             """预处理数据"""
-            # worksheet = self.param("worksheet")
-            rowid = self.param("rowid")
-
-            case = WorksheetRow.get(Case.WORKSHEET_ID, rowid, include_system_fields=False)
-
-            alerts = WorksheetRow.relations(Case.WORKSHEET_ID, rowid, "alert", relation_worksheet_id=Alert.WORKSHEET_ID, include_system_fields=False)
-            for alert in alerts:
-                artifacts = WorksheetRow.relations(Alert.WORKSHEET_ID, alert.get("rowId"), "artifact", relation_worksheet_id=Artifact.WORKSHEET_ID,
-                                                   include_system_fields=False)
-                alert["artifact"] = artifacts
-            case["alert"] = alerts
+            case = Case.get_raw_data(self.param_rowid)
             state.case = case
             return state
 
@@ -119,8 +105,6 @@ class Playbook(LanggraphPlaybook):
 
             analyze_result: AnalyzeResult = AnalyzeResult(**state.analyze_result)
 
-            case_row_id = self.param("rowid")
-
             case_field = [
                 {"id": "severity", "value": analyze_result.new_severity},
                 {"id": "confidence_ai", "value": analyze_result.confidence},
@@ -128,12 +112,10 @@ class Playbook(LanggraphPlaybook):
                 {"id": "attack_stage_ai", "value": analyze_result.current_attack_stage},
                 {"id": "recommended_actions_ai", "value": analyze_result.recommended_actions},
             ]
+            Case.update(self.param_rowid, case_field)
 
-            Case.update(case_row_id, case_field)
-
-            Notice.send(self.param("user"), "Case_L3_SOC_Analyst_Agent Finish", f"rowid：{self.param('rowid')}")
-
-            SIRPPlaybook.update_status_and_remark(self.param("playbook_rowid"), "Success", "Get suggestion by ai agent completed.")  # Success/Failed
+            self.send_notice("Case_L3_SOC_Analyst_Agent Finish", f"rowid：{self.param_rowid}")
+            self.update_playbook("Success", "Get suggestion by ai agent completed.")
             return state
 
         # 编译graph

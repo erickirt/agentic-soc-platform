@@ -3,8 +3,7 @@ import json
 from Lib.api import is_ipaddress
 from Lib.baseplaybook import BasePlaybook
 from PLUGINS.AlienVaultOTX.alienvaultotx import AlienVaultOTX
-from PLUGINS.SIRP.nocolyapi import WorksheetRow
-from PLUGINS.SIRP.sirpapi import Playbook as SIRPPlaybook
+from PLUGINS.SIRP.sirpapi import Artifact
 
 
 class Playbook(BasePlaybook):
@@ -16,10 +15,7 @@ class Playbook(BasePlaybook):
 
     def run(self):
         try:
-            worksheet = self.param("worksheet")
-            rowid = self.param("rowid")
-
-            artifact = WorksheetRow.get(worksheet, rowid, include_system_fields=False)
+            artifact = Artifact.get(self.param_rowid)
             self.logger.info(f"Querying threat intelligence for : {artifact}")
 
             if "ip" in artifact.get("type"):
@@ -34,12 +30,12 @@ class Playbook(BasePlaybook):
                 ti_result = {"error": "Unsupported type. Please use 'ip', 'vm_ip', or 'hash'."}
 
             fields = [{"id": "enrichment", "value": json.dumps(ti_result)}]
-            WorksheetRow.update(worksheet, rowid, fields)
 
-            SIRPPlaybook.update_status_and_remark(self.param("playbook_rowid"), "Success", "Threat intelligence enrichment completed.")  # Success/Failed
+            Artifact.update(self.param_rowid, fields)
+            self.update_playbook("Success", "Threat intelligence enrichment completed.")
         except Exception as e:
             self.logger.exception(e)
-            SIRPPlaybook.update_status_and_remark(self.param("playbook_rowid"), "Failed", f"Error during TI enrichment: {e}")  # Success/Failed
+            self.update_playbook("Failed", f"Error during TI enrichment: {e}")
         return
 
 

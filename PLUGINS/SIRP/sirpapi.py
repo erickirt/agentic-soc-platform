@@ -1,6 +1,6 @@
 import json
 import os
-from typing import TypedDict, List, Optional, Union, Dict, Any, NotRequired
+from typing import TypedDict, List, Optional, Union, Dict, Any, NotRequired, Literal
 
 import requests
 
@@ -66,6 +66,11 @@ class Artifact(object):
         pass
 
     @staticmethod
+    def get(rowid, include_system_fields=False):
+        artifact = WorksheetRow.get(Artifact.WORKSHEET_ID, rowid, include_system_fields=include_system_fields)
+        return artifact
+
+    @staticmethod
     def list(filter: dict):
         result = WorksheetRow.list(Artifact.WORKSHEET_ID, filter)
         return result
@@ -103,12 +108,17 @@ class Alert(object):
         pass
 
     @staticmethod
-    def get(rowid):
-        alert = WorksheetRow.get(Alert.WORKSHEET_ID, rowid, include_system_fields=False)
+    def get(rowid, include_system_fields=False):
+        alert = WorksheetRow.get(Alert.WORKSHEET_ID, rowid, include_system_fields=include_system_fields)
         artifacts = WorksheetRow.relations(Alert.WORKSHEET_ID, rowid, Alert.ARTIFACT_FIELD_ID, relation_worksheet_id=Artifact.WORKSHEET_ID,
                                            include_system_fields=False)
         alert[Alert.ARTIFACT_FIELD_ID] = artifacts
         return alert
+
+    @staticmethod
+    def update(rowid, fields: list):
+        row_id = WorksheetRow.update(Alert.WORKSHEET_ID, rowid, fields)
+        return row_id
 
     @staticmethod
     def create(alert: InputAlert):
@@ -219,6 +229,7 @@ class Case(object):
 
     @staticmethod
     def get_raw_data(rowid, include_system_fields=False) -> Dict:
+        """获取案件及其关联告警和工单的原始数据，并只保留对LLM有用字段"""
         case = WorksheetRow.get(Case.WORKSHEET_ID, rowid, include_system_fields=include_system_fields)
 
         useful_case_fields = ["rowId", "title", 'case_status', 'created_date', 'tags', 'severity', 'type', 'description', 'close_reason', 'alert_date',
@@ -331,6 +342,9 @@ class Case(object):
             return f.read()
 
 
+PlaybookStatusType = Literal["Success", "Failed", "Pending"]
+
+
 class Playbook(object):
     WORKSHEET_ID = "playbook"
 
@@ -348,7 +362,7 @@ class Playbook(object):
         return row_id
 
     @staticmethod
-    def update_status_and_remark(row_id, status, remark):
+    def update_status_and_remark(row_id, status: StatusType, remark):
         fields = [
             {"id": "job_status", "value": status},
             {"id": "remark", "value": remark},

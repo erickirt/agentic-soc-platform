@@ -8,10 +8,7 @@ from pydantic import BaseModel
 
 from Lib.baseplaybook import LanggraphPlaybook
 from PLUGINS.LLM.llmapi import LLMAPI
-from PLUGINS.SIRP.nocolyapi import WorksheetRow
-from PLUGINS.SIRP.sirpapi import Alert, Artifact
-from PLUGINS.SIRP.sirpapi import Notice
-from PLUGINS.SIRP.sirpapi import Playbook as SIRPPlaybook
+from PLUGINS.SIRP.sirpapi import Alert
 
 
 class AgentState(BaseModel):
@@ -33,12 +30,7 @@ class Playbook(LanggraphPlaybook):
         def preprocess_node(state: AgentState):
             """预处理数据"""
             # worksheet = self.param("worksheet")
-            rowid = self.param("rowid")
-            worksheet = self.param("worksheet")
-            alert = WorksheetRow.get(worksheet, rowid, include_system_fields=False)
-            artifacts = WorksheetRow.relations(Alert.WORKSHEET_ID, alert.get("rowId"), "artifact", relation_worksheet_id=Artifact.WORKSHEET_ID,
-                                               include_system_fields=False)
-            alert["artifact"] = artifacts
+            alert = Alert.get(self.param_rowid)
             state.alert = alert
             return state
 
@@ -83,19 +75,16 @@ class Playbook(LanggraphPlaybook):
 
         def output_node(state: AgentState):
             """处理分析结果"""
-
             suggestion = state.suggestion
             fields = [
                 {"id": "suggestion_ai", "value": suggestion},
             ]
-            rowid = self.param("rowid")
-            WorksheetRow.update(Alert.WORKSHEET_ID, rowid, fields)
+            Alert.update(self.param_rowid, fields)
+
+            self.send_notice("Alert_Suggestion_Gen_By_LLM output_node Finish", f"rowid：{self.param('rowid')}")
+            self.update_playbook("Success", "Get suggestion by ai agent completed.")
 
             self.agent_state = state
-
-            Notice.send(self.param("user"), "Alert_Suggestion_Gen_By_LLM output_node Finish", f"rowid：{self.param('rowid')}")
-
-            SIRPPlaybook.update_status_and_remark(self.param("playbook_rowid"), "Success", "Get suggestion by ai agent completed.")  # Success/Failed
             return state
 
         # 编译graph

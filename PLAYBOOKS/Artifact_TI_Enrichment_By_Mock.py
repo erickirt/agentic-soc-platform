@@ -2,8 +2,7 @@ import json
 import time
 
 from Lib.baseplaybook import BasePlaybook
-from PLUGINS.SIRP.nocolyapi import WorksheetRow
-from PLUGINS.SIRP.sirpapi import Playbook as SIRPPlaybook
+from PLUGINS.SIRP.sirpapi import Artifact
 
 
 class Playbook(BasePlaybook):
@@ -15,10 +14,7 @@ class Playbook(BasePlaybook):
 
     def run(self):
         try:
-            worksheet = self.param("worksheet")
-            rowid = self.param("rowid")
-
-            artifact = WorksheetRow.get(worksheet, rowid, include_system_fields=False)
+            artifact = Artifact.get(self.param_rowid)
             self.logger.info(f"Querying threat intelligence for : {artifact}")
 
             # 模拟查询威胁情报数据库,在实际应用中，这里应该调用外部API或数据库进行查询
@@ -30,12 +26,11 @@ class Playbook(BasePlaybook):
                              "last_seen": "2024-10-01T12:34:56Z"}
 
             fields = [{"id": "enrichment", "value": json.dumps(ti_result)}]
-            WorksheetRow.update(worksheet, rowid, fields)
-
-            SIRPPlaybook.update_status_and_remark(self.param("playbook_rowid"), "Success", "Threat intelligence enrichment completed.")  # Success/Failed
+            Artifact.update(self.param_rowid, fields)
+            self.update_playbook("Success", "Threat intelligence enrichment completed.")
         except Exception as e:
             self.logger.exception(e)
-            SIRPPlaybook.update_status_and_remark(self.param("playbook_rowid"), "Failed", f"Error during TI enrichment: {e}")  # Success/Failed
+            self.update_playbook("Failed", f"Error during TI enrichment: {e}")
         return
 
 
