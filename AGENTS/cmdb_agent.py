@@ -1,10 +1,8 @@
-import json
 from typing import Annotated, List, Literal, Any
 
 from langchain.agents import create_agent
 from langchain_core.messages import HumanMessage
 from langchain_core.runnables import RunnableConfig
-from langchain_core.tools import tool
 from langgraph.graph import END, StateGraph, add_messages
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import ToolNode
@@ -12,25 +10,27 @@ from pydantic import BaseModel, Field
 
 from Lib.baseplaybook import LanggraphPlaybook
 from PLUGINS.LLM.llmapi import LLMAPI
-# from PLUGINS.Mock.CMDB import CMDB
-from PLUGINS.Mock.cmdb_test import CMDB, get_ci_context_tool, fuzzy_search_ci_tool, get_cis_by_software_tool, get_cis_by_port_tool, get_cis_by_service_tool, \
+from PLUGINS.Mock.cmdb_test import get_ci_context_tool, fuzzy_search_ci_tool, get_cis_by_software_tool, get_cis_by_port_tool, get_cis_by_service_tool, \
     get_cis_by_user_tool
 
 
 class CMDBAgent(object):
 
     @staticmethod
-    @tool("cmdb_query_asset")
+    # @tool("cmdb_query_asset")
     def query_asset(
-            ip: Annotated[str, "The IP address to search for (e.g., '10.67.3.130')"],
-            hostname: Annotated[str, "The hostname to search for (e.g., 'WEB-SRV-01')"],
-            owner: Annotated[str, "The email or name of the asset owner."]
-    ) -> Annotated[str, "A dictionary containing asset details"]:
+            query: Annotated[str, "The CMDB query in natural language (e.g., 'Find asset with IP 10.10.10.10')"]
+    ) -> Annotated[str, "A JSON containing asset details"]:
         """
         Query internal asset information from CMDB.
         """
-        logs = CMDB.query_asset(ip, hostname, owner)
-        return json.dumps(logs)
+        # 也可以使用更简单的create_agent方法创建代理
+        # result = cmdb_query(query)
+        # return result
+
+        agent = GraphAgent()
+        result = agent.cmdb_query(query)
+        return result
 
 
 AGENT_NODE = "AGENT_NODE"
@@ -40,16 +40,8 @@ TOOL_NODE = "TOOL_NODE"
 class AgentState(BaseModel):
     messages: Annotated[List[Any], add_messages] = Field(default_factory=list)
 
-    query: str = Field(
-        default="",
-        description="用户的查询请求"
-    )
-    result: str = Field(
-        default="",
-        description="Agent最终执行结果"
-    )
 
-
+# 使用langgraph创建一个CMDB查询代理,可以更细粒度控制
 class GraphAgent(LanggraphPlaybook):
 
     def __init__(self):
@@ -86,7 +78,7 @@ class GraphAgent(LanggraphPlaybook):
 
             llm_api = LLMAPI()
 
-            llm = llm_api.get_model(tag="fast")
+            llm = llm_api.get_model(tag=["fast", "function_calling"])
 
             llm_with_tools = llm.bind_tools(tools)
             response = llm_with_tools.invoke(messages)
@@ -109,11 +101,11 @@ class GraphAgent(LanggraphPlaybook):
         config = RunnableConfig()
         config["configurable"] = {"thread_id": self.module_name}
         self.agent_state = AgentState(messages=[HumanMessage(content=query)])
-        result = self.graph.invoke(self.agent_state, config)
-        print(result) # 返回的是state 的dict
-        return result
+        response = self.graph.invoke(self.agent_state, config)
+        return response['messages'][-1].content
 
 
+# 使用create_agent方法创建一个CMDB查询代理,实现更简单
 def cmdb_query(
         query: Annotated[str, "The CMDB query in natural language (e.g., 'Find asset with IP 10.10.10.10')"]
 ) -> Annotated[str, "The query result in JSON format"]:
@@ -122,7 +114,7 @@ def cmdb_query(
     """
     llm_api = LLMAPI()
 
-    llm = llm_api.get_model(tag="fast")
+    llm = llm_api.get_model(tag=["fast", "function_calling"])
 
     CMDB_AGENT_TOOLS = [
         get_ci_context_tool,
@@ -135,7 +127,7 @@ def cmdb_query(
     agent = create_agent(
         model=llm,
         tools=CMDB_AGENT_TOOLS,
-        system_prompt="你是一个CMDB查询助手，能够根据用户的自然语言查询请求，调用合适的CMDB工具进行查询，并返回结果。",
+        system_prompt="你是一个CMDB查询助手，能够根据用户的自然语言查询请求，调用合适的CMDB工具进行查询，并返回JSON格式的结果。",
     )
 
     response = agent.invoke({"messages": [HumanMessage(content=query)]})
@@ -144,21 +136,11 @@ def cmdb_query(
     return result
 
 
-class BaseAgent(object):
-    @staticmethod
-    def cmdb_query_graph(
-            query: Annotated[str, "The CMDB query in natural language (e.g., 'Find asset with IP 10.10.10.10')"]
-    ) -> Annotated[str, "The query result in JSON format"]:
-        """
-        Query internal asset information from CMDB using natural language with LangGraph.
-        """
-        pass
-
-
 if __name__ == "__main__":
     query = "查找IP地址为192.168.10.5的资产信息"
-    # result = BaseAgent.cmdb_query(query)
-    # print("查询结果：", result)
+
+    # result = cmdb_query(query)
+
     agent = GraphAgent()
     result = agent.cmdb_query(query)
     print(result)
