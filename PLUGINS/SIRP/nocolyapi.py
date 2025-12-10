@@ -7,6 +7,8 @@ from PLUGINS.SIRP.CONFIG import SIRP_URL, SIRP_APPKEY, SIRP_SIGN
 HEADERS = {"HAP-Appkey": SIRP_APPKEY,
            "HAP-Sign": SIRP_SIGN}
 
+SIRP_REQUEST_TIMEOUT = 3  # seconds
+
 
 class FieldType(TypedDict):
     id: str
@@ -83,6 +85,7 @@ class WorksheetRow(object):
         try:
             response = requests.get(
                 url,
+                timeout=SIRP_REQUEST_TIMEOUT,
                 params={"includeSystemFields": include_system_fields},
                 headers=HEADERS
             )
@@ -160,6 +163,7 @@ class WorksheetRow(object):
         }
         try:
             response = requests.post(url,
+                                     timeout=SIRP_REQUEST_TIMEOUT,
                                      headers=HEADERS,
                                      json=data)
             response.raise_for_status()
@@ -178,7 +182,7 @@ class WorksheetRow(object):
             raise
 
     @staticmethod
-    def create(worksheet_id: str, fields: list):
+    def create(worksheet_id: str, fields: list, triggerWorkflow: bool = False):
 
         fields = [
             field for field in fields if field.get("value") is not None and field.get("value") != ""
@@ -187,12 +191,13 @@ class WorksheetRow(object):
         url = f"{SIRP_URL}/api/v3/app/worksheets/{worksheet_id}/rows"
 
         data = {
-            "triggerWorkflow": True,
+            "triggerWorkflow": triggerWorkflow,
             "fields": fields
         }
 
         try:
             response = requests.post(url,
+                                     timeout=SIRP_REQUEST_TIMEOUT,
                                      headers=HEADERS,
                                      json=data)
             response.raise_for_status()
@@ -220,6 +225,7 @@ class WorksheetRow(object):
 
         try:
             response = requests.patch(url,
+                                      timeout=SIRP_REQUEST_TIMEOUT,
                                       headers=HEADERS,
                                       json=data)
             response.raise_for_status()
@@ -244,6 +250,7 @@ class WorksheetRow(object):
 
         try:
             response = requests.delete(url,
+                                       timeout=SIRP_REQUEST_TIMEOUT,
                                        headers=HEADERS,
                                        json=data)
             response.raise_for_status()
@@ -272,6 +279,7 @@ class WorksheetRow(object):
             params["isReturnSystemFields"] = include_system_fields
         try:
             response = requests.get(url,
+                                    timeout=SIRP_REQUEST_TIMEOUT,
                                     headers=HEADERS,
                                     params=params)
             response.raise_for_status()
@@ -306,7 +314,9 @@ class OptionSet(object):
 
         url = f"{SIRP_URL}/api/v3/app/optionsets"
 
-        response = requests.get(url, headers=HEADERS)
+        response = requests.get(url,
+                                timeout=SIRP_REQUEST_TIMEOUT,
+                                headers=HEADERS)
         response.raise_for_status()
 
         response_data = response.json()

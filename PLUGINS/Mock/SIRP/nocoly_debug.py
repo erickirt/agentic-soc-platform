@@ -1,6 +1,6 @@
 from Lib.api import get_current_time_str, string_to_timestamp, generate_four_random_timestamps
-from PLUGINS.Mock.SIRP_MOCK.alert import get_mock_alerts
-from PLUGINS.Mock.SIRP_MOCK.rule import rule_list
+from PLUGINS.Mock.SIRP.alert import get_mock_alerts
+from PLUGINS.Mock.SIRP.rule import rule_list
 from PLUGINS.SIRP.grouprule import GroupRule
 from PLUGINS.SIRP.nocolyapi import OptionSet
 from PLUGINS.SIRP.sirpapi import Alert, Artifact, Case, create_alert_with_group_rule
