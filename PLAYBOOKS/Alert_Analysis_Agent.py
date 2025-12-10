@@ -30,7 +30,7 @@ class Playbook(LanggraphPlaybook):
         def preprocess_node(state: AgentState):
             """预处理数据"""
             # worksheet = self.param("worksheet")
-            alert = Alert.get(self.param_rowid)
+            alert = Alert.get(self.param_source_rowid)
             state.alert = alert
             return state
 
@@ -79,9 +79,9 @@ class Playbook(LanggraphPlaybook):
             fields = [
                 {"id": "suggestion_ai", "value": suggestion},
             ]
-            Alert.update(self.param_rowid, fields)
+            Alert.update(self.param_source_rowid, fields)
 
-            self.send_notice("Alert_Suggestion_Gen_By_LLM output_node Finish", f"rowid：{self.param('rowid')}")
+            self.send_notice("Alert_Suggestion_Gen_By_LLM output_node Finish", f"rowid：{self.param_source_rowid}")
             self.update_playbook("Success", "Get suggestion by ai agent completed.")
 
             self.agent_state = state

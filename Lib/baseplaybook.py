@@ -34,16 +34,16 @@ class BasePlaybook(BaseAPI):
 
     # 定义内部参数
     @property
-    def param_playbook_rowid(self):
-        return self.param("playbook_rowid")
-
-    @property
     def param_rowid(self):
-        return self.param("rowid")
+        return self.param("rowId")
 
     @property
-    def param_worksheet(self):
-        return self.param("worksheet")
+    def param_source_rowid(self):
+        return self.param("source_rowid")
+
+    @property
+    def param_source_worksheet(self):
+        return self.param("source_worksheet")
 
     @property
     def param_user(self):
@@ -54,7 +54,7 @@ class BasePlaybook(BaseAPI):
         return self.param("user_input")
 
     def update_playbook(self, status: PlaybookStatusType, remark: str):
-        rowid = SIRPPlaybook.update_status_and_remark(self.param_playbook_rowid, status, remark)
+        rowid = SIRPPlaybook.update_status_and_remark(self.param_rowid, status, remark)
         return rowid
 
     def send_notice(self, title: str, body: str):
@@ -75,7 +75,7 @@ class LanggraphPlaybook(BasePlaybook):
 
     def add_message_to_playbook(self, message: BaseMessage | BaseModel, playbook_rowid=None, node=None):
         if playbook_rowid is None:
-            playbook_rowid = self.param_playbook_rowid
+            playbook_rowid = self.param_rowid
 
         if isinstance(message, SystemMessage):
             fields = [

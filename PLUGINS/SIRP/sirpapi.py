@@ -342,7 +342,7 @@ class Case(object):
             return f.read()
 
 
-PlaybookStatusType = Literal["Success", "Failed", "Pending"]
+PlaybookStatusType = Literal["Success", "Failed", "Pending","Running"]
 
 
 class Playbook(object):
@@ -350,6 +350,11 @@ class Playbook(object):
 
     def __init__(self):
         pass
+
+    @staticmethod
+    def list(filter: dict):
+        result = WorksheetRow.list(Playbook.WORKSHEET_ID, filter, include_system_fields=False)
+        return result
 
     @staticmethod
     def create(fields: list):
@@ -369,6 +374,28 @@ class Playbook(object):
         ]
         row_id = WorksheetRow.update(Playbook.WORKSHEET_ID, row_id, fields)
         return row_id
+
+
+
+    @staticmethod
+    def get_pending_playbooks():
+        pending_option_value = OptionSet.get_option_key_by_name_and_value("playbook_status", "Pending")
+        artifact_filter = {
+            "type": "group",
+            "logic": "AND",
+            "children": [
+                {
+                    "type": "condition",
+                    "field": "job_status",
+                    "operator": "in",
+                    "value": [
+                        pending_option_value
+                    ]
+                }
+            ]
+        }
+        result = Playbook.list(artifact_filter)
+        return result
 
 
 class PlaybookMessage(object):

@@ -15,7 +15,7 @@ class Playbook(BasePlaybook):
 
     def run(self):
         try:
-            artifact = Artifact.get(self.param_rowid)
+            artifact = Artifact.get(self.param_source_rowid)
             self.logger.info(f"Querying threat intelligence for : {artifact}")
 
             if "ip" in artifact.get("type"):
@@ -31,7 +31,7 @@ class Playbook(BasePlaybook):
 
             fields = [{"id": "enrichment", "value": json.dumps(ti_result)}]
 
-            Artifact.update(self.param_rowid, fields)
+            Artifact.update(self.param_source_rowid, fields)
             self.update_playbook("Success", "Threat intelligence enrichment completed.")
         except Exception as e:
             self.logger.exception(e)

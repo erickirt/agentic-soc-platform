@@ -8,6 +8,8 @@ from Lib.baseplaybook import BasePlaybook
 from Lib.configs import Playbook_MSG_ZH, Playbook_MSG_EN
 from Lib.log import logger
 from Lib.xcache import Xcache
+from PLUGINS.SIRP.nocolyapi import OptionSet
+from PLUGINS.SIRP.sirpapi import Playbook as SIRPPlaybook
 
 
 class Playbook(object):
@@ -61,6 +63,8 @@ class Playbook(object):
                 logger.exception(E)
                 context = data_return(301, {}, Playbook_MSG_ZH.get(301), Playbook_MSG_EN.get(301))
                 return context
+
+
 
     @staticmethod
     def get_module_intent(modulename, module_files_dir):

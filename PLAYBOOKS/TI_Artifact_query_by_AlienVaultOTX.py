@@ -12,7 +12,7 @@ class Playbook(BasePlaybook):
         super().__init__()  # do not delete this code
 
     def run(self):
-        artifact = Artifact.get(self.param_rowid)
+        artifact = Artifact.get(self.param_source_rowid)
 
         self.logger.info(f"Querying threat intelligence for : {artifact}")
 

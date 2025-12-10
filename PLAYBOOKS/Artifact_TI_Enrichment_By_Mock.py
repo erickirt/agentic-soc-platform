@@ -14,7 +14,7 @@ class Playbook(BasePlaybook):
 
     def run(self):
         try:
-            artifact = Artifact.get(self.param_rowid)
+            artifact = Artifact.get(self.param_source_rowid)
             self.logger.info(f"Querying threat intelligence for : {artifact}")
 
             # 模拟查询威胁情报数据库,在实际应用中，这里应该调用外部API或数据库进行查询
@@ -26,7 +26,7 @@ class Playbook(BasePlaybook):
                              "last_seen": "2024-10-01T12:34:56Z"}
 
             fields = [{"id": "enrichment", "value": json.dumps(ti_result)}]
-            Artifact.update(self.param_rowid, fields)
+            Artifact.update(self.param_source_rowid, fields)
             self.update_playbook("Success", "Threat intelligence enrichment completed.")
         except Exception as e:
             self.logger.exception(e)

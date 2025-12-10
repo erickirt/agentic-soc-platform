@@ -318,7 +318,7 @@ class Playbook(LanggraphPlaybook):
             self.logger.info("Intent Node Invoked")
 
             # 获取 Case 数据
-            case = Case.get_raw_data(rowid=self.param_rowid)
+            case = Case.get_raw_data(rowid=self.param_source_rowid)
 
             # 用户意图
             user_intent = self.param_user_input
@@ -530,7 +530,7 @@ class Playbook(LanggraphPlaybook):
                 {"id": "threat_hunting_tool_calls", "value": json.dumps(total_tool_calls)},
             ]
 
-            Case.update(self.param_rowid, case_field)
+            Case.update(self.param_source_rowid, case_field)
 
             # update record
             for message in messages:

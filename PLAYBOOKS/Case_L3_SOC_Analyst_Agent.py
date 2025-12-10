@@ -53,7 +53,7 @@ class Playbook(LanggraphPlaybook):
     def init(self):
         def preprocess_node(state: AgentState):
             """预处理数据"""
-            case = Case.get_raw_data(self.param_rowid)
+            case = Case.get_raw_data(self.param_source_rowid)
             state.case = case
             return state
 
@@ -112,9 +112,9 @@ class Playbook(LanggraphPlaybook):
                 {"id": "attack_stage_ai", "value": analyze_result.current_attack_stage},
                 {"id": "recommended_actions_ai", "value": analyze_result.recommended_actions},
             ]
-            Case.update(self.param_rowid, case_field)
+            Case.update(self.param_source_rowid, case_field)
 
-            self.send_notice("Case_L3_SOC_Analyst_Agent Finish", f"rowid：{self.param_rowid}")
+            self.send_notice("Case_L3_SOC_Analyst_Agent Finish", f"rowid：{self.param_source_rowid}")
             self.update_playbook("Success", "Get suggestion by ai agent completed.")
             return state
 

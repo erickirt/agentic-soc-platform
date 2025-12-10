@@ -24,6 +24,7 @@ dependencies = [
     "lxml>=6.0.2",
     "mcp[cli]>=1.23.0",
     "openpyxl>=3.1.5",
+    "optionset",
     "pluginbase>=1.0.1",
     "pycryptodome>=3.23.0",
     "pydantic>=2.12.3",
