@@ -77,6 +77,20 @@ class BaseAPI(ABC):
 
         return template_path
 
+    def _get_file_path(self, filename: str):
+        """
+        根据 workbook 名称获取文件路径。
+        """
+
+        if os.path.isfile(filename):  # "/root/asf/ES-Rule-21-Phishing_user_report_mail/senior_phishing_expert.md"
+            return filename
+        else:
+            if os.path.join(DATA_DIR, self.module_name, filename):  # "ES-Rule-21-Phishing_user_report_mail/senior_phishing_expert.md"
+                template_path = os.path.join(DATA_DIR, self.module_name, filename)
+                return template_path
+            else:
+                raise Exception("File not exist")
+
     def load_markdown_template(self, filename: str) -> _TemplateWrapper:
         """
         根据 workbook 名称读取内容，并返回一个支持 .format() 的对象。

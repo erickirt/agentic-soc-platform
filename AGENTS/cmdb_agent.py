@@ -10,7 +10,8 @@ from pydantic import BaseModel, Field
 
 from Lib.baseplaybook import LanggraphPlaybook
 from PLUGINS.LLM.llmapi import LLMAPI
-from PLUGINS.Mock.cmdb_test import get_ci_context_tool, fuzzy_search_ci_tool, get_cis_by_software_tool, get_cis_by_port_tool, get_cis_by_service_tool, \
+# 将如下函数修改为实际的CMDB API
+from PLUGINS.Mock.CMDB import get_ci_context_tool, fuzzy_search_ci_tool, get_cis_by_software_tool, get_cis_by_port_tool, get_cis_by_service_tool, \
     get_cis_by_user_tool
 
 

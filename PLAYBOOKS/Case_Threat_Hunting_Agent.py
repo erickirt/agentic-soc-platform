@@ -69,17 +69,14 @@ class AnalystState(BaseModel):
     继承自 Pydantic BaseModel，支持默认值和数据校验。
     """
     model_config = ConfigDict(
-        # 允许在实例化时传入 LangChain 或 LangGraph 的内部对象
-        # 避免 Pydantic 对复杂对象（如 Runnable, LLM）进行严格的字段检查
         arbitrary_types_allowed=True
     )
-    # 消息历史 (LangGraph 核心)
-    # 使用 Annotated 保持 LangGraph 的消息追加行为
+    # 消息历史
     messages: Annotated[
         List[AnyMessage],
         add_messages
     ] = Field(
-        default_factory=list,  # 确保 messages 字段默认是一个空列表
+        default_factory=list,
         description="用于存储所有节点间的消息传递历史。"
     )
 
@@ -90,19 +87,19 @@ class AnalystState(BaseModel):
 
     # 输入：上下文
     case: Dict = Field(
-        default_factory=dict,  # 确保 case 默认是一个空字典
+        default_factory=dict,
         description="提供给本次调查任务的外部上下文或额外数据。"
     )
 
     # 输出：最终结论
     answer: str = Field(
-        default="",  # 默认值设置为空字符串
+        default="",
         description="调查任务的最终结论或摘要。"
     )
 
     # 输出：推理过程
     reasoning: Union[str, List[str]] = Field(
-        default="",  # 默认值设置为空字符串
+        default="",
         description="得出结论的详细推理步骤及证据。"
     )
 
@@ -121,8 +118,6 @@ class MainState(BaseModel):
     负责全局规划与汇总。
     """
     model_config = ConfigDict(
-        # 允许在实例化时传入 LangChain 或 LangGraph 的内部对象
-        # 避免 Pydantic 对复杂对象（如 Runnable, LLM）进行严格的字段检查
         arbitrary_types_allowed=True
     )
     # 原始案件/全局上下文
@@ -185,7 +180,7 @@ class Playbook(LanggraphPlaybook):
     NAME = "Threat Hunting Agent"
 
     def __init__(self):
-        super().__init__()  # do not delete this code
+        super().__init__()
         self.analyst_graph: CompiledStateGraph
         self.max_iterations = MAX_ITERATIONS
         self.build_analyst_graph()
@@ -463,7 +458,6 @@ class Playbook(LanggraphPlaybook):
             ]
 
         # --- 封装 Subgraph 调用 ---
-        # 这是一个 Wrapper 函数，用于接收 Subgraph 的输出并格式化给 MainState
         def run_analyst_subgraph(state: AnalystState):
             self.logger.info("Running Analyst Subgraph Wrapper")
             # graph的输出是dict
