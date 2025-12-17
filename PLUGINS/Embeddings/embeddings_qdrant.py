@@ -1,3 +1,5 @@
+import uuid
+
 import httpx
 import urllib3
 from langchain_core.documents import Document
@@ -63,9 +65,11 @@ class EmbeddingsAPI(object):
         )
         return vector_store
 
-    def add_document(self, collection_name: str, page_content: str, metadata: dict):
+    def add_document(self, collection_name: str, ids: str, page_content: str, metadata: dict):
+        namespace = uuid.NAMESPACE_DNS
+        doc_id = str(uuid.uuid5(namespace, ids))
         vector_store = self.vector_store(collection_name)
-        document = Document(page_content=page_content, metadata=metadata)
+        document = Document(id=doc_id, page_content=page_content, metadata=metadata)
         vector_store.add_documents([document])
 
     def search_documents(self, collection_name: str, query: str, k: int):
