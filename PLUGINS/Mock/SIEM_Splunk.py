@@ -99,24 +99,24 @@ except ImportError:
 
 class SplunkMock:
     """
-    基于 LLM 的动态 Splunk 日志生成器。
-    根据 SPL 查询和预设的失陷指标（IOCs）生成模拟 Splunk 日志数据。
+    A dynamic Splunk log generator based on LLM.
+    Generates simulated Splunk log data based on SPL queries and preset Indicators of Compromise (IOCs).
     """
 
     # ==========================================
-    # 1. 核心控制配置：失陷指标列表 (IOCs)
+    # 1. Core control configuration: list of indicators of compromise (IOCs)
     # ==========================================
     COMPROMISED_IOCS = {
-        "internal_ips": ["10.67.3.130", "10.10.10.5"],  # 受害者主机
-        "attacker_ips": ["192.168.1.100", "45.33.22.11"],  # 攻击源 (内网跳板或外网C2)
-        "malicious_users": ["admin", "root", "deploy"],  # 被利用的账号
+        "internal_ips": ["10.67.3.130", "10.10.10.5"],  # Victim hosts
+        "attacker_ips": ["192.168.1.100", "45.33.22.11"],  # Attacker source (internal jump server or external C2)
+        "malicious_users": ["admin", "root", "deploy"],  # Exploited accounts
         "malicious_files": ["cmd.exe", "powershell.exe", "wget", "nc.exe"],
         "hashes": ["a1b2c3d4e5f6...", "deadbeef..."]
     }
 
     # ==========================================
-    # 2. Splunk 数据模型 (Schemas)
-    #    定义常见的 index 及其字段、sourcetype 和示例日志，供 LLM 参考。
+    # 2. Splunk Data Models (Schemas)
+    #    Define common indexes and their fields, sourcetypes, and example logs for LLM reference.
     # ==========================================
     SPLUNK_SCHEMAS = {
         "windows": {
@@ -229,7 +229,7 @@ class SplunkMock:
     }
 
     # ==========================================
-    # 3. 内嵌的 System Prompt
+    # 3. Embedded System Prompt
     # ==========================================
     LOG_GEN_SYSTEM_PROMPT = """
 # ROLE: You are a Splunk Enterprise Security (ES) Simulator. Your output is read by a program, not a human.
@@ -267,18 +267,18 @@ This is your knowledge base of the available Splunk indexes and sourcetypes. Whe
     @staticmethod
     def _extract_json_from_response(raw_text: str) -> List[Dict[str, Any]]:
         """
-        从LLM的原始输出中稳健地提取和解析JSON列表。
+        Robustly extracts and parses a JSON list from the raw output of the LLM.
         """
-        # 1. 尝试直接解析整个文本
+        # 1. Try to parse the entire text directly
         try:
-            # 假设日志是列表格式
+            # Assume the log is in list format
             loaded_json = json.loads(raw_text)
             if isinstance(loaded_json, list):
                 return loaded_json
         except json.JSONDecodeError:
-            pass  # 如果失败，则继续尝试提取
+            pass  # If it fails, continue to try to extract
 
-        # 2. 尝试从Markdown代码块中提取
+        # 2. Try to extract from the Markdown code block
         match = re.search(r'```json\s*([\s\S]+?)\s*```', raw_text, re.DOTALL)
         if match:
             json_str = match.group(1).strip()
@@ -287,10 +287,10 @@ This is your knowledge base of the available Splunk indexes and sourcetypes. Whe
                 if isinstance(loaded_json, list):
                     return loaded_json
             except json.JSONDecodeError:
-                # 如果代码块内容也不是有效的JSON，则继续
+                # If the content of the code block is not valid JSON, continue
                 pass
 
-        # 3. 尝试查找第一个 '[' 和最后一个 ']' 之间的内容
+        # 3. Try to find the content between the first '[' and the last ']'
         start_index = raw_text.find('[')
         end_index = raw_text.rfind(']')
         if start_index != -1 and end_index != -1 and start_index < end_index:
@@ -300,10 +300,10 @@ This is your knowledge base of the available Splunk indexes and sourcetypes. Whe
                 if isinstance(loaded_json, list):
                     return loaded_json
             except json.JSONDecodeError:
-                # 如果这部分内容也不是有效的JSON，则准备抛出最终错误
+                # If this part is not valid JSON, prepare to throw the final error
                 pass
 
-        # 4. 如果所有尝试都失败，则抛出异常
+        # 4. If all attempts fail, throw an exception
         raise json.JSONDecodeError("Failed to find any valid JSON list in the LLM output.", raw_text, 0)
 
     @staticmethod
@@ -318,7 +318,7 @@ This is your knowledge base of the available Splunk indexes and sourcetypes. Whe
         """
         print(f"[🔮 Splunk Mock] Generating logs for SPL query: '{spl_query}'")
 
-        # 1. 准备上下文和 Prompt
+        # 1. Prepare context and Prompt
         ioc_context = json.dumps(SplunkMock.COMPROMISED_IOCS, indent=2)
         splunk_schema_context = json.dumps(SplunkMock.SPLUNK_SCHEMAS, indent=2)
 
@@ -327,7 +327,7 @@ This is your knowledge base of the available Splunk indexes and sourcetypes. Whe
             splunk_schema_json=splunk_schema_context
         )
 
-        # 2. 调用 LLM
+        # 2. Call LLM
         response_content = ""
         try:
             llm_api = LLMAPI()
@@ -339,17 +339,17 @@ This is your knowledge base of the available Splunk indexes and sourcetypes. Whe
             response = llm.invoke(messages)
             response_content = response.content
 
-            # 3. 使用稳健的解析方法提取日志
+            # 3. Use a robust parsing method to extract logs
             logs = SplunkMock._extract_json_from_response(response_content)
 
             print(f"   [✅ Splunk Mock] Generated {len(logs)} logs.")
             return logs
 
         except (json.JSONDecodeError, ValueError) as e:
-            # 在错误详情中包含原始输出以便调试
+            # Include the original output in the error details for debugging
             raw_output = response_content if response_content else "Response content was empty."
             if isinstance(e, json.JSONDecodeError):
-                # e.doc 包含传递给解码器的原始字符串
+                # e.doc contains the original string passed to the decoder
                 raw_output = e.doc
 
             error_details = f"Model output could not be parsed as a valid JSON list. Raw output: {raw_output}"
@@ -375,7 +375,7 @@ This is your knowledge base of the available Splunk indexes and sourcetypes. Whe
 
 
 # =============================================================================
-# 导出给 Agent 绑定的工具函数
+# Export tool functions for Agent binding
 # =============================================================================
 
 def splunk_search_tool(
@@ -385,12 +385,12 @@ def splunk_search_tool(
     """
     Executes a search query against the simulated Splunk SIEM to find security logs.
     """
-    # 代理到 Mock 类
+    # Proxy to Mock class
     return SplunkMock.search(spl_query)
 
 
 # =============================================================================
-# 测试代码
+# Test code
 # =============================================================================
 if __name__ == "__main__":
     print("--- Test 1: Malicious Windows Login (IOC Match) ---")

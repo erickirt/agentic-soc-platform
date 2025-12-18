@@ -34,7 +34,7 @@ class Playbook(LanggraphPlaybook):
             state.alert = alert
             return state
 
-        # 定义node
+        # Define node
         def analyze_node(state: AgentState):
             """AI analyzes alert data"""
 
@@ -81,7 +81,7 @@ class Playbook(LanggraphPlaybook):
             ]
             Alert.update(self.param_source_rowid, fields)
 
-            self.send_notice("Alert_Suggestion_Gen_By_LLM output_node Finish", f"rowid：{self.param_source_rowid}")
+            self.send_notice("Alert_Suggestion_Gen_By_LLM output_node Finish", f"rowid:{self.param_source_rowid}")
             self.update_playbook("Success", "Get suggestion by ai agent completed.")
 
             self.agent_state = state

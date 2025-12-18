@@ -1,9 +1,9 @@
 import re
 from typing import List, Dict, Optional, Any, Annotated
 
-# 扩展后的模拟 CMDB 数据，键为 CI ID (保持与上次一致)
+# Extended mock CMDB data, keyed by CI ID (consistent with the last time)
 EXTENDED_CMDB_DATA = {
-    # 1. 核心服务器 CI (不变)
+    # 1. Core server CI (unchanged)
     "SRV-WEB-001": {
         "ci_id": "SRV-WEB-001", "ci_type": "Server", "hostname": "prod-web-01", "ip_address": ["192.168.10.5", "10.10.10.5"],
         "ci_status": "Deployed/Active", "business_criticality": "High", "service_id": "SVC-ECOM-001",
@@ -11,7 +11,7 @@ EXTENDED_CMDB_DATA = {
         "hardware_model": "Dell PowerEdge R640", "installed_software": [{"name": "nginx", "version": "1.20.1"}, {"name": "php-fpm", "version": "7.4"}],
         "open_ports": [{"port": 80, "protocol": "TCP"}, {"port": 443, "protocol": "TCP"}], "primary_user_id": None
     },
-    # 2. 数据库 CI (不变)
+    # 2. Database CI (unchanged)
     "APP-DB-003": {
         "ci_id": "APP-DB-003", "ci_type": "Database", "hostname": "prod-db-03", "ip_address": ["172.16.0.22"],
         "ci_status": "Deployed/Active", "business_criticality": "Critical", "service_id": "SVC-ECOM-001",
@@ -19,25 +19,25 @@ EXTENDED_CMDB_DATA = {
         "installed_software": [{"name": "mysql", "version": "8.0.27"}],
         "open_ports": [{"port": 3306, "protocol": "TCP"}], "primary_user_id": "user_a"
     },
-    # 3. 员工 CI (不变)
+    # 3. Employee CI (unchanged)
     "EMP-0010": {
-        "ci_id": "EMP-0010", "ci_type": "Employee", "employee_name": "张三", "user_id": "user_a",
+        "ci_id": "EMP-0010", "ci_type": "Employee", "employee_name": "Zhang San", "user_id": "user_a",
         "department": "IT Operations", "job_title": "Database Administrator", "access_level": "High/Critical"
     },
-    # 4. PC/工作站 CI (不变)
+    # 4. PC/Workstation CI (unchanged)
     "PC-HR-04": {
         "ci_id": "PC-HR-04", "ci_type": "Workstation", "hostname": "hr-pc-04", "ip_address": ["10.0.1.10"],
         "ci_status": "Deployed/Active", "business_criticality": "Low", "service_id": "SVC-HR-003",
         "owner_team": "HR Team", "os_version": "Windows 10", "mac_address": "00:1A:2B:3C:4D:5E",
         "installed_software": [{"name": "office", "version": "2021"}], "primary_user_id": "user_b"
     },
-    # 5. 域名 CI (不变)
+    # 5. Domain Name CI (unchanged)
     "DNS-ECOM-MAIN": {
         "ci_id": "DNS-ECOM-MAIN", "ci_type": "DomainName", "domain_name": "example-ecommerce.com",
         "ci_status": "Active", "business_criticality": "Critical", "owner_team": "Marketing",
         "dns_registrar": "GoDaddy", "expiration_date": "2026-10-10", "related_ip": ["192.168.10.5"]
     },
-    # --- 新增类型 6: 网络设备 (NetworkDevice) ---
+    # --- New Type 6: NetworkDevice ---
     "FW-DMZ-01": {
         "ci_id": "FW-DMZ-01", "ci_type": "NetworkDevice", "hostname": "dmz-fw-01",
         "ip_address": ["192.168.10.1", "10.10.10.1"], "ci_status": "Active",
@@ -70,7 +70,7 @@ EXTENDED_CMDB_DATA = {
         "os_version": "PAN-OS 10.0", "location": "DC-Shanghai"
     },
 
-    # --- 新增类型 7: 云服务实例 (CloudInstance) ---
+    # --- New Type 7: CloudInstance ---
     "EC2-PROD-A1": {
         "ci_id": "EC2-PROD-A1", "ci_type": "CloudInstance", "hostname": "aws-app-a1",
         "ip_address": ["172.31.5.10"], "ci_status": "Running", "business_criticality": "High",
@@ -108,37 +108,37 @@ EXTENDED_CMDB_DATA = {
 
 class CMDB(object):
     """
-    模拟企业级CMDB接口，专注于提供给SOC的上下文检索功能。
-    这个类旨在为LLM Agent提供可靠的工具接口，用于安全事件响应和调查。
+    Simulates an enterprise-level CMDB interface, focusing on providing contextual search functions for SOC.
+    This class is designed to provide a reliable tool interface for LLM Agents for security incident response and investigation.
     """
 
     def __init__(self, data: Dict[str, Any]):
         """
-        初始化CMDB模拟器，构建多重索引以支持高效查找。
+        Initializes the CMDB simulator, building multiple indexes to support efficient lookups.
         """
         self._data = data
         self._ip_map = {}
         self._hostname_map = {}
         self._mac_map = {}
 
-        # 构建索引，以便通过 IP、Hostname 等快速查找 CI ID
+        # Build an index for fast CI ID lookup by IP, Hostname, etc.
         for ci_id, ci in data.items():
-            ci["ci_id"] = ci_id  # 确保 ci_id 存在于每个CI中
+            ci["ci_id"] = ci_id  # Ensure ci_id exists in every CI
 
-            # 索引 IP 地址 (支持多IP)
+            # Index IP addresses (supports multiple IPs)
             for ip in ci.get("ip_address", []):
                 self._ip_map[ip] = ci_id
 
-            # 索引 Hostname
+            # Index Hostname
             if ci.get("hostname"):
                 self._hostname_map[ci["hostname"]] = ci_id
 
-            # 索引 MAC 地址
+            # Index MAC address
             if ci.get("mac_address"):
                 self._mac_map[ci["mac_address"]] = ci_id
 
     def _find_ci(self, identifier_type: str, identifier_value: str) -> Optional[Dict[str, Any]]:
-        """内部方法：根据标识符查找CI数据，返回完整的CI字典"""
+        """Internal method: Find CI data by identifier, return the complete CI dictionary"""
         ci_id = None
         identifier_value = identifier_value.strip()
 
@@ -153,16 +153,16 @@ class CMDB(object):
 
         return self._data.get(ci_id) if ci_id else None
 
-    # --- 1. 核心通用检索接口 ---
+    # --- 1. Core common retrieval interface ---
 
     def get_ci_context(self,
-                       identifier_type: Annotated[str, "用于查询的标识符类型，接受 'ip_address', 'hostname', 'mac_address', 'ci_id' 或 'user_id'"],
-                       identifier_value: Annotated[str, "标识符的具体值，例如 '192.168.10.5' 或 'prod-web-01'"]
-                       ) -> Annotated[Dict[str, Any], "匹配到的单个CI的完整字典数据，包含业务关键性、所属团队等数百个属性。"]:
+                       identifier_type: Annotated[str, "The type of identifier used for the query, accepts 'ip_address', 'hostname', 'mac_address', 'ci_id' or 'user_id'"],
+                       identifier_value: Annotated[str, "The specific value of the identifier, for example '192.168.10.5' or 'prod-web-01'"]
+                       ) -> Annotated[Dict[str, Any], "The complete dictionary data of a single matched CI, including hundreds of attributes such as business criticality, owner team, etc."]:
         """
-        [A. 标识符精确检索]：根据精确标识符（IP、主机名、CI ID 或用户 ID）检索单个配置项（CI）的完整上下文信息。
-        该接口用于在安全事件发生时，快速将报警中的技术指标关联到具体的业务资产。
-        如果找不到CI，则抛出 LookupError。
+        [A. Exact Identifier Retrieval]: Retrieves the complete contextual information of a single configuration item (CI) based on an exact identifier (IP, hostname, CI ID, or user ID).
+        This interface is used to quickly associate technical indicators in alarms with specific business assets when a security incident occurs.
+        If the CI cannot be found, a LookupError is thrown.
         """
         if not identifier_type or not identifier_value:
             raise ValueError("Identifier type and value cannot be empty.")
@@ -170,7 +170,7 @@ class CMDB(object):
         ci_data = self._find_ci(identifier_type, identifier_value)
 
         if not ci_data:
-            # 增加对员工CI的查找支持
+            # Add support for finding employee CIs
             if identifier_type == "user_id":
                 for ci_data in self._data.values():
                     if ci_data.get("ci_type") == "Employee" and ci_data.get("user_id") == identifier_value:
@@ -181,13 +181,13 @@ class CMDB(object):
         return ci_data
 
     def fuzzy_search_ci(self,
-                        partial_hostname: Annotated[Optional[str], "部分主机名片段，例如 'prod-'。如果提供，将进行部分匹配。"] = None,
-                        regex_pattern: Annotated[Optional[str], "用于高级匹配的正则表达式"] = None
-                        ) -> Annotated[List[Dict[str, Any]], "匹配到的CI列表，仅返回 CI ID、CI 类型、主机名和业务关键性。"]:
+                        partial_hostname: Annotated[Optional[str], "Partial hostname fragment, e.g. 'prod-'. If provided, a partial match will be performed."] = None,
+                        regex_pattern: Annotated[Optional[str], "Regular expression for advanced matching"] = None
+                        ) -> Annotated[List[Dict[str, Any]], "A list of matched CIs, returning only CI ID, CI type, hostname, and business criticality."]:
         """
-        [B. 模糊/部分匹配检索]：根据部分主机名或正则表达式检索匹配的配置项（CI）列表。
-        该接口用于在资产名称不完整或需要按特定模式查找时，快速确定资产范围（如查找所有 AWS EC2 实例）。
-        如果 partial_hostname 和 regex_pattern 均未提供，则抛出 ValueError。
+        [B. Fuzzy/Partial Match Retrieval]: Retrieves a list of matching configuration items (CIs) based on a partial hostname or regular expression.
+        This interface is used to quickly determine the scope of assets (e.g., finding all AWS EC2 instances) when asset names are incomplete or need to be found according to a specific pattern.
+        If neither partial_hostname nor regex_pattern is provided, a ValueError is thrown.
         """
         if not partial_hostname and not regex_pattern:
             raise ValueError("Either partial_hostname or regex_pattern must be provided.")
@@ -218,15 +218,15 @@ class CMDB(object):
 
         return matching_cis
 
-    # --- 2. 软件/端口关联检索接口 ---
+    # --- 2. Software/port association retrieval interface ---
 
     def get_cis_by_software(self,
-                            software_name: Annotated[str, "要查找的软件名称，例如 'nginx' 或 'java'"],
-                            version: Annotated[Optional[str], "可选的软件版本号，例如 '11' 或 '1.20.1'。如果未提供，则匹配所有版本。"] = None
-                            ) -> Annotated[List[Dict[str, Any]], "运行指定软件的CI列表，包含CI ID、IP地址、CI类型和业务关键性。"]:
+                            software_name: Annotated[str, "The name of the software to find, for example 'nginx' or 'java'"],
+                            version: Annotated[Optional[str], "Optional software version number, for example '11' or '1.20.1'. If not provided, all versions will be matched."] = None
+                            ) -> Annotated[List[Dict[str, Any]], "A list of CIs running the specified software, including CI ID, IP address, CI type, and business criticality."]:
         """
-        [C. 软件版本检索]：检索运行特定软件或软件版本的配置项（CI）列表。
-        该接口用于漏洞管理流程，快速确定哪些资产受到已知软件漏洞的影响（如 Log4j、特定版本的 Tomcat）。
+        [C. Software Version Retrieval]: Retrieves a list of configuration items (CIs) running a specific software or software version.
+        This interface is used in the vulnerability management process to quickly determine which assets are affected by known software vulnerabilities (such as Log4j, specific versions of Tomcat).
         """
         if not software_name:
             raise ValueError("Software name cannot be empty.")
@@ -250,12 +250,12 @@ class CMDB(object):
         return matching_cis
 
     def get_cis_by_port(self,
-                        port_number: Annotated[int, "要查找的端口号，例如 22 或 3306"],
-                        protocol: Annotated[str, "端口协议，例如 'TCP' 或 'UDP'，默认为 'TCP'"] = "TCP"
-                        ) -> Annotated[List[Dict[str, Any]], "开放指定端口和协议的CI列表，包含CI ID、IP地址和网络区域。"]:
+                        port_number: Annotated[int, "The port number to find, for example 22 or 3306"],
+                        protocol: Annotated[str, "Port protocol, for example 'TCP' or 'UDP', defaults to 'TCP'"] = "TCP"
+                        ) -> Annotated[List[Dict[str, Any]], "A list of CIs that open the specified port and protocol, including CI ID, IP address, and network zone."]:
         """
-        [D. 开放端口检索]：检索开放了特定端口和协议的配置项（CI）列表。
-        该接口用于安全审计，快速识别配置错误或未经授权对外开放服务的资产。
+        [D. Open Port Retrieval]: Retrieves a list of configuration items (CIs) that have a specific port and protocol open.
+        This interface is used for security audits to quickly identify misconfigured assets or assets with unauthorized externally open services.
         """
         if not isinstance(port_number, int) or port_number <= 0:
             raise ValueError("Invalid port number.")
@@ -274,21 +274,21 @@ class CMDB(object):
 
         return matching_cis
 
-    # --- 3. 业务服务关联检索接口 ---
+    # --- 3. Business service association retrieval interface ---
 
     def get_cis_by_service(self,
-                           service_id: Annotated[str, "要查询的业务服务ID，例如 'SVC-ECOM-001'"]
-                           ) -> Annotated[List[Dict[str, Any]], "支撑该业务服务的所有底层CI列表，包含CI ID、IP地址、CI类型和业务关键性。"]:
+                           service_id: Annotated[str, "The business service ID to query, for example 'SVC-ECOM-001'"]
+                           ) -> Annotated[List[Dict[str, Any]], "A list of all underlying CIs that support the business service, including CI ID, IP address, CI type, and business criticality."]:
         """
-        [E. 业务服务查询]：检索支撑特定关键业务服务的所有底层配置项（CI）列表。
-        该接口用于高级影响分析，当业务服务报警时，快速找出所有相关的服务器、数据库和云实例。
+        [E. Business Service Query]: Retrieves a list of all underlying configuration items (CIs) that support a specific critical business service.
+        This interface is used for advanced impact analysis to quickly find all related servers, databases, and cloud instances when a business service alarm occurs.
         """
         if not service_id:
             raise ValueError("Service ID cannot be empty.")
 
         matching_cis = []
         for ci_data in self._data.values():
-            # 排除人员和域名，只关注技术资产
+            # Exclude personnel and domain names, focus only on technical assets
             if ci_data.get("service_id") == service_id and ci_data.get("ci_type") not in ["Employee", "DomainName"]:
                 matching_cis.append({
                     "ci_id": ci_data.get("ci_id"),
@@ -300,12 +300,12 @@ class CMDB(object):
         return matching_cis
 
     def get_cis_by_user(self,
-                        user_id: Annotated[str, "要查询的用户 ID，例如 'user_a'"]
-                        ) -> Annotated[List[Dict[str, Any]], "与该用户关联的所有CI列表，包含员工档案、主要使用的PC/工作站或主要负责的服务器。"]:
+                        user_id: Annotated[str, "The user ID to query, for example 'user_a'"]
+                        ) -> Annotated[List[Dict[str, Any]], "A list of all CIs associated with the user, including employee profiles, primary PCs/workstations, or primarily responsible servers."]:
         """
-        [F. 用户/责任人查询]：检索由特定用户主要使用的或负责的所有配置项（CI）列表。
-        该接口用于用户相关的安全事件（如钓鱼、凭证泄露），快速定位用户的所有相关资产进行隔离或取证。
-        如果找不到关联CI或用户档案，则抛出 LookupError。
+        [F. User/Responsible Person Query]: Retrieves a list of all configuration items (CIs) primarily used by or responsible for by a specific user.
+        This interface is used for user-related security incidents (such as phishing, credential leakage) to quickly locate all of the user's related assets for isolation or forensics.
+        If the associated CI or user profile cannot be found, a LookupError is thrown.
         """
         if not user_id:
             raise ValueError("User ID cannot be empty.")
@@ -314,7 +314,7 @@ class CMDB(object):
         found_profile = False
 
         for ci_data in self._data.values():
-            # 查找员工档案
+            # Find employee profile
             if ci_data.get("ci_type") == "Employee" and ci_data.get("user_id") == user_id:
                 matching_cis.append({
                     "ci_id": ci_data.get("ci_id"),
@@ -324,7 +324,7 @@ class CMDB(object):
                 })
                 found_profile = True
 
-            # 查找资产 (PC, DB, etc.)
+            # Find assets (PC, DB, etc.)
             if ci_data.get("primary_user_id") == user_id:
                 matching_cis.append({
                     "ci_id": ci_data.get("ci_id"),
@@ -339,73 +339,73 @@ class CMDB(object):
         return matching_cis
 
 
-# 1. 创建 CMDB 实例
+# 1. Create a CMDB instance
 cmdb_instance = CMDB(EXTENDED_CMDB_DATA)
 
 
-# 2. 将实例方法绑定到全局函数变量，供 LangChain Agent 使用。
-# 这种方法是最优的，因为它保留了 Annotated Type Hints 和 Docstrings。
+# 2. Bind instance methods to global function variables for use by LangChain Agent.
+# This method is optimal because it preserves Annotated Type Hints and Docstrings.
 
 def get_ci_context_tool(
-        identifier_type: Annotated[str, "用于查询的标识符类型，接受 'ip_address', 'hostname', 'mac_address', 'ci_id' 或 'user_id'"],
-        identifier_value: Annotated[str, "标识符的具体值，例如 '192.168.10.5' 或 'prod-web-01'"]
-) -> Annotated[Dict[str, Any], "匹配到的单个CI的完整字典数据，包含业务关键性、所属团队等数百个属性。"]:
+        identifier_type: Annotated[str, "The type of identifier used for the query, accepts 'ip_address', 'hostname', 'mac_address', 'ci_id' or 'user_id'"],
+        identifier_value: Annotated[str, "The specific value of the identifier, for example '192.168.10.5' or 'prod-web-01'"]
+) -> Annotated[Dict[str, Any], "The complete dictionary data of a single matched CI, including hundreds of attributes such as business criticality, owner team, etc."]:
     """
-    根据精确标识符（IP、主机名、CI ID 或用户 ID）检索单个配置项（CI）的完整上下文信息。
-    该接口用于在安全事件发生时，快速将报警中的技术指标关联到具体的业务资产。
+    Retrieves the complete contextual information of a single configuration item (CI) based on an exact identifier (IP, hostname, CI ID, or user ID).
+    This interface is used to quickly associate technical indicators in alarms with specific business assets when a security incident occurs.
     """
     return cmdb_instance.get_ci_context(identifier_type, identifier_value)
 
 
 def fuzzy_search_ci_tool(
-        partial_hostname: Annotated[Optional[str], "部分主机名片段，例如 'prod-'。如果提供，将进行部分匹配。"] = None,
-        regex_pattern: Annotated[Optional[str], "用于高级匹配的正则表达式，例如 'aws-\d+'。与 partial_hostname 二选一。"] = None
-) -> Annotated[List[Dict[str, Any]], "匹配到的CI列表，仅返回 CI ID、CI 类型、主机名和业务关键性。"]:
+        partial_hostname: Annotated[Optional[str], "Partial hostname fragment, e.g. 'prod-'. If provided, a partial match will be performed."] = None,
+        regex_pattern: Annotated[Optional[str], "Regular expression for advanced matching, for example 'aws-\d+'. Choose one from partial_hostname."] = None
+) -> Annotated[List[Dict[str, Any]], "A list of matched CIs, returning only CI ID, CI type, hostname, and business criticality."]:
     """
-    根据部分主机名或正则表达式检索匹配的配置项（CI）列表。
-    该接口用于在资产名称不完整或需要按特定模式查找时，快速确定资产范围（如查找所有 AWS EC2 实例）。
+    Retrieves a list of matching configuration items (CIs) based on a partial hostname or regular expression.
+    This interface is used to quickly determine the scope of assets (e.g., finding all AWS EC2 instances) when asset names are incomplete or need to be found according to a specific pattern.
     """
     return cmdb_instance.fuzzy_search_ci(partial_hostname, regex_pattern)
 
 
 def get_cis_by_software_tool(
-        software_name: Annotated[str, "要查找的软件名称，例如 'nginx' 或 'java'"],
-        version: Annotated[Optional[str], "可选的软件版本号，例如 '11' 或 '1.20.1'。如果未提供，则匹配所有版本。"] = None
-) -> Annotated[List[Dict[str, Any]], "运行指定软件的CI列表，包含CI ID、IP地址、CI类型和业务关键性。"]:
+        software_name: Annotated[str, "The name of the software to find, for example 'nginx' or 'java'"],
+        version: Annotated[Optional[str], "Optional software version number, for example '11' or '1.20.1'. If not provided, all versions will be matched."] = None
+) -> Annotated[List[Dict[str, Any]], "A list of CIs running the specified software, including CI ID, IP address, CI type, and business criticality."]:
     """
-    检索运行特定软件或软件版本的配置项（CI）列表。
-    该接口用于漏洞管理流程，快速确定哪些资产受到已知软件漏洞的影响。
+    Retrieves a list of configuration items (CIs) running a specific software or software version.
+    This interface is used in the vulnerability management process to quickly determine which assets are affected by known software vulnerabilities.
     """
     return cmdb_instance.get_cis_by_software(software_name, version)
 
 
 def get_cis_by_port_tool(
-        port_number: Annotated[int, "要查找的端口号，例如 22 或 3306"],
-        protocol: Annotated[str, "端口协议，例如 'TCP' 或 'UDP'，默认为 'TCP'"] = "TCP"
-) -> Annotated[List[Dict[str, Any]], "开放指定端口和协议的CI列表，包含CI ID、IP地址和网络区域。"]:
+        port_number: Annotated[int, "The port number to find, for example 22 or 3306"],
+        protocol: Annotated[str, "Port protocol, for example 'TCP' or 'UDP', defaults to 'TCP'"] = "TCP"
+) -> Annotated[List[Dict[str, Any]], "A list of CIs that open the specified port and protocol, including CI ID, IP address, and network zone."]:
     """
-    检索开放了特定端口和协议的配置项（CI）列表。
-    该接口用于安全审计，快速识别配置错误或未经授权对外开放服务的资产。
+    Retrieves a list of configuration items (CIs) that have a specific port and protocol open.
+    This interface is used for security audits to quickly identify misconfigured assets or assets with unauthorized externally open services.
     """
     return cmdb_instance.get_cis_by_port(port_number, protocol)
 
 
 def get_cis_by_service_tool(
-        service_id: Annotated[str, "要查询的业务服务ID，例如 'SVC-ECOM-001'"]
-) -> Annotated[List[Dict[str, Any]], "支撑该业务服务的所有底层CI列表，包含CI ID、IP地址、CI类型和业务关键性。"]:
+        service_id: Annotated[str, "The business service ID to query, for example 'SVC-ECOM-001'"]
+) -> Annotated[List[Dict[str, Any]], "A list of all underlying CIs that support the business service, including CI ID, IP address, CI type, and business criticality."]:
     """
-    检索支撑特定关键业务服务的所有底层配置项（CI）列表。
-    该接口用于高级影响分析，当业务服务报警时，快速找出所有相关的服务器、数据库和云实例。
+    Retrieves a list of all underlying configuration items (CIs) that support a specific critical business service.
+    This interface is used for advanced impact analysis to quickly find all related servers, databases, and cloud instances when a business service alarm occurs.
     """
     return cmdb_instance.get_cis_by_service(service_id)
 
 
 def get_cis_by_user_tool(
-        user_id: Annotated[str, "要查询的用户 ID，例如 'user_a'"]
-) -> Annotated[List[Dict[str, Any]], "与该用户关联的所有CI列表，包含员工档案、主要使用的PC/工作站或主要负责的服务器。"]:
+        user_id: Annotated[str, "The user ID to query, for example 'user_a'"]
+) -> Annotated[List[Dict[str, Any]], "A list of all CIs associated with the user, including employee profiles, primary PCs/workstations, or primarily responsible servers."]:
     """
-    检索由特定用户主要使用的或负责的所有配置项（CI）列表。
-    该接口用于用户相关的安全事件（如钓鱼、凭证泄露），快速定位用户的所有相关资产进行隔离或取证。
+    Retrieves a list of all configuration items (CIs) primarily used by or responsible for by a specific user.
+    This interface is used for user-related security incidents (such as phishing, credential leakage) to quickly locate all of the user's related assets for isolation or forensics.
     """
     return cmdb_instance.get_cis_by_user(user_id)
 

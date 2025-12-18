@@ -15,16 +15,16 @@ from PLUGINS.LLM.CONFIG import LLM_CONFIGS
 
 class LLMAPI(object):
     """
-    一个通用的 LLM API 客户端。
-    它会自动从 CONFIG.py 读取配置并初始化对应的后端。
-    支持通过 tag 动态选择模型配置。
-    在遇到错误时，它会直接抛出异常。
+    A general-purpose LLM API client.
+    It automatically reads the configuration from CONFIG.py and initializes the corresponding backend.
+    Supports dynamic selection of model configurations through tags.
+    It throws exceptions directly when it encounters an error.
     """
 
     def __init__(self, temperature: float = 0.0):
         """
-        初始化 LLM API 客户端。
-        从 CONFIG.py 中的 LLM_CONFIGS 加载配置列表。
+        Initializes the LLM API client.
+        Loads the configuration list from LLM_CONFIGS in CONFIG.py.
         """
         if not LLM_CONFIGS or not isinstance(LLM_CONFIGS, list):
             raise ValueError("LLM_CONFIGS in CONFIG.py is missing, empty, or not a list.")
@@ -36,21 +36,21 @@ class LLMAPI(object):
 
     def get_model(self, tag: str | list[str] | None = None, **kwargs) -> ChatOpenAI | ChatOllama:
         """
-        根据 tag 获取并返回相应的 LangChain ChatModel 实例。
+        Gets and returns the corresponding LangChain ChatModel instance based on the tag.
 
         Args:
             tag (str | list[str], optional):
-                - str: 查找包含此标签的第一个配置。
-                - list[str]: 查找同时包含所有这些标签的第一个配置。
-                - None: 使用列表中的第一个默认配置。
-            **kwargs: 允许在调用时覆盖模型参数 (e.g., temperature, model).
+                - str: Find the first configuration that contains this tag.
+                - list[str]: Find the first configuration that contains all of these tags.
+                - None: Use the first default configuration in the list.
+            **kwargs: Allows overriding model parameters at call time (e.g., temperature, model).
 
         Raises:
-            ValueError: 如果找不到匹配指定标签(或标签列表)的配置。
-            ValueError: 如果配置中的 client_type 不支持。
+            ValueError: If no configuration matching the specified tag (or list of tags) is found.
+            ValueError: If the client_type in the configuration is not supported.
 
         Returns:
-            ChatOpenAI | ChatOllama: LangChain 的聊天模型实例。
+            ChatOpenAI | ChatOllama: LangChain's chat model instance.
         """
         selected_config = None
 
@@ -60,13 +60,13 @@ class LLMAPI(object):
             for config in self.configs:
                 config_tags = set(config.get("tags", []))
 
-                # 如果 tag 是一个列表，检查所有必需的标签是否存在
+                # If tag is a list, check if all required tags exist
                 if isinstance(tag, list):
                     required_tags = set(tag)
                     if required_tags.issubset(config_tags):
                         selected_config = config
                         break
-                # 如果 tag 是一个字符串，检查该标签是否存在
+                # If tag is a string, check if the tag exists
                 elif isinstance(tag, str):
                     if tag in config_tags:
                         selected_config = config
@@ -75,12 +75,12 @@ class LLMAPI(object):
         if selected_config is None:
             raise ValueError(f"No LLM configuration found matching tag(s): '{tag}'")
         logger.debug(f"Using LLM configuration: {selected_config}")
-        # 准备模型参数
+        # Prepare model parameters
         params = {
             "temperature": self.temperature,
             "model": selected_config.get("model"),
         }
-        # 更新kwargs，允许在运行时覆盖默认值
+        # Update kwargs to allow overriding default values at runtime
         params.update(kwargs)
 
         client_type = selected_config.get("type")
@@ -104,10 +104,10 @@ class LLMAPI(object):
 
     def is_alive(self) -> bool:
         """
-        测试与默认模型的基本连通性。
-        成功则返回 True，否则直接抛出异常 (例如: ConnectionError, ValueError)。
+        Tests basic connectivity with the default model.
+        Returns True on success, otherwise throws an exception directly (e.g., ConnectionError, ValueError).
         """
-        model = self.get_model()  # 使用默认配置
+        model = self.get_model()  # Use default configuration
         parser = StrOutputParser()
         chain = model | parser
         messages = [
@@ -115,11 +115,11 @@ class LLMAPI(object):
             ("human", "ping"),
         ]
 
-        # 任何网络或API错误都会在这里自然地作为异常抛出
+        # Any network or API errors will be thrown here naturally as exceptions
         ai_msg = chain.invoke(messages)
 
         if "pong" not in ai_msg.lower():
-            # 即使连接成功，但响应不符合预期，也视为失败
+            # Even if the connection is successful, but the response does not meet expectations, it is considered a failure
             self.alive = False
             raise ValueError(f"Model liveness check failed. Expected 'pong', got: {ai_msg}")
 
@@ -128,8 +128,8 @@ class LLMAPI(object):
 
     def is_support_function_calling(self, tag: str = None) -> bool:
         """
-        测试指定（或默认）模型是否支持函数调用（Tool Calling）能力。
-        成功则返回 True，否则直接抛出异常。
+        Tests whether the specified (or default) model supports function calling (Tool Calling) capabilities.
+        Returns True on success, otherwise throws an exception directly.
         """
 
         def test_func(x: str) -> str:
@@ -153,53 +153,53 @@ class LLMAPI(object):
     @staticmethod
     def extract_think(message: AIMessage) -> AIMessage:
         """
-        检查 AIMessage 的 content 开头是否存在 <think>...</think> 标签。
-        Langchain Bug的临时解决方案
-        如果存在，它会:
-        1. 提取 <think> 标签内的内容。
-        2. 将提取的内容存入 message.additional_kwargs['reasoning_content']。
-        3. 从 message.content 中移除 <think>...</think> 标签块。
-        4. 返回一个新的、经过修改的 AIMessage 对象。
+        Checks if a <think>...</think> tag exists at the beginning of the AIMessage content.
+        Temporary solution for a Langchain Bug
+        If it exists, it will:
+        1. Extract the content within the <think> tag.
+        2. Store the extracted content in message.additional_kwargs['reasoning_content'].
+        3. Remove the <think>...</think> tag block from message.content.
+        4. Return a new, modified AIMessage object.
 
-        如果不存在，则原样返回原始的 message 对象。
+        If it does not exist, the original message object is returned as is.
 
         Args:
-            message: 要处理的 LangChain AIMessage 对象。
+            message: The LangChain AIMessage object to be processed.
 
         Returns:
-            一个处理过的 AIMessage 对象，或者在没有匹配项时返回原始对象。
+            A processed AIMessage object, or the original object if there is no match.
         """
-        # 确保 content 是字符串类型
+        # Ensure content is a string type
         if not isinstance(message.content, str):
             return message
 
-        # 正则表达式匹配开头的 <think> 标签，并捕获其中的内容。
-        # re.DOTALL 标志让 '.' 可以匹配包括换行符在内的任意字符。
-        # `^`      - 匹配字符串的开头
-        # `<think>`- 匹配字面上的 <think>
-        # `(.*?)`  - 非贪婪地捕获所有字符，直到下一个模式
-        # `</think>`- 匹配字面上的 </think>
-        # `\s*`    - 匹配 think 标签后的任何空白字符（包括换行符）
+        # Regular expression to match the <think> tag at the beginning and capture its content.
+        # The re.DOTALL flag allows '.' to match any character, including newlines.
+        # `^`      - matches the beginning of the string
+        # `<think>`- matches the literal <think>
+        # `(.*?)`  - non-greedily captures all characters until the next pattern
+        # `</think>`- matches the literal </think>
+        # `\s*`    - matches any whitespace characters (including newlines) after the think tag
         pattern = r"^<think>(.*?)</think>\s*"
 
         match = re.match(pattern, message.content, re.DOTALL)
 
         if match:
-            # 提取捕获组1的内容，即<think>标签内部的文本
+            # Extract the content of capture group 1, which is the text inside the <think> tag
             reasoning_content = match.group(1).strip()
 
-            # 从原始 content 中移除整个匹配到的 <think>...</think> 部分
+            # Remove the entire matched <think>...</think> part from the original content
             new_content = message.content[match.end():]
 
-            # 创建 additional_kwargs 的一个副本以进行修改
-            # 这样做是为了避免直接修改可能在其他地方被引用的原始字典
+            # Create a copy of additional_kwargs for modification
+            # This is to avoid directly modifying the original dictionary that may be referenced elsewhere
             updated_kwargs = message.additional_kwargs.copy()
             updated_kwargs['reasoning_content'] = reasoning_content
 
-            # 返回一个新的 AIMessage 实例，因为 LangChain 的消息对象是不可变的
+            # Return a new AIMessage instance because LangChain message objects are immutable
             message.additional_kwargs = updated_kwargs
             message.content = new_content
             return message
         else:
-            # 如果没有匹配项，则返回原始消息
+            # If there is no match, return the original message
             return message

@@ -58,7 +58,7 @@ class EmbeddingsAPI(object):
                     size=EMBEDDINGS_SIZE,
                     distance=models.Distance.COSINE
                 ),
-                # 配置稀疏向量
+                # Configure sparse vectors
                 sparse_vectors_config={
                     "qdrant-sparse": models.SparseVectorParams(
                         index=models.SparseIndexParams(on_disk=True)

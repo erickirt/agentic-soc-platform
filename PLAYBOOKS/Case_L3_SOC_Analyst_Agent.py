@@ -57,7 +57,7 @@ class Playbook(LanggraphPlaybook):
             state.case = case
             return state
 
-        # 定义node
+        # Define node
         def analyze_node(state: AgentState):
             """AI analyzes Case data"""
 
@@ -114,7 +114,7 @@ class Playbook(LanggraphPlaybook):
             ]
             Case.update(self.param_source_rowid, case_field)
 
-            self.send_notice("Case_L3_SOC_Analyst_Agent Finish", f"rowid：{self.param_source_rowid}")
+            self.send_notice("Case_L3_SOC_Analyst_Agent Finish", f"rowid:{self.param_source_rowid}")
             self.update_playbook("Success", "Get suggestion by ai agent completed.")
             return state
 

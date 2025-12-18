@@ -15,8 +15,8 @@ from PLUGINS.SIRP.nocolyapi import WorksheetRow, OptionSet
 
 class InputCase(TypedDict):
     """
-    需要和SIRP的Case表结构保持一致
-    如果SIRP中有新增字段，需要在这里补充
+    Need to be consistent with the SIRP Case table structure
+    If there are new fields in SIRP, they need to be added here
     """
     title: str
     deduplication_key: str
@@ -192,7 +192,7 @@ class Alert(object):
             if isinstance(alert[key], str):
                 metadata[key] = alert[key]
             else:
-                metadata[key] = json.dumps(alert[key])  # 截断长文本，避免超过限制
+                metadata[key] = json.dumps(alert[key])  # Truncate long text to avoid exceeding the limit
 
         embeddings_api.add_document(
             collection_name="alert",
@@ -230,7 +230,7 @@ class Case(object):
 
     @staticmethod
     def get_raw_data(rowid, include_system_fields=False) -> Dict:
-        """获取案件及其关联告警和工单的原始数据，并只保留对LLM有用字段"""
+        """Get the raw data of the case and its associated alarms and work orders, and only keep the fields useful for LLM"""
         case = WorksheetRow.get(Case.WORKSHEET_ID, rowid, include_system_fields=include_system_fields)
 
         useful_case_fields = ["rowId", "title", 'case_status', 'created_date', 'tags', 'severity', 'type', 'description', 'close_reason', 'alert_date',
@@ -332,8 +332,8 @@ class Case(object):
         ## TODO remove this function
 
         """
-        根据 workbook 名称读取 DATA/WORKBOOK/{workbook_name}.md 的内容并返回字符串。
-        路径相对于项目根 (两级向上到 asf 文件夹)。
+        Read the content of DATA/WORKBOOK/{workbook_name}.md according to the workbook name and return a string.
+        The path is relative to the project root (two levels up to the asf folder).
         """
         base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
         md_path = os.path.join(base_dir, 'DATA', 'WORKBOOK', f"{workbook_name}.md")
@@ -430,8 +430,8 @@ class Notice(object):
 
 def create_alert_with_group_rule(alert: InputAlert, rule_def: GroupRule) -> str:
     """
-    使用告警聚合规则创建告警和案件。
-    函数会自动根据rule_def的定义，生成去重指纹，并决定是创建新案件还是更新已有案件。
+    Create alerts and cases using alert aggregation rules.
+    The function will automatically generate a deduplication fingerprint based on the definition of rule_def, and decide whether to create a new case or update an existing case.
     """
 
     # alert

@@ -210,7 +210,7 @@ class Playbook(LanggraphPlaybook):
 
             llm_api = LLMAPI()
             base_llm = llm_api.get_model(tag=["powerful", "function_calling"])
-            llm_with_tools = base_llm.bind_tools([SIEMAgent.search, CMDBAgent.query_asset, TIAgent.lookup])
+            llm_with_tools = base_llm.bind_tools([SIEMAgent.search, CMDBAgent.cmdb_query_asset, TIAgent.lookup])
             response: AIMessage = llm_with_tools.invoke(messages)
 
             # update record
@@ -223,7 +223,7 @@ class Playbook(LanggraphPlaybook):
             return {"messages": [response]}
 
         # Tool node
-        tool_node = ToolNode([SIEMAgent.search, CMDBAgent.query_asset, TIAgent.lookup])
+        tool_node = ToolNode([SIEMAgent.search, CMDBAgent.cmdb_query_asset, TIAgent.lookup])
 
         # Result generation node: when there is no tool call, it is responsible for converting the last message into a structured output
         def final_answer_node(state: AnalystState):
@@ -394,16 +394,16 @@ class Playbook(LanggraphPlaybook):
             human_message = self.load_human_prompt_template("Planner_Human", lang=PROMPT_LANG).format(case=state.case, hunting_objective=hunting_objective,
                                                                                                       findings=findings_str, iteration_count=iteration_count,
                                                                                                       additional_info=additional_info)
-            # 构建few-shot示例
+            # Construct few-shot examples
             few_shot_examples = [
             ]
 
-            # 运行
+            # Run
             llm_api = LLMAPI()
 
             llm = llm_api.get_model(tag=["powerful", "structured_output"])
 
-            # 构建消息列表
+            # Construct message list
             messages = [
                 system_message,
                 *few_shot_examples,
@@ -496,25 +496,25 @@ class Playbook(LanggraphPlaybook):
 
             findings_str = "\n".join(history_md_list)
 
-            # 加载system prompt
+            # Load system prompt
             system_prompt_template = self.load_system_prompt_template("Report_System", lang=PROMPT_LANG)
 
             system_message = system_prompt_template.format()
             human_message = self.load_human_prompt_template("Report_Human", lang=PROMPT_LANG).format(hunting_objective=hunting_objective,
                                                                                                      findings=findings_str,
                                                                                                      planning_history=planning_history_str)
-            # 构建few-shot示例
+            # Construct few-shot examples
             few_shot_examples = [
             ]
 
-            # 构建消息列表
+            # Construct message list
             messages = [
                 system_message,
                 *few_shot_examples,
                 human_message
             ]
 
-            # 运行
+            # Run
             llm_api = LLMAPI()
             llm = llm_api.get_model(tag=["powerful"])
             response = llm.invoke(messages)

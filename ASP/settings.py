@@ -141,7 +141,7 @@ DATABASES = {
 }
 CHANNEL_LAYERS = {
     "default": {
-        "BACKEND": "channels.layers.InMemoryChannelLayer",  # 使用内存后端
+        "BACKEND": "channels.layers.InMemoryChannelLayer",  # Use in-memory backend
     },
 }
 

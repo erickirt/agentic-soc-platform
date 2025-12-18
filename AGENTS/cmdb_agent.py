@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from Lib.baseplaybook import LanggraphPlaybook
 from PLUGINS.LLM.llmapi import LLMAPI
-# 将如下函数修改为实际的CMDB API
+# Modify the following functions to the actual CMDB API
 from PLUGINS.Mock.CMDB import get_ci_context_tool, fuzzy_search_ci_tool, get_cis_by_software_tool, get_cis_by_port_tool, get_cis_by_service_tool, \
     get_cis_by_user_tool
 
@@ -18,14 +18,13 @@ from PLUGINS.Mock.CMDB import get_ci_context_tool, fuzzy_search_ci_tool, get_cis
 class CMDBAgent(object):
 
     @staticmethod
-    # @tool("cmdb_query_asset")
-    def query_asset(
+    def cmdb_query_asset(
             query: Annotated[str, "The CMDB query in natural language (e.g., 'Find asset with IP 10.10.10.10')"]
     ) -> Annotated[str, "A JSON containing asset details"]:
         """
         Query internal asset information from CMDB.
         """
-        # 也可以使用更简单的create_agent方法创建代理
+        # You can also use the simpler create_agent method to create an agent
         # result = cmdb_query(query)
         # return result
 
@@ -42,7 +41,7 @@ class AgentState(BaseModel):
     messages: Annotated[List[Any], add_messages] = Field(default_factory=list)
 
 
-# 使用langgraph创建一个CMDB查询代理,可以更细粒度控制
+# Use langgraph to create a CMDB query agent for finer-grained control
 class GraphAgent(LanggraphPlaybook):
 
     def __init__(self):
@@ -106,7 +105,7 @@ class GraphAgent(LanggraphPlaybook):
         return response['messages'][-1].content
 
 
-# 使用create_agent方法创建一个CMDB查询代理,实现更简单
+# Use the create_agent method to create a CMDB query agent for a simpler implementation
 def cmdb_query(
         query: Annotated[str, "The CMDB query in natural language (e.g., 'Find asset with IP 10.10.10.10')"]
 ) -> Annotated[str, "The query result in JSON format"]:
@@ -128,7 +127,7 @@ def cmdb_query(
     agent = create_agent(
         model=llm,
         tools=CMDB_AGENT_TOOLS,
-        system_prompt="你是一个CMDB查询助手，能够根据用户的自然语言查询请求，调用合适的CMDB工具进行查询，并返回JSON格式的结果。",
+        system_prompt="You are a CMDB query assistant. You can call appropriate CMDB tools to query based on the user's natural language query request and return the results in JSON format.",
     )
 
     response = agent.invoke({"messages": [HumanMessage(content=query)]})
@@ -138,7 +137,7 @@ def cmdb_query(
 
 
 if __name__ == "__main__":
-    query = "查找IP地址为192.168.10.5的资产信息"
+    query = "Find asset information for IP address 192.168.10.5"
 
     # result = cmdb_query(query)
 

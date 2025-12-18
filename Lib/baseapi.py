@@ -14,40 +14,40 @@ class BaseAPI(ABC):
         self.logger = logger
 
     class _TemplateWrapper:
-        """ 隐藏在内部的模板包装类，只做一件事：提供 .format()。"""
+        """ A template wrapper class hidden internally that does only one thing: provide .format()."""
 
         def __init__(self, content: str):
             self._content = content
 
         def format(self, **kwargs) -> str:
-            """ 实现你想要的 .format() 方法。 """
+            """ Implement the .format() method you want. """
             return self._content.format(**kwargs)
 
     @staticmethod
     def _get_main_script_name():
         """
-        获取主执行脚本的文件名（不含扩展名）。
-        无论当前代码在哪个模块中运行，sys.argv[0]始终指向最初启动的脚本。
+        Get the filename of the main execution script (without the extension).
+        sys.argv[0] always points to the script that was originally started, regardless of which module the current code is running in.
         """
         try:
-            # 1. 获取主执行脚本的完整路径
+            # 1. Get the full path of the main execution script
             script_path = sys.argv[0]
 
-            # 2. 从完整路径中提取文件名
+            # 2. Extract the file name from the full path
             script_filename = os.path.basename(script_path)
 
-            # 3. 分离文件名和扩展名
+            # 3. Separate the file name and extension
             script_name, _ = os.path.splitext(script_filename)
 
             return script_name
         except IndexError as e:
-            raise RuntimeError("无法获取主执行脚本名称，sys.argv[0]不存在。") from e
+            raise RuntimeError("Unable to get the name of the main execution script, sys.argv[0] does not exist.") from e
         except Exception as e:
-            raise RuntimeError(f"获取主执行脚本名称时发生错误: {e}") from e
+            raise RuntimeError(f"An error occurred while getting the name of the main execution script: {e}") from e
 
     @property
     def module_name(self):
-        """获取模块加载路径"""
+        """Get the module loading path"""
         module_name = self.__module__.split(".")[-1]
         if module_name == "__main__":
             return self._get_main_script_name()
@@ -56,7 +56,7 @@ class BaseAPI(ABC):
 
     def _get_md_file_path(self, filename: str, lang=None) -> str:
         """
-        根据 workbook 名称获取文件路径。
+        Get the file path based on the workbook name.
         """
 
         if os.path.isfile(filename):  # "/root/asf/ES-Rule-21-Phishing_user_report_mail/senior_phishing_expert.md"
@@ -79,7 +79,7 @@ class BaseAPI(ABC):
 
     def _get_file_path(self, filename: str):
         """
-        根据 workbook 名称获取文件路径。
+        Get the file path based on the workbook name.
         """
 
         if os.path.isfile(filename):  # "/root/asf/ES-Rule-21-Phishing_user_report_mail/senior_phishing_expert.md"
@@ -93,14 +93,14 @@ class BaseAPI(ABC):
 
     def load_markdown_template(self, filename: str) -> _TemplateWrapper:
         """
-        根据 workbook 名称读取内容，并返回一个支持 .format() 的对象。
+        Read the content according to the workbook name and return an object that supports .format().
         """
 
         template_path = self._get_md_file_path(filename)
         try:
             with open(template_path, 'r', encoding='utf-8') as f:
                 content = f.read()
-                # 返回内部嵌套类的实例
+                # Return an instance of an inner nested class
                 return self._TemplateWrapper(content)
 
         except Exception as e:
@@ -108,7 +108,7 @@ class BaseAPI(ABC):
             raise e
 
     def load_system_prompt_template(self, filename, lang=None):
-        """加载系统提示模板"""
+        """Load system prompt template"""
         template_path = self._get_md_file_path(filename, lang=lang)
         try:
             with open(template_path, 'r', encoding='utf-8') as f:
