@@ -1,6 +1,6 @@
 import json
 import operator
-from typing import Annotated, Dict, List, Union
+from typing import Annotated, Dict, List
 
 from langchain_core.messages import AnyMessage, ToolMessage, AIMessage
 from langgraph.graph import StateGraph, START, END
@@ -38,7 +38,7 @@ class PlanningRecord(BaseModel):
 
 class AnalystOutput(BaseModel):
     answer: str = Field(description="对调查问题的最终、简洁的回答")
-    reasoning: Union[str, List[str]] = Field(description="支持最终结论的详细推理过程和关键证据。")
+    reasoning: str | List[str] = Field(description="支持最终结论的详细推理过程和关键证据。")
 
 
 # 定义 Planner 的结构化输出
@@ -51,7 +51,7 @@ class HuntingPlan(BaseModel):
 class Finding(BaseModel):
     question: str = Field(description="需要调查的问题")
     answer: str = Field(description="调查得到的答案")
-    reasoning: Union[str, List[str]] = Field(description="调查的推理过程")
+    reasoning: str | List[str] = Field(description="调查的推理过程")
     tool_calls: List = Field(default_factory=list, description="工具调用记录")
 
     def to_markdown(self) -> str:
@@ -98,7 +98,7 @@ class AnalystState(BaseModel):
     )
 
     # 输出：推理过程
-    reasoning: Union[str, List[str]] = Field(
+    reasoning: str | List[str] = Field(
         default="",
         description="得出结论的详细推理步骤及证据。"
     )

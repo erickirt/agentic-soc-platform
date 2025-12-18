@@ -1,6 +1,6 @@
 import json
 from enum import Enum
-from typing import Optional, Union, Dict, Any
+from typing import Any
 
 from langchain_core.messages import HumanMessage
 from langgraph.graph import StateGraph
@@ -37,9 +37,9 @@ class AnalyzeResult(BaseModel):
     original_severity: Severity = Field(description="Original alert severity")
     new_severity: Severity = Field(description="Recommended new severity level")
     confidence: ConfidenceLevel = Field(description="Confidence score, only one of 'Low', 'Medium', or 'High'")
-    analysis_rationale: str = Field(description="Analysis process and reasons", default=None)
-    current_attack_stage: Optional[Union[str, Dict[str, Any]]] = Field(description="e.g., 'T1059 - Command and Control', 'Lateral Movement'", default=None)
-    recommended_actions: Optional[Union[str, Dict[str, Any]]] = Field(description="e.g., 'Isolate host 10.1.1.5'", default=None)
+    analysis_rationale: str | None = Field(description="Analysis process and reasons", default=None)
+    current_attack_stage: str | dict[str, Any] | None = Field(description="e.g., 'T1059 - Command and Control', 'Lateral Movement'", default=None)
+    recommended_actions: str | dict[str, Any] | None = Field(description="e.g., 'Isolate host 10.1.1.5'", default=None)
 
 
 class Playbook(LanggraphPlaybook):

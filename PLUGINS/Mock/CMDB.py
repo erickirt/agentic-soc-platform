@@ -182,7 +182,7 @@ class CMDB(object):
 
     def fuzzy_search_ci(self,
                         partial_hostname: Annotated[Optional[str], "部分主机名片段，例如 'prod-'。如果提供，将进行部分匹配。"] = None,
-                        regex_pattern: Annotated[Optional[str], "用于高级匹配的正则表达式，例如 'aws-\d+'。与 partial_hostname 二选一。"] = None
+                        regex_pattern: Annotated[Optional[str], "用于高级匹配的正则表达式"] = None
                         ) -> Annotated[List[Dict[str, Any]], "匹配到的CI列表，仅返回 CI ID、CI 类型、主机名和业务关键性。"]:
         """
         [B. 模糊/部分匹配检索]：根据部分主机名或正则表达式检索匹配的配置项（CI）列表。
