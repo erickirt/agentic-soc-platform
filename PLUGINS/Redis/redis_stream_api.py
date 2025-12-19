@@ -223,8 +223,11 @@ class RedisStreamAPI:
                     self.redis_client.xgroup_create(stream_key, consumer_group, '$', mkstream=True)
                     return True
                 except Exception as create_e:
-                    logger.exception(f"创建流 {stream_key} 和组 {consumer_group} 失败: {create_e}")
-                    return False
+                    if "BUSYGROUP Consumer Group name already exists" in str(e):
+                        return True
+                    else:
+                        logger.exception(f"创建流 {stream_key} 和组 {consumer_group} 失败: {create_e}")
+                        return False
             elif "BUSYGROUP" in str(e):
                 # 消费者组已存在，这是正常情况
                 return True
