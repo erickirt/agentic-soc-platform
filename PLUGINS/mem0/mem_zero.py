@@ -85,7 +85,7 @@ class MemZero(object):
 
     def search_mem(self, user_id: str, query: str, limit: int = 5, rerank: bool = True):
         """
-        result = {"results": [{"id": "...", "memory": "...", "score": 0.8, ...}]}
+        result = {"results": [{"id": "...", "memory": "...", "score": 0.8, ...}],"relations":[...]}
         """
         result = self.memory.search(
             query,
@@ -93,7 +93,7 @@ class MemZero(object):
             limit=limit,
             rerank=rerank,
         )
-        return result["results"]
+        return result
 
     def delete_mem(self, user_id: str, run_id: str):
         result = self.memory.delete_all(user_id=user_id, run_id=run_id)

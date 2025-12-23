@@ -1,6 +1,7 @@
 # uncomment the code to set a custom Hugging Face endpoint if needed. this must run on the top of the script
-# import os
-# os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+import os
+
+os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 # os.environ['HTTP_PROXY'] = 'http://127.0.0.1:7890'
 # os.environ['HTTPS_PROXY'] = 'http://127.0.0.1:7890'
 

@@ -18,7 +18,10 @@ from PLUGINS.Embeddings.embeddings_qdrant import embedding_api_singleton_qdrant
 from PLUGINS.Redis.CONFIG import REDIS_STREAM_STORE_DAYS
 from PLUGINS.Redis.redis_stream_api import RedisStreamAPI
 from PLUGINS.SIRP.sirpapi import Playbook as SIRPPlaybook, Knowledge, KnowledgeAction
-from PLUGINS.mem0.mem_zero import mem_zero_singleton
+from PLUGINS.mem0.CONFIG import USE as MEM_ZERO_USE
+
+if MEM_ZERO_USE:
+    from PLUGINS.mem0.mem_zero import mem_zero_singleton
 
 ASP_REST_API_TOKEN = "nocoly_token_for_playbook"
 
@@ -184,7 +187,9 @@ class MainMonitor(object):
                         logger.exception(E)
 
                     try:
-                        result = mem_zero_singleton.add_mem(user_id=Knowledge.COLLECTION_NAME, run_id=row_id, content=payload_content, metadata={"rowId": row_id})
+                        if MEM_ZERO_USE:
+                            result = mem_zero_singleton.add_mem(user_id=Knowledge.COLLECTION_NAME, run_id=row_id, content=payload_content,
+                                                                metadata={"rowId": row_id})
                     except Exception as E:
                         logger.exception(E)
 
@@ -199,7 +204,8 @@ class MainMonitor(object):
                         logger.exception(E)
 
                     try:
-                        result = mem_zero_singleton.delete_mem(user_id=Knowledge.COLLECTION_NAME, run_id=row_id)
+                        if MEM_ZERO_USE:
+                            result = mem_zero_singleton.delete_mem(user_id=Knowledge.COLLECTION_NAME, run_id=row_id)
                     except Exception as E:
                         logger.exception(E)
 
