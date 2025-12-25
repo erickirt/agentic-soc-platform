@@ -132,7 +132,7 @@ class Playbook(LanggraphPlaybook):
 
 
 if __name__ == "__main__":
-    params_debug = {'source_rowid': '6635d1e1-406a-4dcb-9b07-797f584db207', 'source_worksheet': 'case'}
+    params_debug = {'source_rowid': '47da1d00-c9bf-4b5f-8ab8-8877ec292b98', 'source_worksheet': 'case'}
     module = Playbook()
     module._params = params_debug
     module.run()

@@ -121,7 +121,7 @@ class MainMonitor(object):
         for one_record in records:
             name = one_record.get("name")
             type = one_record.get("type")
-            row_id = one_record.get("rowId")
+            row_id = one_record.get("rowid")
             module_config = Xcache.get_module_config_by_name_and_type(type, name)
             if module_config is None:
                 Playbook.load_all_module_config()
@@ -139,7 +139,7 @@ class MainMonitor(object):
                 user = None
 
             params = {
-                "rowId": row_id,
+                "rowid": row_id,
                 "source_worksheet": one_record.get("type").lower(),
                 "source_rowid": one_record.get("source_rowid"),
                 "user_input": one_record.get("user_input"),
@@ -173,31 +173,31 @@ class MainMonitor(object):
             for one_record in records:
                 action = one_record.get("action")
                 using = one_record.get("using")
-                row_id = one_record.get("rowId")
+                row_id = one_record.get("rowid")
                 title = one_record.get("title")
                 body = one_record.get("body")
 
                 payload_content = f"# {title}\n\n{body}"
 
                 if action == KnowledgeAction.STORE:
-                    logger.info(f"Knowledge storing,rowId: {row_id}")
+                    logger.info(f"Knowledge storing,rowid: {row_id}")
                     try:
-                        result = embedding_api_singleton_qdrant.add_document(Knowledge.COLLECTION_NAME, row_id, payload_content, {"rowId": row_id})
+                        result = embedding_api_singleton_qdrant.add_document(Knowledge.COLLECTION_NAME, row_id, payload_content, {"rowid": row_id})
                     except Exception as E:
                         logger.exception(E)
 
                     try:
                         if MEM_ZERO_USE:
                             result = mem_zero_singleton.add_mem(user_id=Knowledge.COLLECTION_NAME, run_id=row_id, content=payload_content,
-                                                                metadata={"rowId": row_id})
+                                                                metadata={"rowid": row_id})
                     except Exception as E:
                         logger.exception(E)
 
                     action = KnowledgeAction.DONE
                     using = 1
-                    logger.info(f"Knowledge stored,rowId: {row_id}")
+                    logger.info(f"Knowledge stored,rowid: {row_id}")
                 elif action == KnowledgeAction.REMOVE:
-                    logger.info(f"Knowledge removing,rowId: {row_id}")
+                    logger.info(f"Knowledge removing,rowid: {row_id}")
                     try:
                         result = embedding_api_singleton_qdrant.delete_document(Knowledge.COLLECTION_NAME, row_id)
                     except Exception as E:
@@ -211,7 +211,7 @@ class MainMonitor(object):
 
                     action = KnowledgeAction.DONE
                     using = 0
-                    logger.info(f"Knowledge removed,rowId: {row_id}")
+                    logger.info(f"Knowledge removed,rowid: {row_id}")
                 else:
                     logger.error(f"Unknown knowledge action: {action}")
                     continue

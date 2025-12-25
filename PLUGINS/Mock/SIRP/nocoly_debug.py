@@ -159,7 +159,7 @@ def old():
                 continue
             print(f"create case: {row_id_create}")
         else:
-            row_id_case = row.get("rowId")
+            row_id_case = row.get("rowid")
             existing_alerts = row.get("alert", [])
             if row_id_alert not in existing_alerts:
                 existing_alerts.append(row_id_alert)

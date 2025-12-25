@@ -35,7 +35,7 @@ class BasePlaybook(BaseAPI):
     # 定义内部参数
     @property
     def param_rowid(self):
-        return self.param("rowId")
+        return self.param("rowid")
 
     @property
     def param_source_rowid(self):

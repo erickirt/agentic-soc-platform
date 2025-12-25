@@ -92,7 +92,7 @@ class Artifact(object):
         if rows:
             row_id_list = []
             for row in rows:
-                rowid = row['rowId']
+                rowid = row['rowid']
                 rowid_updated = Artifact.update(rowid, fields)
                 row_id_list.append(rowid_updated)
             return row_id_list
@@ -127,9 +127,6 @@ class Alert(object):
         artifact_rowid_list = []
         artifacts: list[dict] = alert.get("artifact", [])
         for artifact in artifacts:
-            # if artifact.get("deduplication_key") is None:
-            #     artifact["deduplication_key"] = f"{artifact["type"]}-{artifact["value"]}"
-
             artifact_fields = [
                 {"id": "type", "value": artifact.get("type")},
                 {"id": "value", "value": artifact.get("value")},
@@ -182,9 +179,6 @@ class Alert(object):
 
         return row_id
 
-    # Alert.embeddings_alert(row_id, alert)
-    # result = Alert.search_alerts("FIN开头主机的告警", k=3)
-
     @staticmethod
     def embeddings_alert(row_id: str, alert: InputAlert):
         metadata = {}
@@ -221,7 +215,7 @@ class Case(object):
         alerts = WorksheetRow.relations(Case.WORKSHEET_ID, rowid, Case.ALERT_FIELD_ID, relation_worksheet_id=Alert.WORKSHEET_ID,
                                         include_system_fields=include_system_fields)
         for alert in alerts:
-            artifacts = WorksheetRow.relations(Alert.WORKSHEET_ID, alert.get("rowId"), Alert.ARTIFACT_FIELD_ID, relation_worksheet_id=Artifact.WORKSHEET_ID,
+            artifacts = WorksheetRow.relations(Alert.WORKSHEET_ID, alert.get("rowid"), Alert.ARTIFACT_FIELD_ID, relation_worksheet_id=Artifact.WORKSHEET_ID,
                                                include_system_fields=include_system_fields)
             alert[Alert.ARTIFACT_FIELD_ID] = artifacts
         case[Case.ALERT_FIELD_ID] = alerts
@@ -232,7 +226,7 @@ class Case(object):
         """Get the raw data of the case and its associated alarms and work orders, and only keep the fields useful for LLM"""
         case = WorksheetRow.get(Case.WORKSHEET_ID, rowid, include_system_fields=include_system_fields)
 
-        useful_case_fields = ["rowId", "title", 'case_status', 'created_date', 'tags', 'severity', 'type', 'description', 'close_reason', 'alert_date',
+        useful_case_fields = ["rowid", "title", 'case_status', 'created_date', 'tags', 'severity', 'type', 'description', 'close_reason', 'alert_date',
                               'case_id',
                               'respond_time', 'note', 'acknowledged_date']
 
@@ -243,14 +237,14 @@ class Case(object):
                                         include_system_fields=include_system_fields)
         alerts_clean = []
         for alert in alerts:
-            useful_alert_fields = ["rowId", 'severity', 'rule_id', 'rule_name', 'id']
+            useful_alert_fields = ["rowid", 'severity', 'rule_id', 'rule_name', 'id']
             alert_clean = {key: alert[key] for key in useful_alert_fields if key in alert}
 
-            artifacts = WorksheetRow.relations(Alert.WORKSHEET_ID, alert.get("rowId"), Alert.ARTIFACT_FIELD_ID, relation_worksheet_id=Artifact.WORKSHEET_ID,
+            artifacts = WorksheetRow.relations(Alert.WORKSHEET_ID, alert.get("rowid"), Alert.ARTIFACT_FIELD_ID, relation_worksheet_id=Artifact.WORKSHEET_ID,
                                                include_system_fields=include_system_fields)
             artifacts_clean = []
             for artifact in artifacts:
-                useful_artifact_fields = ["rowId", "type", "value", "enrichment", 'is_whitelisted', 'is_evidence']
+                useful_artifact_fields = ["rowid", "type", "value", "enrichment", 'is_whitelisted', 'is_evidence']
                 artifact_clean = {key: artifact[key] for key in useful_artifact_fields if key in artifact}
                 artifacts_clean.append(artifact_clean)
 
@@ -322,7 +316,7 @@ class Case(object):
         if rows:
             if len(rows) > 1:
                 logger.warning(f"found multiple rows with case_id {case_id}")
-            return Case.get(rows[0]['rowId'])
+            return Case.get(rows[0]['rowid'])
         else:
             return None
 
@@ -364,12 +358,12 @@ class Playbook(object):
         return result
 
     @staticmethod
-    def create(fields: list):
+    def create(fields: List):
         row_id = WorksheetRow.create(Playbook.WORKSHEET_ID, fields)
         return row_id
 
     @staticmethod
-    def update(row_id, fields: list):
+    def update(row_id, fields: List):
         row_id = WorksheetRow.update(Playbook.WORKSHEET_ID, row_id, fields)
         return row_id
 
@@ -531,7 +525,7 @@ def create_alert_with_group_rule(alert: InputAlert, rule_def: GroupRule) -> str:
         row_id_create = Case.create(case)
         return row_id_create
     else:
-        row_id_case = row.get("rowId")
+        row_id_case = row.get("rowid")
         existing_alerts = row.get("alert", [])
         if row_id_alert not in existing_alerts:
             existing_alerts.append(row_id_alert)

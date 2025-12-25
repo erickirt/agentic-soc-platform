@@ -17,20 +17,32 @@ adapter = requests.adapters.HTTPAdapter(
 HTTP_SESSION.mount('http://', adapter)
 HTTP_SESSION.mount('https://', adapter)
 
+SYSTEM_FIELDS = ['rowid', 'ownerid', 'caid', 'ctime', 'utime', 'uaid', 'wfname', 'wfcuaids', 'wfcaid', 'wfctime', 'wfrtime', 'wfcotime', 'wfdtime', 'wfftime',
+                 'wfstatus']
+
+
 class FieldType(TypedDict):
     id: str
     name: str
     alias: str
-    value: str
-    desc: str
     type: str
+    subType: str
+    desc: str
+    isTitle: bool
+    max: int
+    options: list
+    precision: str
+    unit: str
+    remark: str
+    value: str
     required: bool
+    dataSource: str
+    sourceField: str
+
     isHidden: bool
     isReadOnly: bool
     isHiddenOnCreate: bool
     isUnique: bool
-    isTitle: bool
-    remark: str
 
 
 class OptionType(TypedDict):
@@ -75,7 +87,10 @@ class Worksheet(object):
             fields_list: List[FieldType] = response_data.get("data").get("fields")
             fields_dict = {}
             for field in fields_list:
-                fields_dict[field["id"]] = field
+                if field["id"] not in SYSTEM_FIELDS:
+                    fields_dict[field["alias"]] = field
+                else:
+                    fields_dict[field["id"]] = field
             return fields_dict
         else:
             raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
@@ -112,16 +127,13 @@ class WorksheetRow(object):
     def _format_row(row, fields, include_system_fields=True):
         data_new = {}
         for key in row:
-            if key.startswith("_"):
+            if key in SYSTEM_FIELDS:
                 if include_system_fields:
                     data_new[key] = row[key]
                 else:
                     continue
-            elif key == "rowId":
-                data_new[key] = row[key]
             else:
-                alias = fields.get(key).get('alias')
-                data_new[alias] = WorksheetRow._format_value(fields.get(key), row[key])
+                data_new[key] = WorksheetRow._format_value(fields.get(key), row[key])
         return data_new
 
     @staticmethod
@@ -155,7 +167,6 @@ class WorksheetRow(object):
     def list(worksheet_id: str, filter: dict, include_system_fields=True):
         url = f"{SIRP_URL}/api/v3/app/worksheets/{worksheet_id}/rows/list"
         data = {
-            # "fields": fields,
             "filter": filter,
             "sorts": [
                 {
@@ -165,14 +176,15 @@ class WorksheetRow(object):
             ],
             "includeTotalCount": True,
             "includeSystemFields": include_system_fields,
-            # "useFieldIdAsKey": False,
             "pageSize": 1000,
+            # "fields": fields,
+            # "useFieldIdAsKey": False,
         }
         try:
             response = HTTP_SESSION.post(url,
-                                     timeout=SIRP_REQUEST_TIMEOUT,
-                                     headers=HEADERS,
-                                     json=data)
+                                         timeout=SIRP_REQUEST_TIMEOUT,
+                                         headers=HEADERS,
+                                         json=data)
             response.raise_for_status()
             response_data = response.json()
             if response_data.get("success"):
@@ -251,7 +263,7 @@ class WorksheetRow(object):
         url = f"{SIRP_URL}/api/v3/app/worksheets/{worksheet_id}/rows/batch"
 
         data = {
-            "rowIds": row_ids,
+            "rowids": row_ids,
             "triggerWorkflow": True,
         }
 
@@ -362,3 +374,14 @@ class OptionSet(object):
                     if option["value"] == value:
                         return option["key"]
         raise Exception(f"optionset {name} {value} not found")
+
+
+if __name__ == "__main__":
+    # test code
+    # worksheet_id = "case"
+    # row_id = "47da1d00-c9bf-4b5f-8ab8-8877ec292b98"
+    worksheet_id = "knowledge"
+    row_id = "2b2b9cf5-01ee-4e5f-aadf-1772ee294915"
+
+    row = WorksheetRow.list(worksheet_id, {})
+    print(row)
