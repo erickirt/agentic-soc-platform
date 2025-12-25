@@ -33,7 +33,7 @@ class Severity(str, Enum):
 
 class AnalyzeResult(BaseModel):
     """
-    【最终研判报告工具】
+    [最终研判报告工具]
     当且仅当你通过分析原始 Case 数据,并结合 KnowledgeAgent.search 搜索到的外部情报得出定论后,调用此工具.
     调用此工具将提交最终分析结果并结束任务.
     """
