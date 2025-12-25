@@ -6,10 +6,10 @@ from langchain_core.documents import Document
 from Lib.log import logger
 from PLUGINS.Embeddings.embeddings_qdrant import embedding_api_singleton_qdrant
 from PLUGINS.SIRP.sirpapi import Knowledge
-from PLUGINS.mem0.CONFIG import USE as MEM_ZERO_USE
+from PLUGINS.Mem0.CONFIG import USE as MEM_ZERO_USE
 
 if MEM_ZERO_USE:
-    from PLUGINS.mem0.mem_zero import mem_zero_singleton
+    from PLUGINS.Mem0.mem_zero import mem_zero_singleton
 from langchain_core.tools import tool
 
 

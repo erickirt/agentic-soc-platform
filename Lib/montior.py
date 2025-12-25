@@ -18,10 +18,10 @@ from PLUGINS.Embeddings.embeddings_qdrant import embedding_api_singleton_qdrant
 from PLUGINS.Redis.CONFIG import REDIS_STREAM_STORE_DAYS
 from PLUGINS.Redis.redis_stream_api import RedisStreamAPI
 from PLUGINS.SIRP.sirpapi import Playbook as SIRPPlaybook, Knowledge, KnowledgeAction
-from PLUGINS.mem0.CONFIG import USE as MEM_ZERO_USE
+from PLUGINS.Mem0.CONFIG import USE as MEM_ZERO_USE
 
 if MEM_ZERO_USE:
-    from PLUGINS.mem0.mem_zero import mem_zero_singleton
+    from PLUGINS.Mem0.mem_zero import mem_zero_singleton
 
 ASP_REST_API_TOKEN = "nocoly_token_for_playbook"
 
