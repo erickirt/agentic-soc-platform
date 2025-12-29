@@ -1,4 +1,4 @@
-![cover-v5-optimized](Docker/Img/img.png)
+![cover-v5-optimized](Docker/IMG/img.png)
 
 <p align="center">
   <a href="https://asp.viperrtp.com/zh/asf/Development/environment_setup/">Getting-started</a> ·
@@ -46,11 +46,11 @@ ASP 通过简化的多阶段流程处理安全告警和事件：
 5. **SIRP 平台**: 模块的输出(现在已格式化为标准化的安全记录)被发送到 **SIRP** 平台,在那里创建或更新案例、告警和 Artifact.
 6. **剧本引擎**: 分析师可以从 SIRP 用户界面触发针对案例、告警或 Artifact 的 **剧本**,以执行进一步的自动化操作,例如威胁情报丰富或修复.
 
-![img_1.webp](Docker/Img/img_20.png)
-![img_2.webp](Docker/Img/img_21.png)
-![img_2.webp](Docker/Img/img_22.png)
-![img_3.webp](Docker/Img/img_23.png)
-![img_4.webp](Docker/Img/img_24.png)
+![img_1.webp](Docker/IMG/img_20.png)
+![img_2.webp](Docker/IMG/img_21.png)
+![img_2.webp](Docker/IMG/img_22.png)
+![img_3.webp](Docker/IMG/img_23.png)
+![img_4.webp](Docker/IMG/img_24.png)
 
 ## 官方网站
 
@@ -58,6 +58,6 @@ ASP 通过简化的多阶段流程处理安全告警和事件：
 
 ## 404星链计划
 
-<img src="./Docker/Img/logo.png" width="30%">
+<img src="./Docker/IMG/logo.png" width="30%">
 
 Agentic SOC Platform 现已加入 [404星链计划](https://github.com/knownsec/404StarLink)

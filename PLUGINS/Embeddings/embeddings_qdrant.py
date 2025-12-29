@@ -27,11 +27,11 @@ class EmbeddingsAPI(object):
     def __init__(self):
         # you need to use Docker/huggingface/download_model.py to download the bm25 model first
         self.sparse_model = FastEmbedSparse(model_name="Qdrant/bm25",
-                                            cache_dir=os.path.join(BASE_DIR, 'Docker', 'huggingface', 'bm25'),
+                                            cache_dir=os.path.join(BASE_DIR, 'Docker', 'Huggingface', 'bm25'),
                                             local_files_only=True)
         self.dense_model = self.get_dense_model()
         self.vector_client = Qdrant.get_client()
-        self.rerank_model = HuggingFaceCrossEncoder(model_name=os.path.join(BASE_DIR, 'Docker', 'huggingface', 'bge-reranker-v2-m3'),
+        self.rerank_model = HuggingFaceCrossEncoder(model_name=os.path.join(BASE_DIR, 'Docker', 'Huggingface', 'bge-reranker-v2-m3'),
                                                     model_kwargs={'local_files_only': True})
 
     @staticmethod

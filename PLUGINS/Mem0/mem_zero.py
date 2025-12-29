@@ -8,7 +8,7 @@ from PLUGINS.Embeddings.CONFIG import EMBEDDINGS_SIZE
 from PLUGINS.Embeddings.embeddings_qdrant import EmbeddingsAPI
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.Qdrant.qdrant import Qdrant
-from PLUGINS.neo4j.CONFIG import NEO4J_URL, NEO4J_PASSWORD, NEO4J_USER
+from PLUGINS.Neo4j.CONFIG import NEO4J_URL, NEO4J_PASSWORD, NEO4J_USER
 
 
 class MemZero(object):
@@ -28,7 +28,7 @@ class MemZero(object):
                 "provider": "huggingface",
                 "config": {
                     # you need to use Docker/huggingface/download_model.py to download the bge-reranker-v2-m3 model first
-                    "model": os.path.join(BASE_DIR, 'Docker', 'huggingface', 'bge-reranker-v2-m3'),
+                    "model": os.path.join(BASE_DIR, 'Docker', 'Huggingface', 'bge-reranker-v2-m3'),
                     "device": "cpu",
                     "local_files_only": True,
 

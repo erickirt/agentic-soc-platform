@@ -102,12 +102,42 @@ class LLMAPI(object):
         else:
             raise ValueError(f"Unsupported client_type: {client_type}")
 
-    def is_alive(self) -> bool:
+    def alive_check(self):
+        for config in self.configs:
+            params = {
+                "temperature": self.temperature,
+                "model": config.get("model"),
+            }
+            client_type = config.get("type")
+            if client_type == 'openai':
+                params.update({
+                    "base_url": config.get("base_url"),
+                    "api_key": config.get("api_key"),
+                    "http_client": httpx.Client(proxy=config.get("proxy")) if config.get("proxy") else None,
+                })
+                model = ChatOpenAI(**params)
+                if self.is_alive(model):
+                    print(f"{config} is alive.")
+                else:
+                    print(f"{config} is not alive.")
+
+            elif client_type == 'ollama':
+                params.update({
+                    "base_url": config.get("base_url"),
+                })
+                model = ChatOllama(**params)
+                if self.is_alive(model):
+                    print(f"{config} is alive.")
+                else:
+                    print(f"{config} is not alive.")
+            else:
+                print(f"{config} error")
+
+    def is_alive(self, model: ChatOpenAI | ChatOllama) -> bool:
         """
         Tests basic connectivity with the default model.
         Returns True on success, otherwise throws an exception directly (e.g., ConnectionError, ValueError).
         """
-        model = self.get_model()  # Use default configuration
         parser = StrOutputParser()
         chain = model | parser
         messages = [
@@ -203,3 +233,7 @@ class LLMAPI(object):
         else:
             # If there is no match, return the original message
             return message
+
+
+if __name__ == "__main__":
+    LLMAPI().alive_check()

@@ -7,6 +7,7 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
 from mcp.server import FastMCP
+from Lib.configs import BASE_DIR
 
 if __name__ == "__main__":
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
@@ -16,7 +17,7 @@ if __name__ == "__main__":
     from Lib.llmfunc import function_call_debug, get_case_by_case_id
 
     # Define UUID file path
-    uuid_file_path = os.path.join("..", "Docker", "mcp_uuid")
+    uuid_file_path = os.path.join(BASE_DIR, "Docker", "mcp_uuid")
     # Try to read UUID from file
     try:
         with open(uuid_file_path, 'r') as f:
