@@ -16,7 +16,7 @@ from AGENTS.agent_ti import AgentTI
 from Lib.api import get_current_time_str
 from Lib.baseplaybook import LanggraphPlaybook
 from PLUGINS.LLM.llmapi import LLMAPI
-from PLUGINS.SIRP.sirpapi import Case
+from PLUGINS.SIRP.sirpapi import Case, PlaybookStatus
 
 MAX_ITERATIONS = 3
 PROMPT_LANG = None
@@ -566,7 +566,7 @@ class Playbook(LanggraphPlaybook):
             node_out = {"report": response.content}
 
             # update playbook status
-            self.update_playbook("Success", "Threat Hunting Agent Finish.")
+            self.update_playbook(PlaybookStatus.SUCCESS, "Threat Hunting Agent Finish.")
             return node_out
 
         # --- Build the main graph ---

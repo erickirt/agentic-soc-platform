@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from AGENTS.agent_knowledge import AgentKnowledge
 from Lib.baseplaybook import LanggraphPlaybook
 from PLUGINS.LLM.llmapi import LLMAPI
-from PLUGINS.SIRP.sirpapi import Case
+from PLUGINS.SIRP.sirpapi import Case, PlaybookStatus
 
 
 class AgentState(BaseModel):
@@ -154,7 +154,7 @@ class Playbook(LanggraphPlaybook):
             Case.update(self.param_source_rowid, case_field)
 
             self.send_notice("Case_L3_SOC_Analyst_Agent Finish", f"rowid:{self.param_source_rowid}")
-            self.update_playbook("Success", "SOC analysis completed with potential tool-assisted enrichment.")
+            self.update_playbook(PlaybookStatus.SUCCESS, "SOC analysis completed with potential tool-assisted enrichment.")
             return {"analyze_result": result_data}
 
         workflow = StateGraph(AgentState)

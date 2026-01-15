@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from Lib.baseplaybook import LanggraphPlaybook
 from Lib.llmapi import AgentState
 from PLUGINS.LLM.llmapi import LLMAPI
-from PLUGINS.SIRP.sirpapi import Case
+from PLUGINS.SIRP.sirpapi import Case, PlaybookStatus
 
 
 class ConfidenceLevel(str, Enum):
@@ -105,7 +105,7 @@ class Playbook(LanggraphPlaybook):
             Case.update(self.param_source_rowid, case_field)
 
             self.send_notice("Case_L3_SOC_Analyst_Agent Finish", f"rowid:{self.param_source_rowid}")
-            self.update_playbook("Success", "Get suggestion by ai agent completed.")
+            self.update_playbook(PlaybookStatus.SUCCESS, "Get suggestion by ai agent completed.")
             return state
 
         # Compile graph

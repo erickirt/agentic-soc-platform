@@ -15,7 +15,7 @@ from pydantic import BaseModel
 from Lib.baseapi import BaseAPI
 from Lib.llmapi import AgentState
 from Lib.log import logger
-from PLUGINS.SIRP.sirpapi import Playbook as SIRPPlaybook, Notice
+from PLUGINS.SIRP.sirpapi import Playbook as SIRPPlaybook, Notice, PlaybookStatus
 from PLUGINS.SIRP.sirpapi import Message, PlaybookStatusType
 
 
@@ -53,7 +53,7 @@ class BasePlaybook(BaseAPI):
     def param_user_input(self):
         return self.param("user_input")
 
-    def update_playbook(self, status: PlaybookStatusType, remark: str):
+    def update_playbook(self, status: PlaybookStatus, remark: str):
         rowid = SIRPPlaybook.update_status_and_remark(self.param_rowid, status, remark)
         return rowid
 

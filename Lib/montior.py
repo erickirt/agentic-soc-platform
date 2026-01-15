@@ -8,16 +8,16 @@ from typing import Callable
 from apscheduler.schedulers.background import BackgroundScheduler
 from django.contrib.auth.models import User
 
-from Lib.playbook import Playbook
 from Lib.apsmodule import aps_module
 from Lib.baseplaybook import BasePlaybook
 from Lib.engine import Engine
 from Lib.log import logger
+from Lib.playbook import Playbook
 from Lib.xcache import Xcache
 from PLUGINS.Embeddings.embeddings_qdrant import embedding_api_singleton_qdrant
 from PLUGINS.Mem0.CONFIG import USE as MEM_ZERO_USE
 from PLUGINS.Redis.redis_stream_api import RedisStreamAPI
-from PLUGINS.SIRP.sirpapi import Playbook as SIRPPlaybook, Knowledge, KnowledgeAction
+from PLUGINS.SIRP.sirpapi import Playbook as SIRPPlaybook, Knowledge, KnowledgeAction, PlaybookStatus
 
 if MEM_ZERO_USE:
     from PLUGINS.Mem0.mem_zero import mem_zero_singleton
@@ -124,7 +124,7 @@ class MainMonitor(object):
             if module_config is None:
                 logger.error(f"Playbook module config not found: {type} - {name}")
 
-                SIRPPlaybook.update_status_and_remark("Failed", f"Playbook module config not found: {type} - {name}")
+                SIRPPlaybook.update_status_and_remark(row_id, PlaybookStatus.FAILED, f"Playbook module config not found: {type} - {name}")
                 continue
             load_path = module_config.get("load_path")
 
@@ -147,7 +147,7 @@ class MainMonitor(object):
                 playbook_intent._params = params
             except Exception as E:
                 logger.exception(E)
-                SIRPPlaybook.update_status_and_remark("Failed", f"{E}")
+                SIRPPlaybook.update_status_and_remark(row_id, PlaybookStatus.FAILED, f"{E}")
                 continue
 
             job_id = aps_module.putin_post_python_module_queue(playbook_intent)
@@ -159,7 +159,7 @@ class MainMonitor(object):
                 ]
                 SIRPPlaybook.update(row_id, fields)
             else:
-                SIRPPlaybook.update_status_and_remark("Failed", f"Failed to create playbook job.")
+                SIRPPlaybook.update_status_and_remark(row_id, PlaybookStatus.FAILED, f"Failed to create playbook job.")
 
     @staticmethod
     def subscribe_knowledge_action():

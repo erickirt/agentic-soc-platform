@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from Lib.baseplaybook import LanggraphPlaybook
 from PLUGINS.LLM.llmapi import LLMAPI
-from PLUGINS.SIRP.sirpapi import Alert
+from PLUGINS.SIRP.sirpapi import Alert, PlaybookStatus
 
 
 class AgentState(BaseModel):
@@ -81,7 +81,7 @@ class Playbook(LanggraphPlaybook):
             Alert.update(self.param_source_rowid, fields)
 
             self.send_notice("Alert_Suggestion_Gen_By_LLM output_node Finish", f"rowid:{self.param_source_rowid}")
-            self.update_playbook("Success", "Get suggestion by ai agent completed.")
+            self.update_playbook(PlaybookStatus.SUCCESS, "Get suggestion by ai agent completed.")
 
             self.agent_state = state
             return state

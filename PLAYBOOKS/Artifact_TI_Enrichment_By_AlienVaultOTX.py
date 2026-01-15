@@ -3,7 +3,7 @@ import json
 from Lib.api import is_ipaddress
 from Lib.baseplaybook import BasePlaybook
 from PLUGINS.AlienVaultOTX.alienvaultotx import AlienVaultOTX
-from PLUGINS.SIRP.sirpapi import Artifact
+from PLUGINS.SIRP.sirpapi import Artifact, PlaybookStatus
 
 
 class Playbook(BasePlaybook):
@@ -32,10 +32,10 @@ class Playbook(BasePlaybook):
             fields = [{"id": "enrichment", "value": json.dumps(ti_result)}]
 
             Artifact.update(self.param_source_rowid, fields)
-            self.update_playbook("Success", "Threat intelligence enrichment completed.")
+            self.update_playbook(PlaybookStatus.SUCCESS, "Threat intelligence enrichment completed.")
         except Exception as e:
             self.logger.exception(e)
-            self.update_playbook("Failed", f"Error during TI enrichment: {e}")
+            self.update_playbook(PlaybookStatus.FAILED, f"Error during TI enrichment: {e}")
         return
 
 
