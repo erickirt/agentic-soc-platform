@@ -84,8 +84,7 @@ class Worksheet(object):
         url = f"{SIRP_URL}/api/v3/app/worksheets/{worksheet_id}"
 
         response = HTTP_SESSION.get(
-            url,
-            params={"includeSystemFields": True}
+            url
         )
         response.raise_for_status()
 
@@ -405,15 +404,3 @@ class OptionSet(object):
                     if option["value"] == value:
                         return option["key"]
         raise Exception(f"optionset {name} {value} not found")
-
-
-if __name__ == "__main__":
-    # test code
-    # worksheet_id = "case"
-    # row_id = "47da1d00-c9bf-4b5f-8ab8-8877ec292b98"
-    OptionSet.list()
-    worksheet_id = "knowledge"
-    row_id = "2b2b9cf5-01ee-4e5f-aadf-1772ee294915"
-
-    row = WorksheetRow.list(worksheet_id, {})
-    print(row)
