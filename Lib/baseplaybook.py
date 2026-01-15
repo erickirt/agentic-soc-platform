@@ -15,8 +15,8 @@ from pydantic import BaseModel
 from Lib.baseapi import BaseAPI
 from Lib.llmapi import AgentState
 from Lib.log import logger
+from PLUGINS.SIRP.sirpapi import Message
 from PLUGINS.SIRP.sirpapi import Playbook as SIRPPlaybook, Notice, PlaybookStatus
-from PLUGINS.SIRP.sirpapi import Message, PlaybookStatusType
 
 
 class BasePlaybook(BaseAPI):

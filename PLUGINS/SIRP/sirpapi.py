@@ -336,9 +336,6 @@ class Case(object):
             return f.read()
 
 
-PlaybookStatusType = Literal["Success", "Failed", "Pending", "Running"]
-
-
 class PlaybookStatus(StrEnum):
     SUCCESS = 'Success'
     FAILED = 'Failed'
