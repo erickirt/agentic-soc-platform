@@ -139,6 +139,7 @@ class ArtifactModel(BaseSystemModel):
     reputation_score: Optional[Literal[
         'Unknown', 'Very Safe', 'Safe', 'Probably Safe', 'Leans Safe', 'May not be Safe', 'Exercise Caution', 'Suspicious/Risky', 'Possibly Malicious', 'Probably Malicious', 'Malicious', 'Other', None]] = None
 
+    # 关联表
     enrichments: Optional[List[EnrichmentModel]] = []
 
     # playbooks: Optional[Any] = "" # 内部字段
@@ -207,6 +208,7 @@ class AlertModel(BaseSystemModel):
 
     raw_data: Optional[str] = ""
 
+    # 关联表
     attachments: Optional[AttachmentModel] = []
     artifacts: Optional[List[ArtifactModel]] = []
     enrichments: Optional[List[EnrichmentModel]] = []
@@ -255,13 +257,15 @@ class CaseModel(BaseSystemModel):
 
     verdict: Optional[Literal[
         "Unknown", "False Positive", "True Positive", "Disregard", "Suspicious", "Benign", "Test", "Insufficient Data", "Security Risk", "Managed Externally", "Duplicate", "Other", None]] = None
-    # MTTR MTTD
+
+    # 公式计算字段
     start_time: Optional[Any] = None  # 使用公式自动化计算,无需赋值
     end_time: Optional[Any] = None  # 使用公式自动化计算,无需赋值
     detect_time: Optional[Any] = None  # 使用公式自动化计算,无需赋值
     acknowledge_time: Optional[Any] = None  # 使用公式自动化计算,无需赋值
     respond_time: Optional[Any] = None  # 使用公式自动化计算,无需赋值
 
+    # 关联表
     attachments: Optional[List[AttachmentModel]] = []
     tickets: Optional[List[TicketModel]] = []
     enrichments: Optional[List[EnrichmentModel]] = []
