@@ -199,7 +199,6 @@ class AlertModel(BaseSystemModel):
     status_detail: Optional[str] = ""
     remediation: Optional[str] = ""
 
-    attachments: Optional[AttachmentModel] = ""
     comment: Optional[str] = ""
 
     suggestion_ai: Optional[str] = ""
@@ -208,6 +207,7 @@ class AlertModel(BaseSystemModel):
 
     raw_data: Optional[str] = ""
 
+    attachments: Optional[AttachmentModel] = []
     artifacts: Optional[List[ArtifactModel]] = []
     enrichments: Optional[List[EnrichmentModel]] = []
 
@@ -230,8 +230,6 @@ class CaseModel(BaseSystemModel):
 
     closed_time: Optional[Union[datetime, str]] = None
     summary: Optional[str] = ""
-
-    attachments: Optional[List[AttachmentModel]] = ""
 
     severity: Optional[Literal["Unknown", "Informational", "Low", "Medium", "High", "Critical", "Fatal", "Other", None]] = None
     confidence: Optional[Literal["Unknown", "Low", "Medium", "High", "Other", None]] = None
@@ -257,17 +255,17 @@ class CaseModel(BaseSystemModel):
 
     verdict: Optional[Literal[
         "Unknown", "False Positive", "True Positive", "Disregard", "Suspicious", "Benign", "Test", "Insufficient Data", "Security Risk", "Managed Externally", "Duplicate", "Other", None]] = None
-
-    tickets: Optional[List[TicketModel]] = []
-    enrichments: Optional[List[EnrichmentModel]] = []
-    alerts: Optional[List[AlertModel]] = []
-
     # MTTR MTTD
     start_time: Optional[Any] = None  # 使用公式自动化计算,无需赋值
     end_time: Optional[Any] = None  # 使用公式自动化计算,无需赋值
     detect_time: Optional[Any] = None  # 使用公式自动化计算,无需赋值
     acknowledge_time: Optional[Any] = None  # 使用公式自动化计算,无需赋值
     respond_time: Optional[Any] = None  # 使用公式自动化计算,无需赋值
+
+    attachments: Optional[List[AttachmentModel]] = []
+    tickets: Optional[List[TicketModel]] = []
+    enrichments: Optional[List[EnrichmentModel]] = []
+    alerts: Optional[List[AlertModel]] = []
 
     # playbooks: Optional[Any] = "" # 内部字段
     # playbook: Optional[Literal["Threat Hunting Agent", "L3 SOC Analyst Agent", "L3 SOC Analyst Agent With Tools", None]] = None # 内部字段
