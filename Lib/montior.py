@@ -12,12 +12,13 @@ from Lib.apsmodule import aps_module
 from Lib.baseplaybook import BasePlaybook
 from Lib.engine import Engine
 from Lib.log import logger
-from Lib.playbook import Playbook
+from Lib.playbookloader import PlaybookLoader
 from Lib.xcache import Xcache
 from PLUGINS.Embeddings.embeddings_qdrant import embedding_api_singleton_qdrant
 from PLUGINS.Mem0.CONFIG import USE as MEM_ZERO_USE
 from PLUGINS.Redis.redis_stream_api import RedisStreamAPI
-from PLUGINS.SIRP.sirpapi import Playbook as SIRPPlaybook, Knowledge, KnowledgeAction, PlaybookStatus
+from PLUGINS.SIRP.sirpapi import Playbook as SIRPPlaybook, Knowledge, KnowledgeAction
+from PLUGINS.SIRP.sirptype import PlaybookJobStatus
 
 if MEM_ZERO_USE:
     from PLUGINS.Mem0.mem_zero import mem_zero_singleton
@@ -90,15 +91,8 @@ class MainMonitor(object):
 
         Xcache.set_token_user(ASP_REST_API_TOKEN, api_usr, None)
 
-        logger.info("Load Playbook module config")
-        Playbook.load_all_playbook_config()
-
-        # self.MainScheduler.add_job(func=self.subscribe_clean_thread,
-        #                            max_instances=1,
-        #                            trigger='interval',
-        #                            hours=1,
-        #                            id='subscribe_clean_thread')
-        # self.MainScheduler.start()
+        logger.info("Load PlaybookLoader module config")
+        PlaybookLoader.load_all_playbook_config()
 
         delay_time = 3
 
@@ -112,54 +106,44 @@ class MainMonitor(object):
 
     @staticmethod
     def subscribe_pending_playbook():
-        records = SIRPPlaybook.get_pending_playbooks()
-        for one_record in records:
-            name = one_record.get("name")
-            type = one_record.get("type")
-            row_id = one_record.get("rowid")
-            module_config = Xcache.get_module_config_by_name_and_type(type, name)
-            if module_config is None:
-                Playbook.load_all_playbook_config()
-                module_config = Xcache.get_module_config_by_name_and_type(type, name)
-            if module_config is None:
-                logger.error(f"Playbook module config not found: {type} - {name}")
+        models = SIRPPlaybook.list_pending_playbooks()
 
-                SIRPPlaybook.update_status_and_remark(row_id, PlaybookStatus.FAILED, f"Playbook module config not found: {type} - {name}")
+        for model in models:
+            module_config = Xcache.get_module_config_by_name_and_type(model.type, model.name)
+            if module_config is None:
+                PlaybookLoader.load_all_playbook_config()  # try again
+                module_config = Xcache.get_module_config_by_name_and_type(model.type, model.name)
+            if module_config is None:
+                logger.error(f"PlaybookLoader module config not found: {model.type} - {model.name}")
+                model.job_status = PlaybookJobStatus.FAILED
+                model.remark = f"PlaybookLoader module config not found: {model.type} - {model.name}"
+                SIRPPlaybook.update_or_create(model)
                 continue
+
             load_path = module_config.get("load_path")
-
-            if one_record.get("user"):
-                user = one_record.get("user")[0].get("fullname")
-            else:
-                user = None
-
-            params = {
-                "rowid": row_id,
-                "source_worksheet": one_record.get("type").lower(),
-                "source_rowid": one_record.get("source_rowid"),
-                "user_input": one_record.get("user_input"),
-                "user": user,
-            }
 
             try:
                 class_intent = importlib.import_module(load_path)
                 playbook_intent: BasePlaybook = class_intent.Playbook()
-                playbook_intent._params = params
+                playbook_intent._playbook_model = model
             except Exception as E:
                 logger.exception(E)
-                SIRPPlaybook.update_status_and_remark(row_id, PlaybookStatus.FAILED, f"{E}")
+                model.job_status = PlaybookJobStatus.FAILED
+                model.remark = str(E)
+                SIRPPlaybook.update_or_create(model)
                 continue
 
             job_id = aps_module.putin_post_python_module_queue(playbook_intent)
-            if job_id:
-                logger.info(f"Create playbook job success: {job_id}")
-                fields = [
-                    {"id": "job_status", "value": "Running"},
-                    {"id": "job_id", "value": job_id},
-                ]
-                SIRPPlaybook.update(row_id, fields)
+            if not job_id:
+                model.job_status = PlaybookJobStatus.FAILED
+                model.remark = "Failed to create playbook job."
+                SIRPPlaybook.update_or_create(model)
+                continue
             else:
-                SIRPPlaybook.update_status_and_remark(row_id, PlaybookStatus.FAILED, f"Failed to create playbook job.")
+                logger.info(f"Create playbook job success: {job_id}")
+                model.job_status = PlaybookJobStatus.RUNNING
+                model.job_id = job_id
+                SIRPPlaybook.update_or_create(model)
 
     @staticmethod
     def subscribe_knowledge_action():

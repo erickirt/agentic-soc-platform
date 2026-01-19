@@ -16,7 +16,8 @@ from Lib.baseapi import BaseAPI
 from Lib.llmapi import AgentState
 from Lib.log import logger
 from PLUGINS.SIRP.sirpapi import Message
-from PLUGINS.SIRP.sirpapi import Playbook as SIRPPlaybook, Notice, PlaybookStatus
+from PLUGINS.SIRP.sirpapi import Playbook, Notice
+from PLUGINS.SIRP.sirptype import PlaybookModel, PlaybookJobStatus
 
 
 class BasePlaybook(BaseAPI):
@@ -26,35 +27,35 @@ class BasePlaybook(BaseAPI):
 
     def __init__(self):
         super().__init__()
-        self._params = {}
         self.logger = logger
-
-    def param(self, key, default=None):
-        return self._params.get(key, default)
+        # noinspection PyTypeChecker
+        self._playbook_model: PlaybookModel = None
 
     # 定义内部参数
     @property
     def param_rowid(self):
-        return self.param("rowid")
+        return self._playbook_model.rowid
 
     @property
     def param_source_rowid(self):
-        return self.param("source_rowid")
+        return self._playbook_model.source_rowid
 
     @property
     def param_source_worksheet(self):
-        return self.param("source_worksheet")
+        return self._playbook_model.source_worksheet
 
     @property
     def param_user(self):
-        return self.param("user")
+        return self._playbook_model.user
 
     @property
     def param_user_input(self):
-        return self.param("user_input")
+        return self._playbook_model.user_input
 
-    def update_playbook(self, status: PlaybookStatus, remark: str):
-        rowid = SIRPPlaybook.update_status_and_remark(self.param_rowid, status, remark)
+    def update_playbook_status(self, status: PlaybookJobStatus, remark: str):
+        self._playbook_model.job_status = status
+        self._playbook_model.remark = remark
+        rowid = Playbook.update_or_create(self._playbook_model)
         return rowid
 
     def send_notice(self, title: str, body: str):

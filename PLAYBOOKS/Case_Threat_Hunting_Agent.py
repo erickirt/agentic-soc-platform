@@ -16,7 +16,8 @@ from AGENTS.agent_ti import AgentTI
 from Lib.api import get_current_time_str
 from Lib.baseplaybook import LanggraphPlaybook
 from PLUGINS.LLM.llmapi import LLMAPI
-from PLUGINS.SIRP.sirpapi import Case, PlaybookStatus
+from PLUGINS.SIRP.sirpapi import Case
+from PLUGINS.SIRP.sirptype import PlaybookJobStatus
 
 MAX_ITERATIONS = 3
 PROMPT_LANG = None
@@ -345,7 +346,7 @@ class Playbook(LanggraphPlaybook):
             self.logger.debug("Intent Node Invoked")
 
             # Get Case data
-            case = Case.get_raw_data(rowid=self.param_source_rowid)
+            case = Case.get_ai_friendly_data(rowid=self.param_source_rowid)
 
             # User intent
             user_intent = self.param_user_input
@@ -566,7 +567,7 @@ class Playbook(LanggraphPlaybook):
             node_out = {"report": response.content}
 
             # update playbook status
-            self.update_playbook(PlaybookStatus.SUCCESS, "Threat Hunting Agent Finish.")
+            self.update_playbook_status(PlaybookJobStatus.SUCCESS, "Threat Hunting Agent Finish.")
             return node_out
 
         # --- Build the main graph ---
@@ -617,5 +618,5 @@ if __name__ == "__main__":
         "playbook_rowid": "9fb4a3e1-6ae7-47b2-9b15-95264272dff5"
     }
     module = Playbook()
-    module._params = params_debug
+    # module._params = params_debug
     module.run()

@@ -2,7 +2,8 @@ import json
 import time
 
 from Lib.baseplaybook import BasePlaybook
-from PLUGINS.SIRP.sirpapi import Artifact, PlaybookStatus
+from PLUGINS.SIRP.sirpapi import Artifact
+from PLUGINS.SIRP.sirptype import PlaybookJobStatus
 
 
 class Playbook(BasePlaybook):
@@ -27,15 +28,15 @@ class Playbook(BasePlaybook):
 
             fields = [{"id": "enrichment", "value": json.dumps(ti_result)}]
             Artifact.update(self.param_source_rowid, fields)
-            self.update_playbook(PlaybookStatus.SUCCESS, "Threat intelligence enrichment completed.")
+            self.update_playbook_status(PlaybookJobStatus.SUCCESS, "Threat intelligence enrichment completed.")
         except Exception as e:
             self.logger.exception(e)
-            self.update_playbook(PlaybookStatus.FAILED, f"Error during TI enrichment: {e}")
+            self.update_playbook_status(PlaybookJobStatus.FAILED, f"Error during TI enrichment: {e}")
         return
 
 
 if __name__ == "__main__":
     params_debug = {'source_rowid': 'a966036e-b29e-4449-be48-23293bacac5d', 'source_worksheet': 'Artifact'}
     module = Playbook()
-    module._params = params_debug
+    # module._params = params_debug
     module.run()

@@ -2,7 +2,7 @@ import json
 from datetime import datetime, timedelta, timezone
 
 from PLUGINS.SIRP.nocolyapi import Group, Condition, Operator
-from PLUGINS.SIRP.sirpapi import Enrichment, Artifact, Alert
+from PLUGINS.SIRP.sirpapi import Enrichment, Artifact, Alert, Playbook
 from PLUGINS.SIRP.sirptype import CaseModel, AlertModel, ArtifactModel, EnrichmentModel, TicketModel
 
 now = datetime.now(timezone.utc)
@@ -58,7 +58,7 @@ def generate_test_cases():
         verdict=None,
         summary="",
         correlation_uid="CORR-PHISH-XYZ-123",
-        workbook="### Phishing Investigation Playbook\n1. Analyze headers (`done`)\n2. Detonate URL/Attachment (`done`)\n3. Identify recipients (`in-progress`)\n4. Purge emails from mailboxes\n5. Reset compromised user passwords\n",
+        workbook="### Phishing Investigation PlaybookLoader\n1. Analyze headers (`done`)\n2. Detonate URL/Attachment (`done`)\n3. Identify recipients (`in-progress`)\n4. Purge emails from mailboxes\n5. Reset compromised user passwords\n",
         analysis_rationale_ai="The email originates from an external, un-reputable domain and uses urgent language, a common phishing tactic. The URL leads to a non-standard login page with a self-signed certificate. The attachment hash matches known malware.",
         recommended_actions_ai="- Block sender domain 'evil-domain.com'\n- Reset passwords for all users who clicked the link\n- Scan all endpoints for the malware hash 'a1b2c3d4e5f6...'",
         attack_stage_ai="Initial Access, Execution",
@@ -118,7 +118,7 @@ def generate_test_cases():
                 sub_technique="",
                 mitigation="User Training, Email Filtering",
                 product_category="Email",
-                product_vender="Microsoft",
+                product_vendor="Microsoft",
                 product_name="Outlook",
                 product_feature="Phishing Report Add-in",
                 policy_name="",
@@ -185,7 +185,7 @@ def generate_test_cases():
                 sub_technique="",
                 mitigation="Email Attachment Sandboxing, Threat Intelligence Feed Integration",
                 product_category="Email",
-                product_vender="SecureMail Inc.",
+                product_vendor="SecureMail Inc.",
                 product_name="SecureMail Gateway",
                 product_feature="AV-Scan-Module",
                 policy_name="Inbound-Malware-Policy",
@@ -240,7 +240,7 @@ def generate_test_cases():
         verdict="True Positive",
         summary="Attacker compromised DC01 and moved to WS-FINANCE-05. Both hosts have been isolated and are pending reimaging. All domain admin credentials have been rotated.",
         correlation_uid="CORR-LAT-MOV-456",
-        workbook="### Lateral Movement Playbook\n1. Isolate source and destination (`done`)\n2. Dump memory from hosts (`done`)\n3. Analyze for persistence (`done`)\n4. Rotate credentials (`done`)",
+        workbook="### Lateral Movement PlaybookLoader\n1. Isolate source and destination (`done`)\n2. Dump memory from hosts (`done`)\n3. Analyze for persistence (`done`)\n4. Rotate credentials (`done`)",
         analysis_rationale_ai="PsExec execution from a domain controller to a workstation is highly anomalous. The initial compromise vector on DC01 appears to be related to a credential dumping alert moments before the lateral movement.",
         recommended_actions_ai="- Isolate both DC01 and WS-FINANCE-05 immediately.\n- Investigate DC01 for initial compromise.\n- Rotate all privileged credentials.",
         attack_stage_ai="Lateral Movement",
@@ -294,7 +294,7 @@ def generate_test_cases():
                 sub_technique="",
                 mitigation="Restrict Service Creation, Network Segmentation",
                 product_category="EDR",
-                product_vender="CrowdStrike",
+                product_vendor="CrowdStrike",
                 product_name="Falcon",
                 product_feature="Behavioral-Detection-Engine",
                 policy_name="Default Workstation Policy",
@@ -359,7 +359,7 @@ def generate_test_cases():
                 sub_technique="",
                 mitigation="Credential Guard, LSA Protection",
                 product_category="EDR",
-                product_vender="CrowdStrike",
+                product_vendor="CrowdStrike",
                 product_name="Falcon",
                 product_feature="Credential-Theft-Protection",
                 policy_name="Domain Controller Policy",
@@ -413,7 +413,7 @@ def generate_test_cases():
         verdict="Suspicious",
         summary="",
         correlation_uid="CORR-DNS-TUN-789",
-        workbook="### DNS Tunneling Playbook\n1. Analyze query patterns (TXT/NULL record types, query length)\n2. Check domain reputation\n3. Perform packet capture on host\n4. Compare against baseline DNS traffic",
+        workbook="### DNS Tunneling PlaybookLoader\n1. Analyze query patterns (TXT/NULL record types, query length)\n2. Check domain reputation\n3. Perform packet capture on host\n4. Compare against baseline DNS traffic",
         analysis_rationale_ai="The high volume of TXT queries to a single, non-business related domain is a strong indicator of DNS tunneling. The query payloads appear to be encoded.",
         recommended_actions_ai="- Place the host in a sinkhole network to observe C2 traffic safely.\n- Do not block immediately to gather more intelligence on the attacker's infrastructure.",
         attack_stage_ai="Command and Control",
@@ -459,7 +459,7 @@ def generate_test_cases():
                 sub_technique="",
                 mitigation="DNS Sinkholing, Egress Traffic Filtering",
                 product_category="NDR",
-                product_vender="Vectra",
+                product_vendor="Vectra",
                 product_name="Cognito",
                 product_feature="DNS-Analytics",
                 policy_name="",
@@ -524,7 +524,7 @@ def generate_test_cases():
                 sub_technique="",
                 mitigation="Egress DNS Filtering",
                 product_category="Cloud",
-                product_vender="Palo Alto",
+                product_vendor="Palo Alto",
                 product_name="PA-Series Firewall",
                 product_feature="DNS-Security",
                 policy_name="Default-DNS-Allow",
@@ -604,15 +604,10 @@ def test_enrichment():
     Enrichment.list(filter_model)
 
 
-if __name__ == "__main__":
-    import os
-    import django
+def test_alert():
+    alert = Alert.get("ae83212e-5064-42dd-9e3f-f95b0aeded2d")
 
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
-    django.setup()
-    rowid = Alert.get("0949a2df-7592-44f6-ac29-73994152aaa6")
-
-    rowid = Artifact.get("0e4527f9-a0b9-4d71-a805-95a7d8d3267e")
+    artifact = Artifact.get("0e4527f9-a0b9-4d71-a805-95a7d8d3267e")
 
     artifact_model = ArtifactModel(
         rowid="0e4527f9-a0b9-4d71-a805-95a7d8d3267e",
@@ -650,3 +645,13 @@ if __name__ == "__main__":
     )
     rowid = Artifact.update_or_create(artifact_model)
     print(rowid)
+
+
+if __name__ == "__main__":
+    import os
+    import django
+
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
+    django.setup()
+    models = Playbook.list_pending_playbooks()
+    print(models)

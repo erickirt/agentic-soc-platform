@@ -10,7 +10,8 @@ from pydantic import BaseModel, Field, ConfigDict
 from Lib.baseplaybook import LanggraphPlaybook
 from Lib.llmapi import AgentState
 from PLUGINS.LLM.llmapi import LLMAPI
-from PLUGINS.SIRP.sirpapi import Case, PlaybookStatus
+from PLUGINS.SIRP.sirpapi import Case
+from PLUGINS.SIRP.sirptype import PlaybookJobStatus
 
 
 class ConfidenceLevel(str, Enum):
@@ -53,7 +54,7 @@ class Playbook(LanggraphPlaybook):
     def init(self):
         def preprocess_node(state: AgentState):
             """Preprocess data"""
-            case = Case.get_raw_data(self.param_source_rowid)
+            case = Case.get_ai_friendly_data(self.param_source_rowid)
             state.case = case
             return state
 
@@ -105,7 +106,7 @@ class Playbook(LanggraphPlaybook):
             Case.update(self.param_source_rowid, case_field)
 
             self.send_notice("Case_L3_SOC_Analyst_Agent Finish", f"rowid:{self.param_source_rowid}")
-            self.update_playbook(PlaybookStatus.SUCCESS, "Get suggestion by ai agent completed.")
+            self.update_playbook_status(PlaybookJobStatus.SUCCESS, "Get suggestion by ai agent completed.")
             return state
 
         # Compile graph
@@ -131,5 +132,5 @@ class Playbook(LanggraphPlaybook):
 if __name__ == "__main__":
     params_debug = {'source_rowid': '47da1d00-c9bf-4b5f-8ab8-8877ec292b98', 'source_worksheet': 'case'}
     module = Playbook()
-    module._params = params_debug
+    # module._params = params_debug
     module.run()

@@ -14,17 +14,17 @@ def function_call_debug(
     return f"This-is-a-test-function-to-debug_function_call-The-magic-number-is-{magic_num * 10}."
 
 
-def get_case_by_case_id(case_id: Annotated[str, "Case ID"]):
+def get_case_by_rowid(rowid: Annotated[str, "Case Rowid"]):
     """
-    Retrieve a security case by its unique Case ID.
+    Retrieve a security case by its unique Case Rowid.
     
     This tool allows you to look up full details of a specific case when you have its ID.
     Useful for retrieving context, status, or artifacts associated with a known case identifier.
 
     Args:
-        case_id: The unique string identifier of the case (e.g., 'CASE-00000313').
+        rowid: The unique string identifier of the case (e.g., '2101ff98-f52e-4f38-b107-fe53f7f77b5c').
 
     Returns:
         The Case object containing all case details if found, otherwise None.
     """
-    return Case.get_by_case_id(case_id)
+    return Case.get(rowid)

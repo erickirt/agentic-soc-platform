@@ -35,8 +35,8 @@ model_config:
       provider_id: sirp_new
       provider_name: SIRP
       provider_type: mcp
-      tool_label: get_case_by_case_id
-      tool_name: get_case_by_case_id
+      tool_label: get_case_by_rowid
+      tool_name: get_case_by_rowid
       tool_parameters:
         case_id: ''
   annotation_reply:

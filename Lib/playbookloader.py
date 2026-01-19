@@ -6,7 +6,7 @@ from Lib.log import logger
 from Lib.xcache import Xcache
 
 
-class Playbook(object):
+class PlaybookLoader(object):
     """Task Adder"""
 
     def __init__(self):
@@ -26,7 +26,7 @@ class Playbook(object):
 
     @staticmethod
     def gen_playbook_config(modulename, module_files_dir="PLAYBOOKS"):
-        module_intent = Playbook.get_playbook_intent(modulename, module_files_dir)
+        module_intent = PlaybookLoader.get_playbook_intent(modulename, module_files_dir)
 
         if module_intent is None:
             return None
@@ -53,7 +53,7 @@ class Playbook(object):
         module_filenames = os.listdir(os.path.join(BASE_DIR, 'PLAYBOOKS'))
         for module_filename in module_filenames:
             module_name = module_filename.split(".")[0]
-            one_module_config = Playbook.gen_playbook_config(module_name, 'PLAYBOOKS')
+            one_module_config = PlaybookLoader.gen_playbook_config(module_name, 'PLAYBOOKS')
             if one_module_config is not None:
                 all_modules_config.append(one_module_config)
                 module_count += 1

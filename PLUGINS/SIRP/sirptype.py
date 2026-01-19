@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from enum import StrEnum
 from typing import List, Optional, Literal, Any, Union
 
 from pydantic import BaseModel, Field, field_validator, ConfigDict, field_serializer
@@ -95,7 +96,7 @@ class BaseSystemModel(BaseModel):
 
 
 class MessageModel(BaseSystemModel):
-    playbook_rowid: str = Field(..., description="所属Playbook的唯一行ID")
+    playbook: List[Union[PlaybookModel, str]] = Field(..., description="所属Playbook的唯一行ID")
     node: Optional[str] = Field(default="", description="消息来源的节点名称或ID")
     content: Optional[str] = Field(default="", description="消息的文本内容")
     data: Optional[str] = Field(default="", description="消息的JSON格式内容，通常用于工具调用和返回")
@@ -103,17 +104,24 @@ class MessageModel(BaseSystemModel):
                                                                                                        description="消息类型，用于区分不同角色的发言")
 
 
+class PlaybookJobStatus(StrEnum):
+    SUCCESS = 'Success'
+    FAILED = 'Failed'
+    PENDING = 'Pending'
+    RUNNING = 'Running'
+
+
 class PlaybookModel(BaseSystemModel):
     source_worksheet: Optional[str] = Field(default="", description="Playbook触发源所在的工作表名称")
     source_rowid: Optional[str] = Field(default="", description="Playbook触发源的行ID，例如具体的告警ID或事件ID")
     job_id: Optional[str] = Field(default="", description="执行Playbook的后台任务ID")
-    job_status: Optional[Literal["Pending", "Running", "Success", "Failed", None]] = Field(default=None, description="Playbook执行任务的状态")
+    job_status: Optional[PlaybookJobStatus] = Field(default=None, description="Playbook执行任务的状态")
     remark: Optional[str] = Field(default="", description="关于Playbook执行的备注信息")
     type: Optional[Literal["CASE", "ALERT", "ARTIFACT", None]] = Field(default=None, description="Playbook关联的对象类型")
     name: Optional[str] = Field(default="", description="执行的Playbook的名称")
 
     user_input: Optional[str] = Field(default="", description="用户对Playbook的初始输入或后续指令")
-    user: Optional[AccountModel] = Field(default=None, description="发起或与Playbook交互的用户")
+    user: Optional[List[AccountModel]] = Field(default=None, description="发起Playbook的用户")
 
     # 关联表
     messages: Optional[List[Union[MessageModel, str]]] = Field(default=None, description="Playbook执行过程中的所有消息记录，构成对话历史")
@@ -214,7 +222,7 @@ class AlertModel(BaseSystemModel):
 
     product_category: Optional[Literal["DLP", "Email", "OT", "Proxy", "UEBA", "TI", "IAM", "EDR", "NDR", "Cloud", "Other", None]] = Field(default=None,
                                                                                                                                           description="产生告警的安全产品类别")
-    product_vender: Optional[str] = Field(default=None, description="安全产品的厂商")
+    product_vendor: Optional[str] = Field(default=None, description="安全产品的厂商")
     product_name: Optional[str] = Field(default=None, description="安全产品的名称")
     product_feature: Optional[str] = Field(default=None, description="产生告警的产品具体功能模块")
 

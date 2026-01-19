@@ -11,7 +11,8 @@ from pydantic import BaseModel, Field, ConfigDict
 from AGENTS.agent_knowledge import AgentKnowledge
 from Lib.baseplaybook import LanggraphPlaybook
 from PLUGINS.LLM.llmapi import LLMAPI
-from PLUGINS.SIRP.sirpapi import Case, PlaybookStatus
+from PLUGINS.SIRP.sirpapi import Case
+from PLUGINS.SIRP.sirptype import PlaybookJobStatus
 
 
 class AgentState(BaseModel):
@@ -96,7 +97,7 @@ class Playbook(LanggraphPlaybook):
 
     def init(self):
         def preprocess_node(state: AgentState):
-            case = Case.get_raw_data(self.param_source_rowid)
+            case = Case.get_ai_friendly_data(self.param_source_rowid)
             content = f"Current Case Data (includes latest alert): {json.dumps(case)}"
             return {"case": case, "messages": [HumanMessage(content=content)]}
 
@@ -154,7 +155,7 @@ class Playbook(LanggraphPlaybook):
             Case.update(self.param_source_rowid, case_field)
 
             self.send_notice("Case_L3_SOC_Analyst_Agent Finish", f"rowid:{self.param_source_rowid}")
-            self.update_playbook(PlaybookStatus.SUCCESS, "SOC analysis completed with potential tool-assisted enrichment.")
+            self.update_playbook_status(PlaybookJobStatus.SUCCESS, "SOC analysis completed with potential tool-assisted enrichment.")
             return {"analyze_result": result_data}
 
         workflow = StateGraph(AgentState)
@@ -189,5 +190,5 @@ class Playbook(LanggraphPlaybook):
 if __name__ == "__main__":
     params_debug = {'source_rowid': 'f0189cf8-44af-4c46-90c7-988a159bb34c', 'source_worksheet': 'case'}
     module = Playbook()
-    module._params = params_debug
+    # module._params = params_debug
     module.run()

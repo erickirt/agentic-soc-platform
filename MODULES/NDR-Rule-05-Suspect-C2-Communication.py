@@ -115,7 +115,7 @@ class Module(LanggraphModule):
 
             case_row_id = state.temp_data.get("case_row_id")
             case = Case.get(case_row_id)
-            fields_useful_to_llm = ['title', 'alert', 'tags', 'severity', 'type', 'description', 'close_reason', 'alert_date', 'case_id', 'note', 'summary',
+            fields_useful_to_llm = ['title', 'alert', 'tags', 'severity', 'type', 'description', 'close_reason', 'alert_date', 'rowid', 'note', 'summary',
                                     'attachment']
             case_for_llm = {}
             for key in case:

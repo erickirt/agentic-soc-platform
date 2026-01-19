@@ -52,7 +52,7 @@ ASP processes security alerts and incidents through a simplified multi-stage pro
    Agents), enrich data, and determine outcomes.
 5. **SIRP Platform**: The output of the modules (now formatted into standardized security records) is sent to the **SIRP
    ** platform, where cases, alerts, and artifacts are created or updated.
-6. **Playbook Engine**: Analysts can trigger **playbooks** from the SIRP user interface against cases, alerts, or
+6. **PlaybookLoader Engine**: Analysts can trigger **playbooks** from the SIRP user interface against cases, alerts, or
    artifacts to perform further automated actions, such as threat intelligence enrichment or remediation.
 
 ![img_1.webp](Docker/IMG/img_20.png)

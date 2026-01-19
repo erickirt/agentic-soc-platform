@@ -8,7 +8,8 @@ from pydantic import BaseModel
 
 from Lib.baseplaybook import LanggraphPlaybook
 from PLUGINS.LLM.llmapi import LLMAPI
-from PLUGINS.SIRP.sirpapi import Alert, PlaybookStatus
+from PLUGINS.SIRP.sirpapi import Alert
+from PLUGINS.SIRP.sirptype import PlaybookJobStatus
 
 
 class AgentState(BaseModel):
@@ -20,7 +21,7 @@ class AgentState(BaseModel):
 
 class Playbook(LanggraphPlaybook):
     TYPE = "ALERT"  # Classification tag
-    NAME = "Alert Analysis Agent"  # Playbook name
+    NAME = "Alert Analysis Agent"  # PlaybookLoader name
 
     def __init__(self):
         super().__init__()  # do not delete this code
@@ -81,7 +82,7 @@ class Playbook(LanggraphPlaybook):
             Alert.update(self.param_source_rowid, fields)
 
             self.send_notice("Alert_Suggestion_Gen_By_LLM output_node Finish", f"rowid:{self.param_source_rowid}")
-            self.update_playbook(PlaybookStatus.SUCCESS, "Get suggestion by ai agent completed.")
+            self.update_playbook_status(PlaybookJobStatus.SUCCESS, "Get suggestion by ai agent completed.")
 
             self.agent_state = state
             return state
@@ -109,5 +110,5 @@ class Playbook(LanggraphPlaybook):
 if __name__ == "__main__":
     params_debug = {'source_rowid': '13782e0a-2423-4fc3-9b16-7f2eb15ae83f', 'source_worksheet': 'alert'}
     module = Playbook()
-    module._params = params_debug
+    # module._params = params_debug
     module.run()
