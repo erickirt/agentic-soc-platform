@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import List, Optional, Literal, Any, Union
 
-from pydantic import BaseModel, Field, field_validator, ConfigDict
+from pydantic import BaseModel, Field, field_validator, ConfigDict, field_serializer
 
 
 class AccountModel(BaseModel):
@@ -76,9 +76,21 @@ class BaseSystemModel(BaseModel):
     def parse_datetime(cls, v: Any) -> Any:
         if isinstance(v, str) and v.strip():
             try:
-                return datetime.strptime(v, "%Y-%m-%d %H:%M:%S")
+                return datetime.strptime(v, "%Y-%m-%dT%H:%M:%SZ")
             except ValueError:
                 return v
+        return v
+
+    @field_serializer(
+        "ctime", "utime", "wfctime", "wfrtime", "wfcotime", "wfdtime",
+        "created_time", "modified_time", "first_seen_time", "last_seen_time", "acknowledged_time", "closed_time",
+        check_fields=False,
+        when_used="json"
+    )
+    def serialize_datetime(self, v: Any) -> Any:
+        if isinstance(v, datetime):
+            # 强制输出为你需要的格式
+            return v.strftime("%Y-%m-%dT%H:%M:%SZ")
         return v
 
 
@@ -86,7 +98,7 @@ class MessageModel(BaseSystemModel):
     playbook_rowid: str = Field(..., description="所属Playbook的唯一行ID")
     node: Optional[str] = Field(default="", description="消息来源的节点名称或ID")
     content: Optional[str] = Field(default="", description="消息的文本内容")
-    json: Optional[str] = Field(default="", description="消息的JSON格式内容，通常用于工具调用和返回")
+    data: Optional[str] = Field(default="", description="消息的JSON格式内容，通常用于工具调用和返回")
     type: Optional[Literal["SystemMessage", "HumanMessage", "ToolMessage", "AIMessage", None]] = Field(default=None,
                                                                                                        description="消息类型，用于区分不同角色的发言")
 
@@ -99,12 +111,15 @@ class PlaybookModel(BaseSystemModel):
     remark: Optional[str] = Field(default="", description="关于Playbook执行的备注信息")
     type: Optional[Literal["CASE", "ALERT", "ARTIFACT", None]] = Field(default=None, description="Playbook关联的对象类型")
     name: Optional[str] = Field(default="", description="执行的Playbook的名称")
-    messages: Optional[List[MessageModel]] = Field(default=None, description="Playbook执行过程中的所有消息记录，构成对话历史")
+
     user_input: Optional[str] = Field(default="", description="用户对Playbook的初始输入或后续指令")
     user: Optional[AccountModel] = Field(default=None, description="发起或与Playbook交互的用户")
 
+    # 关联表
+    messages: Optional[List[Union[MessageModel, str]]] = Field(default=None, description="Playbook执行过程中的所有消息记录，构成对话历史")
 
-class Knowledge(BaseSystemModel):
+
+class KnowledgeModel(BaseSystemModel):
     title: str = Field(..., description="知识库条目的标题")
     body: Optional[str] = Field(default="", description="知识库条目的正文内容")
     using: Optional[bool] = Field(default=False, description="当前是否正在使用该知识")
@@ -114,8 +129,8 @@ class Knowledge(BaseSystemModel):
 
 class EnrichmentModel(BaseSystemModel):
     name: str = Field(..., description="富化信息的名称或标题")
-    type: Literal["Other"] = Field(..., description="富化信息的类型")
-    provider: Optional[Literal["Other", None]] = Field(default=None, description="富化信息的提供方，例如威胁情报厂商")
+    type: str = Field(..., description="富化信息的类型", json_schema_extra={"type": 2})
+    provider: str = Field(..., description="富化信息的提供方，例如威胁情报厂商", json_schema_extra={"type": 2})
     created_time: Optional[Union[datetime, str]] = Field(default=None, description="富化信息创建的时间")
     value: str = Field(..., description="富化信息的具体值")
     src_url: Optional[str] = Field(default="", description="富化信息的来源URL，方便溯源")
@@ -141,13 +156,13 @@ class ArtifactModel(BaseSystemModel):
                                                                                                         description="实体在事件中扮演的角色, 如攻击者(Actor)、受害者(Target)等")
     owner: Optional[str] = Field(default="", description="实体归属的系统或用户")
     value: Optional[str] = Field(default="", description="实体的具体值, 如 '192.168.1.1'")
-    reputation_provider: Optional[str] = Field(default="", description="提供信誉评分的威胁情报厂商名称")
+    reputation_provider: Optional[str] = Field(default="", description="提供信誉评分的威胁情报厂商名称", json_schema_extra={"type": 2})
     reputation_score: Optional[Literal[
         'Unknown', 'Very Safe', 'Safe', 'Probably Safe', 'Leans Safe', 'May not be Safe', 'Exercise Caution', 'Suspicious/Risky', 'Possibly Malicious', 'Probably Malicious', 'Malicious', 'Other', None]] = Field(
         default=None, description="实体的信誉评分")
 
     # 关联表
-    enrichments: Optional[List[EnrichmentModel]] = Field(default=[], description="针对此实体的一系列富化结果")
+    enrichments: Optional[List[Union[EnrichmentModel, str]]] = Field(default=None, description="针对此实体的一系列富化结果")  # None 时表示无需处理,[] 时表示要将 link 清空
 
     # playbooks: Optional[Any] = "" # 内部字段
     # playbook: Optional[Literal['TI Enrichment By AlienVaultOTX', 'TI Enrichment By Mock', None]] = None # 内部字段
@@ -182,7 +197,7 @@ class AlertModel(BaseSystemModel):
 
     src_url: Optional[str] = Field(default="", description="在源安全产品中查看此告警的URL")
     source_uid: Optional[str] = Field(default="", description="告警在源产品中的唯一ID")
-    data_sources: Optional[List[str]] = Field(default=[], description="告警的数据来源，如'EDR', 'Firewall'等")
+    data_sources: Optional[List[str]] = Field(default=[], description="告警的数据来源，如 'EDR', 'Firewall' 等")
 
     analytic: Optional[Any] = Field(default="", description="分析引擎的详细信息")
     analytic_name: Optional[str] = Field(default="", description="分析引擎的名称")
@@ -224,10 +239,10 @@ class AlertModel(BaseSystemModel):
     summary_ai: Optional[str] = Field(default="", description="AI提供的汇总摘要")
 
     # 关联表
-    case: Optional[CaseModel] = Field(default=None, description="此告警关联到的安全事件（Case）")
-    attachments: Optional[AttachmentModel] = Field(default=[], description="告警的附件")
-    artifacts: Optional[List[ArtifactModel]] = Field(default=[], description="从告警中提取出的实体（Artifact）列表")
-    enrichments: Optional[List[EnrichmentModel]] = Field(default=[], description="对整个告警进行的富化结果")
+    case: Optional[Union[CaseModel, str]] = Field(default=None, description="此告警关联到的安全事件（Case）")
+    attachments: Optional[List[Union[AttachmentModel, str]]] = Field(default=[], description="告警的附件")
+    artifacts: Optional[List[Union[ArtifactModel, str]]] = Field(default=[], description="从告警中提取出的实体（Artifact）列表")
+    enrichments: Optional[List[Union[EnrichmentModel, str]]] = Field(default=[], description="对整个告警进行的富化结果")
 
     # playbooks: Optional[Any] = "" # 内部字段
     # playbook: Optional[Literal["Alert Analysis Agent", None]] = None # 内部字段
@@ -285,10 +300,10 @@ class CaseModel(BaseSystemModel):
     respond_time: Optional[Any] = Field(default=None, description="事件处置完成时间(closed_time), 用于计算MTTR")
 
     # 关联表
-    attachments: Optional[List[AttachmentModel]] = Field(default=[], description="与事件相关的附件列表")
-    tickets: Optional[List[TicketModel]] = Field(default=[], description="与此事件关联的外部工单列表")
-    enrichments: Optional[List[EnrichmentModel]] = Field(default=[], description="对整个事件进行的富化结果")
-    alerts: Optional[List[AlertModel]] = Field(default=[], description="合并到此事件中的告警列表")
+    attachments: Optional[List[Union[AttachmentModel, str]]] = Field(default=[], description="与事件相关的附件列表")
+    tickets: Optional[List[Union[TicketModel, str]]] = Field(default=[], description="与此事件关联的外部工单列表")
+    enrichments: Optional[List[Union[EnrichmentModel, str]]] = Field(default=[], description="对整个事件进行的富化结果")
+    alerts: Optional[List[Union[AlertModel, str]]] = Field(default=[], description="合并到此事件中的告警列表")
 
     # playbooks: Optional[Any] = "" # 内部字段
     # playbook: Optional[Literal["Threat Hunting Agent", "L3 SOC Analyst Agent", "L3 SOC Analyst Agent With Tools", None]] = None # 内部字段

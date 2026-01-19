@@ -1,4 +1,6 @@
-from typing import TypedDict, Literal, List, Union, Any, Dict
+from __future__ import annotations
+
+from typing import TypedDict, Dict
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -57,18 +59,47 @@ class OptionType(TypedDict):
     score: float
 
 
-# Define the recursive types first
-class ConditionType(TypedDict):
-    type: Literal["condition"]
+from enum import Enum
+from typing import List, Union, Any, Literal, Optional
+from pydantic import BaseModel, Field
+
+
+class Operator(str, Enum):
+    """查询运算符枚举"""
+    EQ = "eq"  # 等于 "Beijing" 或 ["<targetid>"]
+    NE = "ne"  # 不等于 "London" 或 ["<targetid>"]
+    GT = "gt"  # 大于 20 或 "2025-02-06 00:00:00"
+    GE = "ge"  # 大于等于 10
+    LT = "lt"  # 小于 20
+    LE = "le"  # 小于等于 100
+    IN = "in"  # 是其中一个 ["value1", "value2"]
+    NOT_IN = "notin"  # 不是任意一个 ["value1", "value2"]
+    CONTAINS = "contains"  # 包含 "Ch" 或 ["销售部", "市场部"]
+    NOT_CONTAINS = "notcontains"  # 不包含 "Ch" 或 ["销售部", "市场部"]
+    CONCURRENT = "concurrent"  # 同时包含 ["<id1>", "<id2>"]
+    BELONGS_TO = "belongsto"  # 属于 ["<departmentid>"]
+    NOT_BELONGS_TO = "notbelongsto"  # 不属于 ["<departmentid>"]
+    STARTS_WITH = "startswith"  # 开头是 "张"
+    NOT_STARTS_WITH = "notstartswith"  # 开头不是 "李"
+    ENDS_WITH = "endswith"  # 结尾是 "公司"
+    NOT_ENDS_WITH = "notendswith"  # 结尾不是 "有限公司"
+    BETWEEN = "between"  # 在范围内 ["2025-01-01", "2025-01-31"]
+    NOT_BETWEEN = "notbetween"  # 不在范围内 ["10", "20"]
+    IS_EMPTY = "isempty"  # 为空 (不需要 value)
+    IS_NOT_EMPTY = "isnotempty"  # 不为空 (不需要 value)
+
+
+class Condition(BaseModel):
+    type: Literal["condition"] = "condition"
     field: str
-    operator: str
-    value: Any
+    operator: Operator = Field(..., description="运算符列表")
+    value: Optional[Any] = None
 
 
-class GroupType(TypedDict):
-    type: Literal["group"]
-    logic: Literal["AND", "OR"]
-    children: List[Union["GroupType", ConditionType]]
+class Group(BaseModel):
+    type: Literal["group"] = "group"
+    logic: Literal["AND", "OR"] = "AND"
+    children: List[Union[Group, Condition]]
 
 
 class Worksheet(object):
@@ -108,7 +139,7 @@ class WorksheetRow(object):
         pass
 
     @staticmethod
-    def get(worksheet_id: str, row_id: str, include_system_fields=True):
+    def get(worksheet_id: str, row_id: str, include_system_fields=True) -> dict:
         url = f"{SIRP_URL}/api/v3/app/worksheets/{worksheet_id}/rows/{row_id}"
         fields = Worksheet.get_fields(worksheet_id)
         response = HTTP_SESSION.get(
@@ -127,7 +158,7 @@ class WorksheetRow(object):
             raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
 
     @staticmethod
-    def _format_row(row, fields, include_system_fields=True):
+    def _format_row(row, fields, include_system_fields=True) -> dict:
         data_new = {}
         for alias in row:
             if alias in SYSTEM_FIELDS:
@@ -192,7 +223,7 @@ class WorksheetRow(object):
                     filter_data["value"] = [value_to_key.get(v, v) for v in filter_data["value"]]
 
     @staticmethod
-    def list(worksheet_id: str, filter: dict, include_system_fields=True):
+    def list(worksheet_id: str, filter: dict, include_system_fields=True) -> List:
         url = f"{SIRP_URL}/api/v3/app/worksheets/{worksheet_id}/rows/list"
         all_rows = []
         page_index = 1
@@ -242,7 +273,7 @@ class WorksheetRow(object):
         return all_rows
 
     @staticmethod
-    def create(worksheet_id: str, fields: list, trigger_workflow: bool = False):
+    def create(worksheet_id: str, fields: List, trigger_workflow: bool = True):
         fields = [
             field for field in fields if field.get("value") is not None and field.get("value") != ""
         ]
@@ -269,7 +300,7 @@ class WorksheetRow(object):
             raise e
 
     @staticmethod
-    def update(worksheet_id: str, row_id: str, fields: list):
+    def update(worksheet_id: str, row_id: str, fields: List, trigger_workflow: bool = True):
 
         fields = [
             field for field in fields if field.get("value") is not None
@@ -277,7 +308,7 @@ class WorksheetRow(object):
         url = f"{SIRP_URL}/api/v3/app/worksheets/{worksheet_id}/rows/{row_id}"
 
         data = {
-            "triggerWorkflow": True,
+            "triggerWorkflow": trigger_workflow,
             "fields": fields
         }
         response = HTTP_SESSION.patch(url,
@@ -292,13 +323,13 @@ class WorksheetRow(object):
             raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
 
     @staticmethod
-    def delete(worksheet_id: str, row_ids: list):
+    def delete(worksheet_id: str, row_ids: list, trigger_workflow: bool = True):
 
         url = f"{SIRP_URL}/api/v3/app/worksheets/{worksheet_id}/rows/batch"
 
         data = {
             "rowids": row_ids,
-            "triggerWorkflow": True,
+            "triggerWorkflow": trigger_workflow,
         }
 
         response = HTTP_SESSION.delete(url,
@@ -314,7 +345,7 @@ class WorksheetRow(object):
 
     @staticmethod
     def relations(worksheet_id: str, row_id: str, field: str, relation_worksheet_id: str, include_system_fields: bool = True, page_size: int = 1000,
-                  page_index: int = None):
+                  page_index: int = 1):
         fields = Worksheet.get_fields(relation_worksheet_id)
 
         url = f"{SIRP_URL}/api/v3/app/worksheets/{worksheet_id}/rows/{row_id}/relations/{field}"

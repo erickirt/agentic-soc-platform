@@ -3,12 +3,14 @@ from enum import StrEnum
 from typing import TypedDict, List, Optional, Union, Dict, Any, NotRequired, Literal
 
 import requests
+from pydantic import BaseModel
 
 from Lib.api import string_to_timestamp, get_current_time_str
 from Lib.log import logger
 from PLUGINS.SIRP.CONFIG import SIRP_NOTICE_WEBHOOK
 from PLUGINS.SIRP.grouprule import GroupRule
-from PLUGINS.SIRP.nocolyapi import WorksheetRow, OptionSet
+from PLUGINS.SIRP.nocolyapi import WorksheetRow, OptionSet, Group, Condition, Operator
+from PLUGINS.SIRP.sirptype import EnrichmentModel, ArtifactModel
 
 
 class InputCase(TypedDict):
@@ -58,6 +60,80 @@ class InputArtifact(TypedDict):
     enrichment: NotRequired[Dict[str, Any]]
 
 
+# def model_to_fields(model_instance: BaseModel) -> List[Dict[str, Any]]:
+#     fields = []
+#     model_dict = model_instance.model_dump(mode='json', exclude_unset=True)
+#
+#     for key, value in model_dict.items():
+#         fields.append({'id': key, 'value': value})
+#
+#     return fields
+
+
+def model_to_fields(model_instance: BaseModel) -> List[Dict[str, Any]]:
+    fields = []
+    model_data = model_instance.model_dump(mode='json', exclude_unset=True)
+    for key, value in model_data.items():
+        field_info = model_instance.model_fields.get(key)
+        field_item = {
+            'id': key,
+            'value': value
+        }
+        if field_info and field_info.json_schema_extra:
+            # custom_type = field_info.json_schema_extra.get('type')
+            # if custom_type is not None:
+            #     field_item['type'] = custom_type
+            field_item.update(field_info.json_schema_extra)
+        fields.append(field_item)
+    return fields
+
+
+class Enrichment(object):
+    WORKSHEET_ID = "enrichment"
+
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def get(rowid, include_system_fields=True) -> EnrichmentModel:
+        result = WorksheetRow.get(Enrichment.WORKSHEET_ID, rowid, include_system_fields=include_system_fields)
+        model = EnrichmentModel(**result)
+        return model
+
+    @staticmethod
+    def list(model: Group, include_system_fields=True) -> List[EnrichmentModel]:
+        filter = model.model_dump()
+        result = WorksheetRow.list(Enrichment.WORKSHEET_ID, filter, include_system_fields=include_system_fields)
+        model_list = []
+        for one in result:
+            model_list.append(EnrichmentModel(**one))
+        return model_list
+
+    @staticmethod
+    def update(model: EnrichmentModel) -> str:
+        if model.rowid is not None:
+            fields = model_to_fields(model)
+            rowid = WorksheetRow.update(Enrichment.WORKSHEET_ID, model.rowid, fields)
+        else:
+            raise Exception("Enrichment rowid is None, cannot update.")
+        return rowid
+
+    @staticmethod
+    def create(model: EnrichmentModel) -> str:
+        fields = model_to_fields(model)
+        rowid = WorksheetRow.create(Enrichment.WORKSHEET_ID, fields)
+        return rowid
+
+    @staticmethod
+    def update_or_create(model: EnrichmentModel) -> str:
+        fields = model_to_fields(model)
+        if model.rowid is None:
+            rowid = WorksheetRow.create(Enrichment.WORKSHEET_ID, fields)
+        else:
+            rowid = WorksheetRow.update(Enrichment.WORKSHEET_ID, model.rowid, fields)
+        return rowid
+
+
 class Artifact(object):
     WORKSHEET_ID = "artifact"
 
@@ -65,38 +141,56 @@ class Artifact(object):
         pass
 
     @staticmethod
-    def get(rowid, include_system_fields=False):
-        artifact = WorksheetRow.get(Artifact.WORKSHEET_ID, rowid, include_system_fields=include_system_fields)
-        return artifact
+    def get(rowid, include_system_fields=True) -> ArtifactModel:
+        result = WorksheetRow.get(Artifact.WORKSHEET_ID, rowid, include_system_fields=include_system_fields)
+        model = ArtifactModel(**result)
+        if model.enrichments is not None and model.enrichments != []:
+            # enrichments
+            filter_model = Group(
+                logic="AND",
+                children=[
+                    Condition(
+                        field="rowid",
+                        operator=Operator.IN,
+                        value=model.enrichments
+                    )
+                ]
+            )
+            enrichment_list = Enrichment.list(filter_model)
+            model.enrichments = enrichment_list
+
+        return model
 
     @staticmethod
-    def list(filter: dict):
-        result = WorksheetRow.list(Artifact.WORKSHEET_ID, filter)
+    def list(model: Group, include_system_fields=True) -> List[ArtifactModel]:
+        filter = model.model_dump()
+        result = WorksheetRow.list(Artifact.WORKSHEET_ID, filter, include_system_fields=include_system_fields)
         return result
 
     @staticmethod
-    def update(rowid, fields: List):
-        row_id = WorksheetRow.update(Artifact.WORKSHEET_ID, rowid, fields)
-        return row_id
+    def update_or_create(model: ArtifactModel) -> str:
 
-    @staticmethod
-    def create(fields: List):
-        row_id = WorksheetRow.create(Artifact.WORKSHEET_ID, fields)
-        return row_id
+        # enrichments
+        if model.enrichments is not None:
+            enrichments_rowid_list = []
+            for enrichment in model.enrichments:
+                if isinstance(enrichment, str):
+                    enrichments_rowid_list.append(enrichment)  # just link
+                    continue
+                elif isinstance(enrichment, EnrichmentModel):
+                    rowid = Enrichment.update_or_create(enrichment)  # update or create record
+                    enrichments_rowid_list.append(rowid)
+                else:
+                    raise Exception("Unsupported enrichment data type")
 
-    @staticmethod
-    def update_or_create(fields: List, filters: dict) -> List:
-        rows = Artifact.list(filters)
-        if rows:
-            row_id_list = []
-            for row in rows:
-                rowid = row['rowid']
-                rowid_updated = Artifact.update(rowid, fields)
-                row_id_list.append(rowid_updated)
-            return row_id_list
+            model.enrichments = enrichments_rowid_list
+
+        fields = model_to_fields(model)
+        if model.rowid is None:
+            rowid = WorksheetRow.create(Artifact.WORKSHEET_ID, fields)
         else:
-            rowid_created = Artifact.create(fields)
-            return [rowid_created]
+            rowid = WorksheetRow.update(Artifact.WORKSHEET_ID, model.rowid, fields)
+        return rowid
 
 
 class Alert(object):
