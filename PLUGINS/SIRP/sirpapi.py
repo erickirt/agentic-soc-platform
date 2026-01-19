@@ -165,7 +165,25 @@ class Artifact(object):
     def list(model: Group, include_system_fields=True) -> List[ArtifactModel]:
         filter = model.model_dump()
         result = WorksheetRow.list(Artifact.WORKSHEET_ID, filter, include_system_fields=include_system_fields)
-        return result
+        artifact_list = []
+        for artifact_data in result:
+            artifact_model = ArtifactModel(**artifact_data)
+            if artifact_model.enrichments is not None and artifact_model.enrichments != []:
+                # enrichments
+                filter_model = Group(
+                    logic="AND",
+                    children=[
+                        Condition(
+                            field="rowid",
+                            operator=Operator.IN,
+                            value=artifact_model.enrichments
+                        )
+                    ]
+                )
+                enrichment_list = Enrichment.list(filter_model)
+                artifact_model.enrichments = enrichment_list
+            artifact_list.append(artifact_model)
+        return artifact_list
 
     @staticmethod
     def update_or_create(model: ArtifactModel) -> str:
