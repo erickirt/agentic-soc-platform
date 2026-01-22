@@ -65,21 +65,21 @@ class BaseWorksheetEntity(ABC, Generic[T]):
     @classmethod
     def list(
             cls,
-            model: Group,
+            filter_model: Group,
             include_system_fields: bool = True,
             lazy_load: bool = False
     ) -> List[T]:
         """按过滤条件列表查询
 
         Args:
-            model: 过滤条件Group对象
+            filter_model: 过滤条件Group对象
             include_system_fields: 是否包含系统字段
             lazy_load: 是否延迟加载关联数据（True时不加载关联）
 
         Returns:
             模型实例列表
         """
-        filter_dict = model.model_dump()
+        filter_dict = filter_model.model_dump()
         result = WorksheetRow.list(
             cls.WORKSHEET_ID,
             filter_dict,

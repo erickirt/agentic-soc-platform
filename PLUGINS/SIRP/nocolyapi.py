@@ -68,25 +68,6 @@ class WorksheetRow(object):
         pass
 
     @staticmethod
-    def get(worksheet_id: str, row_id: str, include_system_fields=True) -> dict:
-        url = f"{SIRP_URL}/api/v3/app/worksheets/{worksheet_id}/rows/{row_id}"
-        fields = Worksheet.get_fields(worksheet_id)
-        response = HTTP_SESSION.get(
-            url,
-            timeout=SIRP_REQUEST_TIMEOUT,
-            params={"includeSystemFields": include_system_fields}
-        )
-        response.raise_for_status()
-
-        response_data = response.json()
-        if response_data.get("success"):
-            row = response_data.get("data")
-            data_new = WorksheetRow._format_input_row(row, fields, include_system_fields)
-            return data_new
-        else:
-            raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
-
-    @staticmethod
     def _format_input_row(row, fields, include_system_fields=True) -> dict:
         data_new = {}
         for alias in row:
@@ -176,6 +157,25 @@ class WorksheetRow(object):
                     filter_data["value"] = [value_to_key.get(v, v) for v in filter_data["value"]]
 
     @staticmethod
+    def get(worksheet_id: str, row_id: str, include_system_fields=True) -> dict:
+        url = f"{SIRP_URL}/api/v3/app/worksheets/{worksheet_id}/rows/{row_id}"
+        fields = Worksheet.get_fields(worksheet_id)
+        response = HTTP_SESSION.get(
+            url,
+            timeout=SIRP_REQUEST_TIMEOUT,
+            params={"includeSystemFields": include_system_fields}
+        )
+        response.raise_for_status()
+
+        response_data = response.json()
+        if response_data.get("success"):
+            row = response_data.get("data")
+            data_new = WorksheetRow._format_input_row(row, fields, include_system_fields)
+            return data_new
+        else:
+            raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
+
+    @staticmethod
     def list(worksheet_id: str, filter: dict, include_system_fields=True) -> List:
         url = f"{SIRP_URL}/api/v3/app/worksheets/{worksheet_id}/rows/list"
         all_rows = []
@@ -227,9 +227,6 @@ class WorksheetRow(object):
 
     @staticmethod
     def create(worksheet_id: str, fields: List, trigger_workflow: bool = True):
-        # fields = [
-        #     field for field in fields if field.get("value") is not None and field.get("value") != ""
-        # ]
 
         url = f"{SIRP_URL}/api/v3/app/worksheets/{worksheet_id}/rows"
         fields_config = Worksheet.get_fields(worksheet_id)
@@ -256,10 +253,6 @@ class WorksheetRow(object):
     @staticmethod
     def update(worksheet_id: str, row_id: str, fields: List, trigger_workflow: bool = True):
 
-        # fields = [
-        #     field for field in fields if field.get("value") is not None
-        # ]
-
         fields_config = Worksheet.get_fields(worksheet_id)
         fields = WorksheetRow._format_output_value(fields_config, fields)
         url = f"{SIRP_URL}/api/v3/app/worksheets/{worksheet_id}/rows/{row_id}"
@@ -280,7 +273,90 @@ class WorksheetRow(object):
             raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
 
     @staticmethod
-    def delete(worksheet_id: str, row_ids: List, trigger_workflow: bool = True):
+    def batch_create(worksheet_id: str,
+                     rows: List[List[Dict]],
+                     trigger_workflow: bool = True) -> Dict:
+
+        url = f"{SIRP_URL}/api/v3/app/worksheets/{worksheet_id}/rows/batch"
+        fields_config = Worksheet.get_fields(worksheet_id)
+
+        formatted_rows = []
+        for row_fields in rows:
+            formatted_fields = WorksheetRow._format_output_value(fields_config, row_fields)
+            formatted_rows.append({"fields": formatted_fields})
+
+        data = {
+            "rows": formatted_rows,
+            "triggerWorkflow": trigger_workflow
+        }
+
+        try:
+            response = HTTP_SESSION.post(url,
+                                         timeout=SIRP_REQUEST_TIMEOUT,
+                                         json=data)
+            response.raise_for_status()
+
+            response_data = response.json()
+            if response_data.get("success"):
+                return response_data.get("data")  # {"rowIds":[rowid1,rowid2]}
+            else:
+                raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')} data: {response_data.get('data')}")
+        except Exception as e:
+            raise e
+
+    @staticmethod
+    def batch_update(worksheet_id: str,
+                     row_ids: List[str],
+                     fields: List[Dict],
+                     trigger_workflow: bool = True) -> Dict:
+
+        url = f"{SIRP_URL}/api/v3/app/worksheets/{worksheet_id}/rows/batch"
+        fields_config = Worksheet.get_fields(worksheet_id)
+
+        fields = WorksheetRow._format_output_value(fields_config, fields)
+
+        data = {
+            "rowIds": row_ids,
+            "fields": fields,
+            "triggerWorkflow": trigger_workflow
+        }
+
+        try:
+            response = HTTP_SESSION.patch(url,
+                                          timeout=SIRP_REQUEST_TIMEOUT,
+                                          json=data)
+            response.raise_for_status()
+
+            response_data = response.json()
+            if response_data.get("success"):
+                return response_data.get("data")  # {"failedRowIds":[rowid1,rowid2], "successfulRowIds":[rowid3,rowid4]}
+            else:
+                raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')} data: {response_data.get('data')}")
+        except Exception as e:
+            raise e
+
+    @staticmethod
+    def delete(worksheet_id: str, rowid: List, trigger_workflow: bool = True):
+
+        url = f"{SIRP_URL}/api/v3/app/worksheets/{worksheet_id}/rows/{rowid}"
+
+        data = {
+            "triggerWorkflow": trigger_workflow,
+        }
+
+        response = HTTP_SESSION.delete(url,
+                                       timeout=SIRP_REQUEST_TIMEOUT,
+                                       json=data)
+        response.raise_for_status()
+
+        response_data = response.json()
+        if response_data.get("success"):
+            return response_data.get("data")
+        else:
+            raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
+
+    @staticmethod
+    def batch_delete(worksheet_id: str, row_ids: List, trigger_workflow: bool = True):
 
         url = f"{SIRP_URL}/api/v3/app/worksheets/{worksheet_id}/rows/batch"
 
@@ -297,6 +373,37 @@ class WorksheetRow(object):
         response_data = response.json()
         if response_data.get("success"):
             return response_data.get("data")
+        else:
+            raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
+
+    @staticmethod
+    def get_discussions(worksheet_id: str, row_id: str) -> List[Dict]:
+        url = f"{SIRP_URL}/api/v3/app/worksheets/{worksheet_id}/rows/{row_id}/discussions"
+
+        response = HTTP_SESSION.get(url,
+                                    timeout=SIRP_REQUEST_TIMEOUT)
+        response.raise_for_status()
+
+        response_data = response.json()
+        if response_data.get("success"):
+            # [
+            #     {
+            #         "id": "讨论ID",
+            #         "message": "讨论内容",
+            #         "_createdAt": "创建时间",
+            #         "_createdBy": {"id", "name", "avatar", "isPortal", "status"},
+            #         "replyToAuthor": {"id", "name", "avatar", "isPortal", "status"},
+            #         "replyId": "回复ID",
+            #         "projectId": "项目ID",
+            #         "replyToId": [],
+            #         "mentions": [],
+            #         "attachments": [
+            #             {"originalFilename", "ext", "filesize", "downloadUrl"}
+            #         ]
+            #     }
+            # ]
+            discussions = response_data.get("data", {}).get("discussions", [])
+            return discussions
         else:
             raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
 

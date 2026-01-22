@@ -1,5 +1,4 @@
 import json
-import time
 
 from Lib.baseplaybook import BasePlaybook
 from PLUGINS.SIRP.sirpapi import Artifact
@@ -17,8 +16,6 @@ class Playbook(BasePlaybook):
         artifact = Artifact.get(self.param_source_rowid)
 
         # Simulate querying a threat intelligence database. In a real application, this should call an external API or database.
-        time.sleep(5)
-
         if artifact.type not in ["IP Address", "Hash"]:
             self.update_playbook_status(PlaybookJobStatus.FAILED, "Unsupported type. Please use 'IP Address', 'Hash'.")
             return
@@ -41,6 +38,7 @@ class Playbook(BasePlaybook):
 
 
 if __name__ == "__main__":
-    PlaybookModel(source_worksheet='Artifact', source_rowid='a966036e-b29e-4449-be48-23293bacac5d')
+    model = PlaybookModel(source_worksheet='Artifact', source_rowid='a966036e-b29e-4449-be48-23293bacac5d')
     module = Playbook()
+    module._playbook_model = model
     module.run()
