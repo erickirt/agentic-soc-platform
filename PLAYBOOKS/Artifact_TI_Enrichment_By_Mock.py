@@ -38,6 +38,11 @@ class Playbook(BasePlaybook):
 
 
 if __name__ == "__main__":
+    import os
+    import django
+
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
+    django.setup()
     model = PlaybookModel(source_worksheet='Artifact', source_rowid='a966036e-b29e-4449-be48-23293bacac5d')
     module = Playbook()
     module._playbook_model = model

@@ -4,7 +4,7 @@ from Lib.api import is_ipaddress
 from Lib.baseplaybook import BasePlaybook
 from PLUGINS.AlienVaultOTX.alienvaultotx import AlienVaultOTX
 from PLUGINS.SIRP.sirpapi import Artifact
-from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus
+from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus, EnrichmentModel, ArtifactModel, PlaybookModel
 
 
 class Playbook(BasePlaybook):
@@ -19,20 +19,28 @@ class Playbook(BasePlaybook):
             artifact = Artifact.get(self.param_source_rowid)
             self.logger.info(f"Querying threat intelligence for : {artifact}")
 
-            if "ip" in artifact.get("type"):
-                ip = artifact.get("value")
-                if is_ipaddress(ip):
-                    ti_result = AlienVaultOTX().query_ip(ip)
+            if artifact.type in ["IP Address"]:
+                if is_ipaddress(artifact.value):
+                    ti_result = AlienVaultOTX().query_ip(artifact.value)
                 else:
                     ti_result = {"error": "Invalid IP address format."}
-            elif artifact.get("type") == "hash":
-                ti_result = AlienVaultOTX().query_file(artifact.get("value"))
+            elif artifact.type in ["Hash"]:
+                ti_result = AlienVaultOTX().query_file(artifact.value)
             else:
-                ti_result = {"error": "Unsupported type. Please use 'ip', 'vm_ip', or 'hash'."}
+                ti_result = {"error": "Unsupported type."}
 
-            fields = [{"id": "enrichment", "value": json.dumps(ti_result)}]
+            enrichments = artifact.enrichments
+            for enrichment in enrichments:
+                if enrichment.type == "Threat Intelligence" and enrichment.provider == "OTX":
+                    enrichment.data = json.dumps(ti_result)
+                    break
+            else:
+                enrichment = EnrichmentModel(name="TI Enrichment", type="Threat Intelligence", provider="OTX", value=artifact.value,
+                                             data=json.dumps(ti_result))
+                enrichments.append(enrichment)
+            model_tmp = ArtifactModel(rowid=artifact.rowid, enrichments=enrichments)
+            Artifact.update(model_tmp)
 
-            Artifact.update(self.param_source_rowid, fields)
             self.update_playbook_status(PlaybookJobStatus.SUCCESS, "Threat intelligence enrichment completed.")
         except Exception as e:
             self.logger.exception(e)
@@ -41,7 +49,13 @@ class Playbook(BasePlaybook):
 
 
 if __name__ == "__main__":
-    params_debug = {'source_rowid': '54725ee3-c85d-49e7-ac09-4cb982dab957', 'source_worksheet': 'Artifact'}
+    import os
+    import django
+
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
+    django.setup()
+    model = PlaybookModel(source_worksheet='artifact', source_rowid='73ed8a06-38e9-4d03-8d17-74b578f0cafa')
     module = Playbook()
-    # module._params = params_debug
+    module._playbook_model = model
+
     module.run()
