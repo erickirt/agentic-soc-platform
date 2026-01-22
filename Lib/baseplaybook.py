@@ -44,12 +44,11 @@ class BasePlaybook(BaseAPI):
         return self._playbook_model.user_input
 
     def update_playbook_status(self, job_status: PlaybookJobStatus, remark: str):
-        playbook_model_tmp = PlaybookModel()
-        playbook_model_tmp.rowid = self._playbook_model.rowid
-        playbook_model_tmp.job_status = job_status
-        playbook_model_tmp.remark = remark
-
-        rowid = Playbook.update_or_create(playbook_model_tmp)
+        model_tmp = PlaybookModel()
+        model_tmp.rowid = self._playbook_model.rowid
+        model_tmp.job_status = job_status
+        model_tmp.remark = remark
+        rowid = Playbook.update_or_create(model_tmp)
         return rowid
 
     def send_notice(self, title: str, body: str) -> bool:

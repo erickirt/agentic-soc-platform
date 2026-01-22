@@ -17,8 +17,8 @@ from Lib.xcache import Xcache
 from PLUGINS.Embeddings.embeddings_qdrant import embedding_api_singleton_qdrant, SIRP_KNOWLEDGE_COLLECTION
 from PLUGINS.Mem0.CONFIG import USE as MEM_ZERO_USE
 from PLUGINS.Redis.redis_stream_api import RedisStreamAPI
-from PLUGINS.SIRP.sirpapi import Playbook as SIRPPlaybook, Knowledge
-from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus, KnowledgeAction
+from PLUGINS.SIRP.sirpapi import Playbook, Knowledge
+from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus, KnowledgeAction, PlaybookModel
 
 if MEM_ZERO_USE:
     from PLUGINS.Mem0.mem_zero import mem_zero_singleton
@@ -106,18 +106,19 @@ class MainMonitor(object):
 
     @staticmethod
     def subscribe_pending_playbook():
-        models = SIRPPlaybook.list_pending_playbooks()
+        models = Playbook.list_pending_playbooks()
 
         for model in models:
             module_config = Xcache.get_module_config_by_name_and_type(model.type, model.name)
+            model_tmp = PlaybookModel(rowid=model.rowid)
             if module_config is None:
                 PlaybookLoader.load_all_playbook_config()  # try again
                 module_config = Xcache.get_module_config_by_name_and_type(model.type, model.name)
             if module_config is None:
                 logger.error(f"PlaybookLoader module config not found: {model.type} - {model.name}")
-                model.job_status = PlaybookJobStatus.FAILED
-                model.remark = f"PlaybookLoader module config not found: {model.type} - {model.name}"
-                SIRPPlaybook.update_or_create(model)
+                model_tmp.job_status = PlaybookJobStatus.FAILED
+                model_tmp.remark = f"PlaybookLoader module config not found: {model.type} - {model.name}"
+                Playbook.update_or_create(model_tmp)
                 continue
 
             load_path = module_config.get("load_path")
@@ -128,22 +129,22 @@ class MainMonitor(object):
                 playbook_intent._playbook_model = model
             except Exception as E:
                 logger.exception(E)
-                model.job_status = PlaybookJobStatus.FAILED
-                model.remark = str(E)
-                SIRPPlaybook.update_or_create(model)
+                model_tmp.job_status = PlaybookJobStatus.FAILED
+                model_tmp.remark = str(E)
+                Playbook.update_or_create(model_tmp)
                 continue
 
             job_id = thread_module_manager.start_task(playbook_intent)
             if not job_id:
-                model.job_status = PlaybookJobStatus.FAILED
-                model.remark = "Failed to create playbook job."
-                SIRPPlaybook.update_or_create(model)
+                model_tmp.job_status = PlaybookJobStatus.FAILED
+                model_tmp.remark = "Failed to create playbook job."
+                Playbook.update_or_create(model_tmp)
                 continue
             else:
                 logger.info(f"Create playbook job success: {job_id}")
-                model.job_status = PlaybookJobStatus.RUNNING
-                model.job_id = job_id
-                SIRPPlaybook.update_or_create(model)
+                model_tmp.job_status = PlaybookJobStatus.RUNNING
+                model_tmp.job_id = job_id
+                Playbook.update_or_create(model_tmp)
 
     @staticmethod
     def subscribe_knowledge_action():

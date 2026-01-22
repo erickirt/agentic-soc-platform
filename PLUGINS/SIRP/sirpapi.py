@@ -154,6 +154,26 @@ class Playbook(BaseWorksheetEntity[PlaybookModel]):
 
         return cls.list(filter_model, lazy_load=True)
 
+    @classmethod
+    def update_job_status_and_remark(cls, rowid: str, job_status: PlaybookJobStatus, remark: str) -> str:
+        """更新 playbook 的 job_status 和 remark 字段
+
+        Args:
+            rowid: playbook 记录ID
+            job_status: 新的作业状态
+            remark: 备注信息
+
+        Returns:
+            更新后的记录ID
+        """
+        playbook_model_tmp = PlaybookModel()
+        playbook_model_tmp.rowid = rowid
+        playbook_model_tmp.job_status = job_status
+        playbook_model_tmp.remark = remark
+
+        rowid = Playbook.update_or_create(playbook_model_tmp)
+        return rowid
+
 
 class Knowledge(BaseWorksheetEntity[KnowledgeModel]):
     """PlaybookLoader 实体类"""
