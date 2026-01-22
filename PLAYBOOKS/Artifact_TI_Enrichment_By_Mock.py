@@ -3,7 +3,7 @@ import time
 
 from Lib.baseplaybook import BasePlaybook
 from PLUGINS.SIRP.sirpapi import Artifact
-from PLUGINS.SIRP.sirpmodel import PlaybookModel
+from PLUGINS.SIRP.sirpmodel import PlaybookModel, PlaybookJobStatus, EnrichmentModel, ArtifactModel
 
 
 class Playbook(BasePlaybook):
@@ -20,15 +20,23 @@ class Playbook(BasePlaybook):
         time.sleep(5)
 
         if artifact.type not in ["IP Address", "Hash"]:
-            pass
-            # self.update_playbook_status(PlaybookJobStatus.FAILED, "Unsupported type. Please use 'IP Address', 'Hash'.")
+            self.update_playbook_status(PlaybookJobStatus.FAILED, "Unsupported type. Please use 'IP Address', 'Hash'.")
+            return
         else:
             ti_result = {"malicious": True, "score": 85, "description": "This IP is associated with known malicious activities.", "source": "ThreatIntelDB",
                          "last_seen": "2024-10-01T12:34:56Z"}
-
-        fields = [{"id": "enrichment", "value": json.dumps(ti_result)}]
-        # Artifact.update(self.param_source_rowid, fields)
-        # self.update_playbook_status(PlaybookJobStatus.SUCCESS, "Threat intelligence enrichment completed.")
+        enrichments = artifact.enrichments
+        for enrichment in enrichments:
+            if enrichment.type == "Threat Intelligence" and enrichment.provider == "MockTIProvider":
+                enrichment.data = json.dumps(ti_result)
+                break
+        else:
+            enrichment = EnrichmentModel(name="Mock TI Enrichment", type="Mock Threat Intelligence", provider="MockTIProvider", value=artifact.value,
+                                         data=json.dumps(ti_result))
+            enrichments.append(enrichment)
+        model_tmp = ArtifactModel(rowid=artifact.rowid, enrichments=enrichments)
+        Artifact.update(model_tmp)
+        self.update_playbook_status(PlaybookJobStatus.SUCCESS, "Threat intelligence enrichment completed.")
         return
 
 

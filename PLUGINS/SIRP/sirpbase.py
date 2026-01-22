@@ -157,6 +157,8 @@ class BaseWorksheetEntity(ABC, Generic[T]):
         if model.rowid is None:
             raise ValueError(f"{cls.__name__} rowid is None, cannot update.")
 
+        model = cls._prepare_for_save(model)
+
         fields = model_to_fields(model)
         rowid = WorksheetRow.update(cls.WORKSHEET_ID, model.rowid, fields)
         return rowid
