@@ -119,18 +119,7 @@ class Case(BaseWorksheetEntity[CaseModel]):
     def get_ai_friendly_data(cls, rowid: str) -> Dict:
         """获取LLM友好的原始数据"""
         model: CaseModel = cls.get(rowid, include_system_fields=True)
-
-        # 这里可以根据需要添加清理AI不需要的字段
-        model.workbook = None
-        model.analysis_rationale_ai = None
-        model.recommended_actions_ai = None
-        model.attack_stage_ai = None
-        model.severity_ai = None
-        model.confidence_ai = None
-        model.threat_hunting_report_ai = None
-
-        data = model.model_dump(mode='json', exclude_unset=True, exclude_none=True, exclude_defaults=True, exclude={"threat_hunting_report_ai", })
-        return data
+        return model.model_dump_for_ai()
 
 
 class Message(BaseWorksheetEntity[MessageModel]):

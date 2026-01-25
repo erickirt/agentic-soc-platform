@@ -1,5 +1,4 @@
 import json
-from enum import Enum
 from typing import Annotated, Any, Dict, List
 
 from langchain_core.messages import HumanMessage
@@ -12,29 +11,14 @@ from AGENTS.agent_knowledge import AgentKnowledge
 from Lib.baseplaybook import LanggraphPlaybook
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.sirpapi import Case
-from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus
+from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus, CaseModel
+from PLUGINS.SIRP.sirpmodel import Severity, Confidence
 
 
 class AgentState(BaseModel):
     messages: Annotated[List[Any], add_messages] = []
     case: Dict[str, Any] = {}
     loop_count: int = 0
-
-
-class ConfidenceLevel(str, Enum):
-    """置信度枚举"""
-    LOW = "Low"
-    MEDIUM = "Medium"
-    HIGH = "High"
-
-
-class Severity(str, Enum):
-    """严重性枚举"""
-    INFO = "Info"
-    LOW = "Low"
-    MEDIUM = "Medium"
-    HIGH = "High"
-    CRITICAL = "Critical"
 
 
 class AnalyzeResult(BaseModel):
@@ -56,7 +40,7 @@ class AnalyzeResult(BaseModel):
         2. 如果新告警仅是已知风险的重复(噪声),应保持或降低级别.
         """
     )
-    confidence: ConfidenceLevel = Field(
+    confidence: Confidence = Field(
         description="""
         研判置信度.
         - High: 存在异构证据交叉验证(例如 NDR 流量告警与 EDR 进程告警指向同一行为).
@@ -68,7 +52,7 @@ class AnalyzeResult(BaseModel):
         default=None,
         description="详细推理过程.需包含识别到的新证据、新旧告警关联逻辑以及搜索工具返回的情报如何辅助了判断."
     )
-    current_attack_stage: str | None = Field(
+    attack_stage: str | None = Field(
         default=None,
         description="参考 MITRE ATT&CK 战术名称,必须是字符串(如：'T1059 - Command and Control', 'Lateral Movement')."
     )
@@ -97,8 +81,8 @@ class Playbook(LanggraphPlaybook):
 
     def init(self):
         def preprocess_node(state: AgentState):
-            case = Case.get_ai_friendly_data(self.param_source_rowid)
-            content = f"Current Case Data (includes latest alert): {json.dumps(case)}"
+            case = Case.get(self.param_source_rowid)
+            content = f"Current Case Data (includes latest alert): {json.dumps(case.model_dump_for_ai())}"
             return {"case": case, "messages": [HumanMessage(content=content)]}
 
         def analyze_node(state: AgentState):
@@ -145,14 +129,14 @@ class Playbook(LanggraphPlaybook):
             result_data = analyze_call["args"]
             analyze_result = AnalyzeResult(**result_data)
 
-            case_field = [
-                {"id": "severity", "value": analyze_result.new_severity},
-                {"id": "confidence_ai", "value": analyze_result.confidence},
-                {"id": "analysis_rationale_ai", "value": analyze_result.analysis_rationale},
-                {"id": "attack_stage_ai", "value": analyze_result.current_attack_stage},
-                {"id": "recommended_actions_ai", "value": analyze_result.recommended_actions},
-            ]
-            Case.update(self.param_source_rowid, case_field)
+            case_new = CaseModel(rowid=self.param_source_rowid,
+                                 severity_ai=analyze_result.new_severity,
+                                 confidence_ai=analyze_result.confidence,
+                                 analysis_rationale_ai=analyze_result.attack_stage,
+                                 attack_stage_ai=analyze_result.attack_stage,
+                                 recommended_actions_ai=analyze_result.recommended_actions,
+                                 )
+            Case.update(case_new)
 
             self.send_notice("Case_L3_SOC_Analyst_Agent Finish", f"rowid:{self.param_source_rowid}")
             self.update_playbook_status(PlaybookJobStatus.SUCCESS, "SOC analysis completed with potential tool-assisted enrichment.")
@@ -188,7 +172,13 @@ class Playbook(LanggraphPlaybook):
 
 
 if __name__ == "__main__":
-    params_debug = {'source_rowid': 'f0189cf8-44af-4c46-90c7-988a159bb34c', 'source_worksheet': 'case'}
+    import os
+    import django
+
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
+    django.setup()
+    model = PlaybookModel(source_worksheet='case', source_rowid='141a4bd0-f3cf-4e0c-91b6-f8d9fff6f653')
     module = Playbook()
-    # module._params = params_debug
+    module._playbook_model = model
+
     module.run()
