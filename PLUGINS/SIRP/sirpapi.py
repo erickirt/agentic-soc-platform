@@ -2,6 +2,7 @@ from typing import List, Dict, Union
 
 import requests
 
+from Lib.log import logger
 from PLUGINS.SIRP.CONFIG import SIRP_NOTICE_WEBHOOK
 from PLUGINS.SIRP.nocolymodel import AccountModel, Condition, Group, Operator
 from PLUGINS.SIRP.sirpbase import BaseWorksheetEntity
@@ -117,12 +118,18 @@ class Case(BaseWorksheetEntity[CaseModel]):
     @classmethod
     def get_ai_friendly_data(cls, rowid: str) -> Dict:
         """获取LLM友好的原始数据"""
-        model = cls.get(rowid, include_system_fields=True)
+        model: CaseModel = cls.get(rowid, include_system_fields=True)
 
-        # TODO : 这里可以根据需要添加清理的字段
+        # 这里可以根据需要添加清理AI不需要的字段
+        model.workbook = None
+        model.analysis_rationale_ai = None
+        model.recommended_actions_ai = None
+        model.attack_stage_ai = None
+        model.severity_ai = None
+        model.confidence_ai = None
         model.threat_hunting_report_ai = None
 
-        data = model.model_dump(mode='json', exclude_unset=True, exclude_none=True, exclude_defaults=True)
+        data = model.model_dump(mode='json', exclude_unset=True, exclude_none=True, exclude_defaults=True, exclude={"threat_hunting_report_ai", })
         return data
 
 
@@ -204,8 +211,8 @@ class Notice(object):
         elif isinstance(user, list):
             users = user
         else:
-            raise ValueError("user 参数必须是 AccountModel 实例或 AccountModel 实例列表")
-
+            logger.error("user 参数必须是 AccountModel 实例或 AccountModel 实例列表")
+            return False
         for user in users:
             result = requests.post(SIRP_NOTICE_WEBHOOK, json={"title": title, "body": body, "user": user.fullname})
         return True

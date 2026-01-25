@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import List, Optional, Any, Union
+from typing import List, Optional, Any, Union, ClassVar
 
 from pydantic import BaseModel, Field, field_validator, ConfigDict, field_serializer
 
@@ -125,7 +125,7 @@ class ArtifactReputationScore(StrEnum):
     OTHER = 'Other'
 
 
-class SeverityLevel(StrEnum):
+class Severity(StrEnum):
     UNKNOWN = "Unknown"
     INFORMATIONAL = "Informational"
     LOW = "Low"
@@ -186,7 +186,7 @@ class AlertAction(StrEnum):
     OTHER = "Other"
 
 
-class ConfidenceLevel(StrEnum):
+class Confidence(StrEnum):
     UNKNOWN = "Unknown"
     LOW = "Low"
     MEDIUM = "Medium"
@@ -312,9 +312,11 @@ class KnowledgeAction(StrEnum):
 class BaseSystemModel(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
+    ai_exclude_fields: ClassVar[set[str]] = set()
+
     rowid: Optional[str] = Field(default=None, description="数据的唯一行ID")
-    ownerid: Optional[Union[List[AccountModel], AccountModel]] = Field(default=None, description="数据的所有者/创建者")
-    caid: Optional[AccountModel] = Field(default=None, description="当前处理人/负责人")
+    ownerid: Optional[AccountModel] = Field(default=None, description="数据的所有者")
+    caid: Optional[AccountModel] = Field(default=None, description="创建人")
     ctime: Optional[Union[datetime, str]] = Field(default=None, description="创建时间")
     utime: Optional[Union[datetime, str]] = Field(default=None, description="最后更新时间")
     uaid: Optional[AccountModel] = Field(default=None, description="最后更新人")
@@ -356,6 +358,42 @@ class BaseSystemModel(BaseModel):
             return v.strftime("%Y-%m-%dT%H:%M:%SZ")
         return v
 
+    def model_dump_for_ai(self) -> dict[str, Any]:
+        """
+        递归序列化模型为 AI 友好的字典格式。
+        在序列化前处理嵌套对象，确保每层都能应用自己的 ai_exclude_fields。
+        """
+        result = {}
+        for field_name, field_value in self.__dict__.items():
+            if field_name in self.ai_exclude_fields:
+                continue
+            result[field_name] = self._process_value_before_dump(field_value)
+        return result
+
+    def _process_value_before_dump(self, value: Any) -> Any:
+        """
+        在序列化前处理值，支持递归调用嵌套模型的 model_dump_for_ai()。
+        """
+        if isinstance(value, BaseSystemModel):
+            return value.model_dump_for_ai()
+        elif isinstance(value, list):
+            return [self._process_value_before_dump(item) for item in value]
+        elif isinstance(value, dict):
+            return {k: self._process_value_before_dump(v) for k, v in value.items()}
+        else:
+            return self._serialize_value(value)
+
+    def _serialize_value(self, value: Any) -> Any:
+        """
+        序列化特殊类型的值（datetime、枚举等）。
+        """
+        if isinstance(value, datetime):
+            return value.strftime("%Y-%m-%dT%H:%M:%SZ")
+        elif isinstance(value, StrEnum):
+            return value.value
+        else:
+            return value
+
 
 class MessageModel(BaseSystemModel):
     playbook: Optional[List[Union[PlaybookModel, str]]] = Field(default="", description="所属Playbook的唯一行ID")
@@ -376,7 +414,7 @@ class PlaybookModel(BaseSystemModel):
     name: Optional[str] = Field(default="", description="执行的Playbook的名称")
 
     user_input: Optional[str] = Field(default="", description="用户对Playbook的初始输入或后续指令")
-    user: Optional[List[AccountModel]] = Field(default=None, description="发起Playbook的用户")
+    user: Optional[Union[List[AccountModel], AccountModel, str]] = Field(default=None, description="发起Playbook的用户")
 
     # 关联表
     messages: Optional[List[Union[MessageModel, str]]] = Field(default=None, description="Playbook执行过程中的所有消息记录，构成对话历史")
@@ -392,6 +430,8 @@ class KnowledgeModel(BaseSystemModel):
 
 
 class EnrichmentModel(BaseSystemModel):
+    ai_exclude_fields: ClassVar[set[str]] = {'ownerid', 'caid', 'uaid'}
+
     name: Optional[str] = Field(default="", description="富化信息的名称或标题")
     type: Optional[str] = Field(default="Other", description="富化信息的类型", json_schema_extra={"type": 2})
     provider: Optional[str] = Field(default="Other", description="富化信息的提供方，例如威胁情报厂商", json_schema_extra={"type": 2})
@@ -402,6 +442,8 @@ class EnrichmentModel(BaseSystemModel):
 
 
 class TicketModel(BaseSystemModel):
+    ai_exclude_fields: ClassVar[set[str]] = {'ownerid', 'caid', 'uaid'}
+
     status: Optional[TicketStatus] = Field(
         default=None, description="外部工单系统中的状态")
     type: Optional[TicketType] = Field(default=None, description="外部工单系统的类型",
@@ -412,6 +454,8 @@ class TicketModel(BaseSystemModel):
 
 
 class ArtifactModel(BaseSystemModel):
+    ai_exclude_fields: ClassVar[set[str]] = {'ownerid', 'caid', 'uaid'}
+
     name: Optional[str] = Field(default="", description="实体（Artifact）的名称，通常与值相同或为其描述")
     type: Optional[ArtifactType] = Field(
         default=None, description="实体的类型, 例如: IP地址, 主机名, 文件哈希等")
@@ -432,16 +476,18 @@ class ArtifactModel(BaseSystemModel):
 
 
 class AlertModel(BaseSystemModel):
-    severity: Optional[SeverityLevel] = Field(default=None,
-                                              description="告警的严重性，由源安全产品定义")
+    ai_exclude_fields: ClassVar[set[str]] = {'ownerid', 'caid', 'uaid', "summary_ai", "case"}
+
+    severity: Optional[Severity] = Field(default=None,
+                                         description="告警的严重性，由源安全产品定义")
     title: Optional[str] = Field(default="", description="告警的标题")
     impact: Optional[ImpactLevel] = Field(default=None, description="告警可能造成的影响范围")
     disposition: Optional[AlertDisposition] = Field(
         default=None, description="安全产品对该活动的处置结果, 如'Blocked', 'Allowed等")
     action: Optional[AlertAction] = Field(default=None,
                                           description="检测到的原始行为, 如'Allowed', 'Denied等")
-    confidence: Optional[ConfidenceLevel] = Field(default=None,
-                                                  description="告警的置信度，表示该告警为真阳性的可能性")
+    confidence: Optional[Confidence] = Field(default=None,
+                                             description="告警的置信度，表示该告警为真阳性的可能性")
     uid: Optional[str] = Field(default="", description="告警的唯一标识符")
     labels: Optional[List[str]] = Field(default=[], description="为告警打上的标签", json_schema_extra={"type": 2})
     desc: Optional[str] = Field(default="", description="对告警的详细描述")
@@ -510,13 +556,17 @@ class AlertModel(BaseSystemModel):
 
 
 class CaseModel(BaseSystemModel):
+    ai_exclude_fields: ClassVar[set[str]] = {'ownerid', 'caid', 'uaid', "workbook", "analysis_rationale_ai", "recommended_actions_ai", "attack_stage_ai",
+                                             "severity_ai", "confidence_ai",
+                                             "threat_hunting_report_ai"}
+
     title: Optional[str] = Field(default="", description="安全事件的标题, 应能简明扼要地概括事件的核心内容")
-    severity: Optional[SeverityLevel] = Field(default=None,
-                                              description="由分析师评估或重新定义的事件严重性")
+    severity: Optional[Severity] = Field(default=None,
+                                         description="由分析师评估或重新定义的事件严重性")
     impact: Optional[ImpactLevel] = Field(default=None, description="由分析师评估的事件实际影响")
     priority: Optional[CasePriority] = Field(default=None, description="事件的处置优先级")
     src_url: Optional[str] = Field(default="", description="在源系统中查看此事件的URL")
-    confidence: Optional[ConfidenceLevel] = Field(default=None, description="由分析师评估的事件置信度")
+    confidence: Optional[Confidence] = Field(default=None, description="由分析师评估的事件置信度")
     description: Optional[str] = Field(default="", description="对安全事件的详细描述")
 
     category: Optional[ProductCategory] = Field(default=None,
@@ -525,13 +575,13 @@ class CaseModel(BaseSystemModel):
 
     status: Optional[CaseStatus] = Field(default=None,
                                          description="安全事件的处理状态")
-    assignee_l1: Optional[AccountModel] = Field(default=None, description="分配给L1一线分析师")
+    assignee_l1: Optional[Union[List[AccountModel], AccountModel, str]] = Field(default=None, description="分配给L1一线分析师")
     acknowledged_time: Optional[Union[datetime, str]] = Field(default=None, description="L1分析师首次确认接收事件的时间")
     comment: Optional[str] = Field(default="", description="分析师对整个事件的评论或处置记录")
-    attachments: Optional[List[Union[AttachmentModel, str]]] = Field(default=[], description="与事件相关的附件列表")
+    attachments: Optional[Union[List[AttachmentModel], str]] = Field(default=[], description="与事件相关的附件列表")
 
-    assignee_l2: Optional[AccountModel] = Field(default=None, description="分配或升级给L2二线分析师")
-    assignee_l3: Optional[AccountModel] = Field(default=None, description="分配或升级给L3专家分析师")
+    assignee_l2: Optional[Union[List[AccountModel], AccountModel, str]] = Field(default=None, description="分配或升级给L2二线分析师")
+    assignee_l3: Optional[Union[List[AccountModel], AccountModel, str]] = Field(default=None, description="分配或升级给L3专家分析师")
     closed_time: Optional[Union[datetime, str]] = Field(default=None, description="事件关闭的时间")
     verdict: Optional[CaseVerdict] = Field(
         default=None, description="对事件的最终裁定结论")
@@ -545,9 +595,9 @@ class CaseModel(BaseSystemModel):
     analysis_rationale_ai: Optional[str] = Field(default="", description="AI对事件的分析基本原理和逻辑")
     recommended_actions_ai: Optional[str] = Field(default="", description="AI推荐的下一步操作或修复建议")
     attack_stage_ai: Optional[str] = Field(default="", description="AI评估的攻击阶段")
-    severity_ai: Optional[SeverityLevel] = Field(default=None,
-                                                 description="AI评估的事件严重性")
-    confidence_ai: Optional[ConfidenceLevel] = Field(default=None, description="AI评估的事件置信度")
+    severity_ai: Optional[Severity] = Field(default=None,
+                                            description="AI评估的事件严重性")
+    confidence_ai: Optional[Confidence] = Field(default=None, description="AI评估的事件置信度")
 
     threat_hunting_report_ai: Optional[str] = Field(default="", description="AI生成的与此事件相关的威胁狩猎报告")
 

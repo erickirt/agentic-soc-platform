@@ -1,5 +1,4 @@
 import json
-from enum import Enum
 from typing import Any
 
 from langchain_core.messages import HumanMessage
@@ -11,23 +10,8 @@ from Lib.baseplaybook import LanggraphPlaybook
 from Lib.llmapi import AgentState
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.sirpapi import Case
-from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus
-
-
-class ConfidenceLevel(str, Enum):
-    """Confidence Level"""
-    LOW = "Low"
-    MEDIUM = "Medium"
-    HIGH = "High"
-
-
-class Severity(str, Enum):
-    """Severity Level"""
-    INFO = "Info"
-    LOW = "Low"
-    MEDIUM = "Medium"
-    HIGH = "High"
-    CRITICAL = "Critical"
+from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus, PlaybookModel, CaseModel
+from PLUGINS.SIRP.sirpmodel import Severity, Confidence
 
 
 class AnalyzeResult(BaseModel):
@@ -37,9 +21,9 @@ class AnalyzeResult(BaseModel):
 
     original_severity: Severity = Field(description="Original alert severity")
     new_severity: Severity = Field(description="Recommended new severity level")
-    confidence: ConfidenceLevel = Field(description="Confidence score, only one of 'Low', 'Medium', or 'High'")
+    confidence: Confidence = Field(description="Confidence score, only one of 'Low', 'Medium', or 'High'")
     analysis_rationale: str | None = Field(description="Analysis process and reasons", default=None)
-    current_attack_stage: str | dict[str, Any] | None = Field(description="e.g., 'T1059 - Command and Control', 'Lateral Movement'", default=None)
+    attack_stage: str | dict[str, Any] | None = Field(description="e.g., 'T1059 - Command and Control', 'Lateral Movement'", default=None)
     recommended_actions: str | dict[str, Any] | None = Field(description="e.g., 'Isolate host 10.1.1.5'", default=None)
 
 
@@ -54,9 +38,8 @@ class Playbook(LanggraphPlaybook):
     def init(self):
         def preprocess_node(state: AgentState):
             """Preprocess data"""
-            case = Case.get_ai_friendly_data(self.param_source_rowid)
-            state.case = case
-            return state
+            case = Case.get(self.param_source_rowid)
+            return {"case": case}
 
         # Define node
         def analyze_node(state: AgentState):
@@ -80,30 +63,27 @@ class Playbook(LanggraphPlaybook):
             messages = [
                 system_message,
                 *few_shot_examples,
-                HumanMessage(content=json.dumps(state.case))
+                HumanMessage(content=json.dumps(state.case.model_dump_for_ai()))
             ]
             llm = llm.with_structured_output(AnalyzeResult)
             response: AnalyzeResult = llm.invoke(messages)
-            state.analyze_result = response.model_dump()
-
-            # response = llm.invoke(messages)
-            # response = LLMAPI.extract_think(response)  # Temporary solution for langchain chatollama bug
-            # state.analyze_result = json.loads(response.content)
-            return state
+            analyze_result = response.model_dump()
+            self.logger.debug(f"Analyze result: {response.model_dump()}")
+            return {"analyze_result": analyze_result}
 
         def output_node(state: AgentState):
             """Process analysis results"""
 
             analyze_result: AnalyzeResult = AnalyzeResult(**state.analyze_result)
 
-            case_field = [
-                {"id": "severity", "value": analyze_result.new_severity},
-                {"id": "confidence_ai", "value": analyze_result.confidence},
-                {"id": "analysis_rationale_ai", "value": analyze_result.analysis_rationale},
-                {"id": "attack_stage_ai", "value": analyze_result.current_attack_stage},
-                {"id": "recommended_actions_ai", "value": analyze_result.recommended_actions},
-            ]
-            Case.update(self.param_source_rowid, case_field)
+            case_new = CaseModel(rowid=self.param_source_rowid,
+                                 severity_ai=analyze_result.new_severity,
+                                 confidence_ai=analyze_result.confidence,
+                                 analysis_rationale_ai=analyze_result.analysis_rationale,
+                                 attack_stage_ai=analyze_result.attack_stage,
+                                 recommended_actions_ai=analyze_result.recommended_actions,
+                                 )
+            Case.update(case_new)
 
             self.send_notice("Case_L3_SOC_Analyst_Agent Finish", f"rowid:{self.param_source_rowid}")
             self.update_playbook_status(PlaybookJobStatus.SUCCESS, "Get suggestion by ai agent completed.")
@@ -130,7 +110,13 @@ class Playbook(LanggraphPlaybook):
 
 
 if __name__ == "__main__":
-    params_debug = {'source_rowid': '47da1d00-c9bf-4b5f-8ab8-8877ec292b98', 'source_worksheet': 'case'}
+    import os
+    import django
+
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
+    django.setup()
+    model = PlaybookModel(source_worksheet='case', source_rowid='141a4bd0-f3cf-4e0c-91b6-f8d9fff6f653')
     module = Playbook()
-    # module._params = params_debug
+    module._playbook_model = model
+
     module.run()

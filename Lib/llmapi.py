@@ -5,13 +5,14 @@ from langgraph.graph import add_messages
 from pydantic import BaseModel
 
 from Lib.log import logger
+from PLUGINS.SIRP.sirpmodel import CaseModel, AlertModel, ArtifactModel
 
 
 class AgentState(BaseModel):
     messages: Annotated[List[Any], add_messages] = []
-    case: Dict[str, Any] = {}
-    alert: Dict[str, Any] = {}
-    artifact: Dict[str, Any] = {}
+    case: CaseModel = None
+    alert: AlertModel = None
+    artifact: ArtifactModel = None
     temp_data: Dict[str, Any] = {}
     analyze_result: Dict[str, Any] = {}
 
