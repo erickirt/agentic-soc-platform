@@ -18,7 +18,7 @@ mail_records = [
             "html": "<html><body><p>Hello Valued Customer,</p><p>Good news! Your <b>Amazon order #872934</b> has shipped and is scheduled to arrive on <b>2025-11-08</b>.</p><p>Tracking Number: 456789123456</p><p>Carrier: FedEx</p><p>Track your package here:<br><a href='https://www.amazon.com/gp/your-account/order-details/tracking-link?orderId=872934'>Track Your Package</a></p><p>Thank you for shopping with us.</p><p>Amazon Customer Service</p></body></html>"
         },
         "attachments": [],
-        "malicious": False,
+
     },
     {
         "headers": {
@@ -34,7 +34,7 @@ mail_records = [
             "html": "<html><body><p>Someone just signed in to your Google Account user@example.com from Chrome on Windows. If this was you, you can safely ignore this email.</p><p>If you don't recognize this activity, review your account security immediately:<br><a href='https://myaccount.google.com/notifications/chgsec/review-activity?id=1234567890'>Review Activity</a></p><p>Google Accounts Team</p></body></html>"
         },
         "attachments": [],
-        "malicious": False,
+
     },
     {
         "headers": {
@@ -50,7 +50,7 @@ mail_records = [
             "html": "<html><body><p>Your Weekly Dose of Knowledge.</p><p><b>Featured Article:</b> The Rise of LLMs and Their Impact on Software Engineering</p><p><a href='https://medium.com/p/llms-impact-on-se/2839458'>Read Now</a></p><p>See all featured stories on Medium:<br><a href='https://medium.com/home/digest'>Visit Medium</a></p></body></html>"
         },
         "attachments": [],
-        "malicious": False,
+
     },
     {
         "headers": {
@@ -72,7 +72,7 @@ mail_records = [
                 "content_type": "application/pdf"
             }
         ],
-        "malicious": False,
+
     },
     {
         "headers": {
@@ -88,7 +88,7 @@ mail_records = [
             "html": "<html><body><p>Dear user@example.com,</p><p>You requested a password reset for your Apple ID. Click the link below to continue the process.</p><p><a href='https://iforgot.apple.com/password/verify/session/123xyz456'>Reset Your Password</a></p><p>If you did <b>NOT</b> request this password reset, you can safely ignore this email. Your password will remain the same.</p><p>Apple Support</p></body></html>"
         },
         "attachments": [],
-        "malicious": False,
+
     },
     {
         "headers": {
@@ -104,7 +104,7 @@ mail_records = [
             "html": "<html><body><p>Dear Customers,</p><p>We will be performing scheduled maintenance on our API gateway during the following window:</p><ul><li><b>Start:</b> Saturday, November 8, 2025, 01:00 AM UTC</li><li><b>End:</b> Saturday, November 8, 2025, 03:00 AM UTC</li></ul><p>Expected Impact: Minor delays in API responses.</p><p>Thank you for your understanding.</p><p>Cloud Services Team</p></body></html>"
         },
         "attachments": [],
-        "malicious": False,
+
     },
     {
         "headers": {
@@ -120,7 +120,7 @@ mail_records = [
             "html": "<html><body><p>Hi user,</p><p>Welcome to the world's leading software development platform. We're excited to have you!</p><p>Here are your first steps:</p><ol><li><a href='https://github.com/new'>Create a Repository</a></li><li><a href='https://docs.github.com'>Explore Documentation</a></li></ol><p>Happy coding!</p><p>The GitHub Team</p></body></html>"
         },
         "attachments": [],
-        "malicious": False,
+
     },
     {
         "headers": {
@@ -142,7 +142,7 @@ mail_records = [
                 "content_type": "text/calendar"
             }
         ],
-        "malicious": False,
+
     },
     {
         "headers": {
@@ -158,7 +158,7 @@ mail_records = [
             "html": "<html><body><p>Stay productive with the latest updates from Microsoft 365.</p><p>Feature Spotlight: <b>Real-time co-authoring in Excel</b> is now generally available.</p><p><a href='https://support.microsoft.com/en-us/office/whats-new-in-microsoft-365'>Read the full update here</a></p><p>Unsubscribe link: <a href='https://preferences.microsoft.com/unsubscribe/12345'>Unsubscribe</a></p></body></html>"
         },
         "attachments": [],
-        "malicious": False,
+
     },
     {
         "headers": {
@@ -174,7 +174,7 @@ mail_records = [
             "html": "<html><body><p>Hi,</p><p>Your monthly payment of <b>$19.99</b> for your Spotify Family plan has been successfully processed.</p><p>Next billing date: December 5, 2025</p><p>Manage your subscription or view receipts:<br><a href='https://www.spotify.com/account/subscription/receipts'>Go to Account</a></p><p>Thanks for being a subscriber!</p></body></html>"
         },
         "attachments": [],
-        "malicious": False,
+
     },
     # ----------------------------------------------------
     # B. 恶意邮件记录 (11-20) - malicious: True (抽象化/夸大特征)
@@ -199,7 +199,7 @@ mail_records = [
                 "content_type": "application/zip"
             }
         ],
-        "malicious": True,
+
     },
     {
         "headers": {
@@ -215,7 +215,7 @@ mail_records = [
             "html": "<html><body><p>Warning: Our records indicate your email address has not been verified in the last 6 months. To avoid <b>immediate account deletion</b> and loss of all data, you must click the link below.</p><p>Verification Deadline: 12 hours.</p><p><a href='http://update-login-required.com/verify/login.php?user=example'>Verify Your Account Now</a></p></body></html>"
         },
         "attachments": [],
-        "malicious": True,
+
     },
     {
         "headers": {
@@ -237,7 +237,7 @@ mail_records = [
                 "content_type": "text/html"
             }
         ],
-        "malicious": True,
+
     },
     {
         "headers": {
@@ -259,7 +259,7 @@ mail_records = [
                 "content_type": "application/javascript"
             }
         ],
-        "malicious": True,
+
     },
     {
         "headers": {
@@ -275,7 +275,7 @@ mail_records = [
             "html": "<html><body><p>Dear user@example.com,</p><p>Your mailbox storage is <b>99% full</b>. Incoming mail will be rejected shortly.</p><p>To increase your storage limit immediately, please log in and confirm your details here:<br><a href='http://mailbox-upgrade-secure.xyz/login/upgrade'>Log in and Upgrade Storage</a></p></body></html>"
         },
         "attachments": [],
-        "malicious": True,
+
     },
     {
         "headers": {
@@ -297,7 +297,7 @@ mail_records = [
                 "content_type": "application/vnd.ms-word.document.macroenabled.12"
             }
         ],
-        "malicious": True,
+
     },
     {
         "headers": {
@@ -319,7 +319,7 @@ mail_records = [
                 "content_type": "application/x-msdownload"
             }
         ],
-        "malicious": True,
+
     },
     {
         "headers": {
@@ -335,7 +335,7 @@ mail_records = [
             "html": "<html><body><p>We were unable to process your payment for your monthly subscription. Your service is now <b>suspended</b>.</p><p>To restore your service and avoid cancellation, please update your payment information here immediately:<br><a href='http://payment-update-portal.com/update-billing?user=example'>Update Payment Information</a></p><p>Failure to update within 24 hours will lead to permanent account cancellation.</p></body></html>"
         },
         "attachments": [],
-        "malicious": True,
+
     },
     {
         "headers": {
@@ -351,7 +351,7 @@ mail_records = [
             "html": "<html><body><p>We have detected sign-in attempts from a location outside your usual login area. For your protection, your access has been <b>temporarily restricted</b>.</p><p>To lift the restriction and confirm your identity, click the link provided:<br><a href='http://secure-login-portal.net/check-account/access-restricted'>Confirm Your Identity</a></p><p>If this was not you, please change your password via the link immediately.</p></body></html>"
         },
         "attachments": [],
-        "malicious": True,
+
     },
     {
         "headers": {
@@ -373,7 +373,7 @@ mail_records = [
                 "content_type": "application/x-msdownload"
             }
         ],
-        "malicious": True,
+
     },
     {
         "headers": {
@@ -395,10 +395,10 @@ mail_records = [
                 "content_type": "text/html"
             }
         ],
-        "malicious": True,
+
     }
 ]
 if __name__ == "__main__":
     redis_stream_api = RedisStreamAPI()
     for mail in mail_records:
-        redis_stream_api.send_message("ES-Rule-22-Phishing_user_report_mail", mail)
+        redis_stream_api.send_message("ES-Rule-21-Phishing-User-Report-Mail", mail)

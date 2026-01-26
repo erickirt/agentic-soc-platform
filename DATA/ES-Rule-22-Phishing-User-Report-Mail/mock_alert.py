@@ -401,4 +401,4 @@ mail_records = [
 if __name__ == "__main__":
     redis_stream_api = RedisStreamAPI()
     for mail in mail_records:
-        redis_stream_api.send_message("ES-Rule-21-Phishing_user_report_mail", mail)
+        redis_stream_api.send_message("ES-Rule-22-Phishing-User-Report-Mail", mail)

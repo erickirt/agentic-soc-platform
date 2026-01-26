@@ -136,10 +136,10 @@ class WorksheetRow(object):
         return fields_new
 
     @staticmethod
-    def translate_filter_names_to_ids(filter_data, fields_config):
+    def _translate_filter_names_to_ids(filter_data, fields_config):
         if filter_data.get("type") == "group":
             for child in filter_data.get("children", []):
-                WorksheetRow.translate_filter_names_to_ids(child, fields_config)
+                WorksheetRow._translate_filter_names_to_ids(child, fields_config)
 
         elif filter_data.get("type") == "condition":
             if filter_data.get("operator") == "in" and isinstance(filter_data.get("value"), list):
@@ -182,7 +182,7 @@ class WorksheetRow(object):
         page_index = 1
         page_size = 1000
         fields_config = Worksheet.get_fields(worksheet_id)
-        WorksheetRow.translate_filter_names_to_ids(filter, fields_config)
+        WorksheetRow._translate_filter_names_to_ids(filter, fields_config)
         while True:
             data = {
                 "filter": filter,

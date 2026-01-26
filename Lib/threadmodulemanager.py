@@ -63,10 +63,12 @@ class ThreadModuleManager:
             result = task_obj.execute()
             thread_info.result = result
             thread_info.status = ThreadStatus.COMPLETED
+            logger.info(f"[Thread {thread_id}] Task completed successfully.")
         except Exception as e:
             thread_info.exception = e
             thread_info.status = ThreadStatus.FAILED
             self._exception_handler(thread_id, e)
+            logger.error(f"[Thread {thread_id}] Task failed with exception.")
         finally:
             thread_info.end_time = time.time()
 

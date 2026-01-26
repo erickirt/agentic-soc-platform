@@ -108,15 +108,15 @@ class RedisStreamAPI(object):
 
     def read_stream_from_start(self, stream_key, start_id='0-0'):
         """
-        从指定 Stream 的开头重复读取消息.
-        :param topic: Stream 的名称.
-        :param count: 要读取的消息数量.
+        从指定位置一次性读取一条消息（非阻塞）.
+        :param stream_key: Stream 的名称.
+        :param start_id: 开始读取的消息ID，默认从头开始.
         """
 
         try:
             messages = self.redis_client.xread(
                 count=1,
-                block=0,
+                block=None,
                 streams={stream_key: start_id}
             )
 
