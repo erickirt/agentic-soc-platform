@@ -13,7 +13,7 @@ from langgraph.graph.state import CompiledStateGraph
 from pydantic import BaseModel
 
 from Lib.baseapi import BaseAPI
-from Lib.llmapi import AgentState
+from Lib.llmapi import BaseAgentState
 from Lib.log import logger
 from PLUGINS.SIRP.sirpapi import Message
 from PLUGINS.SIRP.sirpapi import Playbook, Notice
@@ -116,7 +116,7 @@ class LanggraphPlaybook(BasePlaybook):
         config = RunnableConfig()
         config["configurable"] = {"thread_id": self.module_name}
         if self.agent_state is None:
-            self.agent_state = AgentState()
+            self.agent_state = BaseAgentState()
         for event in self.graph.stream(self.agent_state, config, stream_mode="values"):
             self.logger.debug(event)
 

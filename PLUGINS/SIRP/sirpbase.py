@@ -158,7 +158,8 @@ class BaseWorksheetEntity(ABC, Generic[T]):
         Returns:
             新创建的记录ID
         """
-
+        model = cls._prepare_for_save(model)
+        
         fields = model_to_fields(model)
         rowid = WorksheetRow.create(cls.WORKSHEET_ID, fields)
         return rowid

@@ -1,4 +1,3 @@
-import json
 from typing import Annotated, Any, Dict, List
 
 from langchain_core.messages import HumanMessage
@@ -103,7 +102,7 @@ class Playbook(LanggraphPlaybook):
     def init(self):
         def preprocess_node(state: AgentState):
             case = Case.get(self.param_source_rowid)
-            content = f"Current Case Data (includes latest alert): {json.dumps(case.model_dump_for_ai())}"
+            content = f"Current Case Data (includes latest alert): {case.model_dump_json_for_ai()}"
             return {"case": case, "messages": [HumanMessage(content=content)]}
 
         def analyze_node(state: AgentState):

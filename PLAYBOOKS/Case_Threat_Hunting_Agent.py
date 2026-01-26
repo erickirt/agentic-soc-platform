@@ -355,7 +355,8 @@ class Playbook(LanggraphPlaybook):
             system_prompt_template = self.load_system_prompt_template("Intent_System", lang=PROMPT_LANG)
             system_message = system_prompt_template.format()
 
-            human_message = self.load_human_prompt_template("Intent_Human", lang=PROMPT_LANG).format(case=case.model_dump_for_ai(), user_intent=user_intent)
+            human_message = self.load_human_prompt_template("Intent_Human", lang=PROMPT_LANG).format(case=case.model_dump_json_for_ai(),
+                                                                                                     user_intent=user_intent)
 
             # Construct few-shot examples
             few_shot_examples = [

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from enum import StrEnum
 from typing import List, Optional, Any, Union, ClassVar
@@ -358,28 +359,118 @@ class BaseSystemModel(BaseModel):
             return v.strftime("%Y-%m-%dT%H:%M:%SZ")
         return v
 
-    def model_dump_for_ai(self) -> dict[str, Any]:
+    def model_dump_json_for_ai(
+            self,
+            *,
+            exclude_none: bool = True,
+            exclude_unset: bool = True,
+            exclude_default: bool = True,
+    ) -> str:
+        """
+        递归序列化模型为 AI 友好的 JSON 字符串格式。
+        在序列化前处理嵌套对象，确保每层都能应用自己的 ai_exclude_fields。
+
+        Args:
+            exclude_none: 是否排除值为None的字段
+            exclude_unset: 是否排除未被显式设置的字段
+            exclude_default: 是否排除值为默认值的字段
+        """
+        dict_representation = self.model_dump_for_ai(
+            exclude_none=exclude_none,
+            exclude_unset=exclude_unset,
+            exclude_default=exclude_default
+        )
+
+        return json.dumps(dict_representation, ensure_ascii=False)
+
+    def model_dump_for_ai(
+            self,
+            *,
+            exclude_none: bool = True,
+            exclude_unset: bool = True,
+            exclude_default: bool = True,
+    ) -> dict[str, Any]:
         """
         递归序列化模型为 AI 友好的字典格式。
         在序列化前处理嵌套对象，确保每层都能应用自己的 ai_exclude_fields。
+
+        Args:
+            exclude_none: 是否排除值为None的字段
+            exclude_unset: 是否排除未被显式设置的字段
+            exclude_default: 是否排除值为默认值的字段
         """
         result = {}
+        fields_set = self.__pydantic_fields_set__ if hasattr(self, '__pydantic_fields_set__') else set()
+
         for field_name, field_value in self.__dict__.items():
             if field_name in self.ai_exclude_fields:
                 continue
-            result[field_name] = self._process_value_before_dump(field_value)
+
+            if self._should_exclude_field(
+                    field_name, field_value, fields_set, exclude_none, exclude_unset, exclude_default
+            ):
+                continue
+
+            result[field_name] = self._process_value_before_dump(
+                field_value, exclude_none, exclude_unset, exclude_default
+            )
+
         return result
 
-    def _process_value_before_dump(self, value: Any) -> Any:
+    def _should_exclude_field(
+            self,
+            field_name: str,
+            field_value: Any,
+            fields_set: set,
+            exclude_none: bool,
+            exclude_unset: bool,
+            exclude_default: bool
+    ) -> bool:
         """
-        在序列化前处理值，支持递归调用嵌套模型的 model_dump_for_ai()。
+        判断是否应该排除该字段。
+        """
+        if exclude_none and field_value is None:
+            return True
+
+        if exclude_unset and field_name not in fields_set:
+            return True
+
+        if exclude_default:
+            model_fields = self.model_fields
+            if field_name in model_fields:
+                field_info = model_fields[field_name]
+                default_value = field_info.default
+                if default_value is not None and field_value == default_value:
+                    return True
+
+        return False
+
+    def _process_value_before_dump(
+            self,
+            value: Any,
+            exclude_none: bool = False,
+            exclude_unset: bool = False,
+            exclude_default: bool = False
+    ) -> Any:
+        """
+        在序列化前处理值，支持递归调用嵌套模型的 model_dump_json_for_ai()。
         """
         if isinstance(value, BaseSystemModel):
-            return value.model_dump_for_ai()
+            return value.model_dump_for_ai(
+                exclude_none=exclude_none,
+                exclude_unset=exclude_unset,
+                exclude_default=exclude_default
+            )
         elif isinstance(value, list):
-            return [self._process_value_before_dump(item) for item in value]
+            return [
+                self._process_value_before_dump(item, exclude_none, exclude_unset, exclude_default)
+                for item in value
+            ]
         elif isinstance(value, dict):
-            return {k: self._process_value_before_dump(v) for k, v in value.items()}
+            return {
+                k: self._process_value_before_dump(v, exclude_none, exclude_unset, exclude_default)
+                for k, v in value.items()
+            }
         else:
             return self._serialize_value(value)
 

@@ -4,7 +4,7 @@ from langgraph.graph.state import CompiledStateGraph
 
 from Lib.baseapi import BaseAPI
 from Lib.configs import REDIS_CONSUMER_GROUP
-from Lib.llmapi import AgentState
+from Lib.llmapi import BaseAgentState
 from PLUGINS.Redis.redis_stream_api import RedisStreamAPI
 
 
@@ -43,7 +43,7 @@ class LanggraphModule(BaseModule):
         config = RunnableConfig()
         config["configurable"] = {"thread_id": self.module_name}
         if self.agent_state is None:
-            self.agent_state = AgentState()
+            self.agent_state = BaseAgentState()
         for event in self.graph.stream(self.agent_state, config, stream_mode="values"):
             self.logger.debug(event)
         self.logger.debug(f"{self.module_name} finished processing.")

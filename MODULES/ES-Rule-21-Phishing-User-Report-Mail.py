@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from Lib.api import string_to_string_time, get_current_time_str
 from Lib.basemodule import LanggraphModule
-from Lib.llmapi import AgentState
+from Lib.llmapi import BaseAgentState
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.sirpapi import Alert
 from PLUGINS.SIRP.sirpmodel import AlertModel, ArtifactModel, ArtifactType, ArtifactRole, Severity, AlertStatus, AlertAnalyticType, ProductCategory, Confidence
@@ -18,9 +18,13 @@ from PLUGINS.SIRP.sirpmodel import AlertModel, ArtifactModel, ArtifactType, Arti
 
 class AnalyzeResult(BaseModel):
     """Structure for extracting phishing analysis result"""
-    is_phishing: bool = Field(description="Whether it is a phishing email, True or False")
-    confidence: Confidence = Field(description="Confidence level assessment")
+    is_phishing: bool = Field(description="Whether it is a phishing email, True or False", default=False)
+    confidence: Confidence = Field(description="Confidence level assessment", default=Confidence.UNKNOWN)
     reasoning: Optional[Union[str, Dict[str, Any]]] = Field(description="Reasoning process", default=None)
+
+
+class AgentState(BaseAgentState):
+    analyze_result: AnalyzeResult = None
 
 
 class Module(LanggraphModule):
@@ -99,7 +103,6 @@ class Module(LanggraphModule):
             ))
 
             alert_model.artifacts = artifacts
-
             return {"alert": alert_model}
 
         def alert_analyze_node(state: AgentState):
@@ -228,7 +231,7 @@ class Module(LanggraphModule):
             ]
 
             few_shot_examples = [
-                HumanMessage(content=legitimate_alert.model_dump_json()),
+                HumanMessage(content=legitimate_alert.model_dump_json_for_ai()),
                 AIMessage(
                     content=str(AnalyzeResult(
                         is_phishing=False,
@@ -236,7 +239,7 @@ class Module(LanggraphModule):
                         reasoning="The email is from a known colleague within the same organization, discussing a legitimate project. SPF and authentication checks pass."
                     ).model_dump())
                 ),
-                HumanMessage(content=phishing_alert.model_dump_json()),
+                HumanMessage(content=phishing_alert.model_dump_json_for_ai()),
                 AIMessage(
                     content=str(AnalyzeResult(
                         is_phishing=True,
@@ -250,7 +253,7 @@ class Module(LanggraphModule):
             messages = [
                 system_message,
                 *few_shot_examples,
-                HumanMessage(content=json.dumps(alert.model_dump_for_ai())),
+                HumanMessage(content=json.dumps(alert.model_dump_json_for_ai())),
             ]
 
             llm_api = LLMAPI()
@@ -258,15 +261,15 @@ class Module(LanggraphModule):
             llm_structured = llm.with_structured_output(AnalyzeResult)
             response: AnalyzeResult = llm_structured.invoke(messages)
 
-            state.analyze_result = response.model_dump()
+            state.analyze_result = response
             return state
 
         def alert_output_node(state: AgentState):
             """
             Save analysis result to AlertModel and persist using SIRP API.
             """
-            alert_model: AlertModel = state.alert_model
-            analyze_result: AnalyzeResult = AnalyzeResult(**state.analyze_result)
+            alert_model: AlertModel = state.alert
+            analyze_result: AnalyzeResult = state.analyze_result
 
             if analyze_result.is_phishing and analyze_result.confidence in [Confidence.HIGH, Confidence.MEDIUM]:
                 alert_model.severity = Severity.HIGH
@@ -276,10 +279,10 @@ class Module(LanggraphModule):
             alert_model.summary_ai = str(analyze_result.reasoning)
             alert_model.confidence = analyze_result.confidence
 
-            tags = list(alert_model.tags) if alert_model.tags else []
+            labels = list(alert_model.labels) if alert_model.labels else []
             if analyze_result.is_phishing:
-                tags.append("confirmed-phishing")
-            alert_model.tags = tags
+                labels.append("confirmed-phishing")
+            alert_model.labels = labels
 
             alert_model.uid = f"phishing-{get_current_time_str()}"
 

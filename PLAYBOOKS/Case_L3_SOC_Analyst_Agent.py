@@ -1,4 +1,3 @@
-import json
 from typing import Any
 
 from langchain_core.messages import HumanMessage
@@ -7,7 +6,7 @@ from langgraph.graph.state import CompiledStateGraph
 from pydantic import BaseModel, Field, ConfigDict
 
 from Lib.baseplaybook import LanggraphPlaybook
-from Lib.llmapi import AgentState
+from Lib.llmapi import BaseAgentState
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.sirpapi import Case
 from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus, PlaybookModel, CaseModel
@@ -25,6 +24,10 @@ class AnalyzeResult(BaseModel):
     analysis_rationale: str | None = Field(description="Analysis process and reasons", default=None)
     attack_stage: str | dict[str, Any] | None = Field(description="e.g., 'T1059 - Command and Control', 'Lateral Movement'", default=None)
     recommended_actions: str | dict[str, Any] | None = Field(description="e.g., 'Isolate host 10.1.1.5'", default=None)
+
+
+class AgentState(BaseAgentState):
+    analyze_result: AnalyzeResult = None
 
 
 class Playbook(LanggraphPlaybook):
@@ -63,18 +66,17 @@ class Playbook(LanggraphPlaybook):
             messages = [
                 system_message,
                 *few_shot_examples,
-                HumanMessage(content=json.dumps(state.case.model_dump_for_ai()))
+                HumanMessage(content=state.case.model_dump_json_for_ai())
             ]
             llm = llm.with_structured_output(AnalyzeResult)
             response: AnalyzeResult = llm.invoke(messages)
-            analyze_result = response.model_dump()
             self.logger.debug(f"Analyze result: {response.model_dump()}")
-            return {"analyze_result": analyze_result}
+            return {"analyze_result": response}
 
         def output_node(state: AgentState):
             """Process analysis results"""
 
-            analyze_result: AnalyzeResult = AnalyzeResult(**state.analyze_result)
+            analyze_result: AnalyzeResult = state.analyze_result
 
             case_new = CaseModel(rowid=self.param_source_rowid,
                                  severity_ai=analyze_result.new_severity,

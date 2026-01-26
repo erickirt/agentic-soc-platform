@@ -1,4 +1,4 @@
-from typing import List, Dict, Union
+from typing import List, Union
 
 import requests
 
@@ -114,12 +114,6 @@ class Case(BaseWorksheetEntity[CaseModel]):
         if model.tickets is not None:
             model.tickets = Ticket.batch_update_or_create(model.tickets)
         return model
-
-    @classmethod
-    def get_ai_friendly_data(cls, rowid: str) -> Dict:
-        """获取LLM友好的原始数据"""
-        model: CaseModel = cls.get(rowid, include_system_fields=True)
-        return model.model_dump_for_ai()
 
 
 class Message(BaseWorksheetEntity[MessageModel]):

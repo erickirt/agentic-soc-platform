@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field, ConfigDict
 
 from Lib.api import get_current_time_str
 from Lib.basemodule import LanggraphModule
-from Lib.llmapi import AgentState
+from Lib.llmapi import BaseAgentState
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.grouprule import GroupRule
 from PLUGINS.SIRP.sirpapi import create_alert_with_group_rule, InputAlert, Case
@@ -43,6 +43,10 @@ class AnalyzeResult(BaseModel):
     analysis_rationale: str = Field(description="Analysis process and reasons", default=None)
     current_attack_stage: Optional[Union[str, Dict[str, Any]]] = Field(description="e.g., 'T1059 - Command and Control', 'Lateral Movement'", default=None)
     recommended_actions: Optional[Union[str, Dict[str, Any]]] = Field(description="e.g., 'Isolate host 10.1.1.5'", default=None)
+
+
+class AgentState(BaseAgentState):
+    analyze_result: AnalyzeResult = None
 
 
 class Module(LanggraphModule):

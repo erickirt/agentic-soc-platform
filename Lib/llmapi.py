@@ -8,7 +8,7 @@ from Lib.log import logger
 from PLUGINS.SIRP.sirpmodel import CaseModel, AlertModel, ArtifactModel
 
 
-class AgentState(BaseModel):
+class BaseAgentState(BaseModel):
     messages: Annotated[List[Any], add_messages] = []
     case: CaseModel = None
     alert: AlertModel = None
