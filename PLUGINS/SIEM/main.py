@@ -15,20 +15,20 @@ def main():
     toolkit = SIEMToolKit()
     all = toolkit.explore_schema()
     print(all)
-    all = toolkit.explore_schema(SchemaExplorerInput(target_index="siem-aws-cloudtrail"))
+    all = toolkit.explore_schema(SchemaExplorerInput(target_index="siem-network-traffic"))
     print(all)
 
     # 获取最近5分钟的时间范围
     time_range_start, time_range_end = get_recent_time_range(5)
 
     query_input = AdaptiveQueryInput(
-        index_name="siem-aws-cloudtrail",
+        index_name="siem-network-traffic",
         time_field="@timestamp",  # 这里可以改成任意 Date 类型字段，如 "event.created"
         time_range_start=time_range_start,
         time_range_end=time_range_end,
         filters={
-            "event.outcome": "success",
-            # "user.name": "user_002"
+            "source.ip": "192.168.1.150",
+            "destination.service": "ssh"
         }
     )
 

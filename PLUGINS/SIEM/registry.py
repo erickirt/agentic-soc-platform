@@ -39,7 +39,7 @@ STATIC_SCHEMA_REGISTRY: Dict[str, IndexInfo] = {
     "siem-aws-cloudtrail": IndexInfo(
         name="siem-aws-cloudtrail",
         backend="ELK",
-        description="AWS CloudTrail logs via ELK.",
+        description="AWS CloudTrail logs",
         fields=[
             FieldInfo(name="@timestamp", type="date", description="Event time", is_key_field=False),
             FieldInfo(name="event.dataset", type="keyword", description="Dataset (aws.cloudtrail)", is_key_field=False),
@@ -84,8 +84,8 @@ STATIC_SCHEMA_REGISTRY: Dict[str, IndexInfo] = {
     # 2. Network Traffic Index (Splunk)
     "siem-network-traffic": IndexInfo(
         name="siem-network-traffic",
-        backend="Splunk",
-        description="Network traffic logs via Splunk.",
+        backend="ELK",
+        description="Network traffic logs",
         fields=[
             FieldInfo(name="@timestamp", type="date", description="Event time", is_key_field=False),
             FieldInfo(name="event.dataset", type="keyword", description="Dataset (network)", is_key_field=False),
@@ -122,7 +122,7 @@ STATIC_SCHEMA_REGISTRY: Dict[str, IndexInfo] = {
     # 3. Host Events Index (ELK)
     "siem-host-events": IndexInfo(
         name="siem-host-events",
-        backend="ELK",
+        backend="Splunk",
         description="Host endpoint events including process and file activities.",
         fields=[
             FieldInfo(name="@timestamp", type="date", description="Event time", is_key_field=False),

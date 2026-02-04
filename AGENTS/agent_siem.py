@@ -163,24 +163,6 @@ if __name__ == "__main__":
 
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
     django.setup()
-    # Agent_SIEM = SIEMAgent()
-    #
-    # # Example query that requires the agent to formulate an SPL query
-    # test_query = "Have there been any suspicious logins for the user 'admin' on Windows machines?"
-    #
-    # print(f"--- Using GraphAgent for Query: '{test_query}' ---")
-    # result = Agent_SIEM.search(test_query)
-    # print("\n--- Final Answer ---")
-    # print(result)
-    #
-    # print("\n" + "=" * 50 + "\n")
-    #
-    # # A more complex query
-    # test_query_2 = "check for connections from the victim host 10.67.3.130 to any known malicious IPs, like 45.33.22.11"
-    # print(f"--- Using GraphAgent for Query: '{test_query_2}' ---")
-    # result_2 = Agent_SIEM.search(test_query_2)
-    # print("\n--- Final Answer ---")
-    # print(result_2)
 
     # # You can also test the simpler agent directly
     print("\n--- Using create_agent for Query ---")
