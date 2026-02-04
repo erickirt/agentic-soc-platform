@@ -8,35 +8,52 @@ from pydantic import BaseModel, Field, field_validator
 class SchemaExplorerInput(BaseModel):
     target_index: Optional[str] = Field(
         default=None,
-        description="If None, lists all indices. If provided, details fields."
+        description=(
+            "Target index to explore. "
+            "If None: returns a list of all available indices with descriptions (list of dicts with 'name' and 'description'). "
+            "If provided: returns detailed field metadata for that specific index (list of field schemas with 'name', 'type', 'description', etc.)"
+        )
     )
 
 
 class AdaptiveQueryInput(BaseModel):
-    index_name: str = Field(..., description="Target index")
+    index_name: str = Field(
+        ...,
+        description="Target SIEM index/source name. Examples: 'logs-security', 'main', 'logs-endpoint'"
+    )
 
-    # 新增：允许指定用于过滤的时间字段，默认为 @timestamp
     time_field: str = Field(
         default="@timestamp",
-        description="The field to apply time range filter on (e.g., 'event.created', '@timestamp'). Must be a Date type in SIEM."
+        description=(
+            "The field to apply time range filter on. "
+            "Commonly used fields: '@timestamp', 'event.created', '_time'. "
+            "Must be a Date/DateTime type in your SIEM."
+        )
     )
 
     time_range_start: str = Field(
         ...,
-        description="Start time in UTC ISO8601 format, e.g., '2026-02-04T06:00:00Z'"
+        description="Start time in UTC ISO8601 format. Format: 'YYYY-MM-DDTHH:MM:SSZ'. Example: '2026-02-04T06:00:00Z'"
     )
     time_range_end: str = Field(
         ...,
-        description="End time in UTC ISO8601 format, e.g., '2026-02-04T07:00:00Z'"
+        description="End time in UTC ISO8601 format. Format: 'YYYY-MM-DDTHH:MM:SSZ'. Example: '2026-02-04T07:00:00Z'"
     )
 
     filters: Dict[str, str] = Field(
         default_factory=dict,
-        description="Key-value pairs for exact matching (term query) e.g., {'event.outcome': 'success', 'source.ip': '45.33.22.11'}"
+        description=(
+            "Key-value pairs for exact matching filters (term/exact match, not full-text search). "
+            "Example: {'event.outcome': 'success', 'source.ip': '45.33.22.11'}"
+        )
     )
     aggregation_fields: List[str] = Field(
         default_factory=list,
-        description="Fields to get statistics for. If empty, uses default key fields. e.g., ['event.outcome','source.ip'] "
+        description=(
+            "Fields to get top-N statistics for. "
+            "If empty, uses backend-specific default key fields. "
+            "Example: ['event.outcome', 'source.ip', 'process.name']"
+        )
     )
 
     @field_validator('time_range_start', 'time_range_end')
@@ -51,15 +68,49 @@ class AdaptiveQueryInput(BaseModel):
         return v
 
 
-# --- Output Models (保持不变) ---
+# --- Output Models ---
 class FieldStat(BaseModel):
-    field_name: str
-    top_values: Dict[str, int]
+    field_name: str = Field(
+        ...,
+        description="Name of the field for which statistics are computed"
+    )
+    top_values: Dict[str, int] = Field(
+        ...,
+        description="Top-N value distribution for the field (key: value, int: count)"
+    )
 
 
 class AdaptiveQueryOutput(BaseModel):
-    status: str = Field(..., description="summary | sample | full")
-    total_hits: int
-    message: str
-    statistics: List[FieldStat]
-    records: List[Dict[str, Any]]
+    status: str = Field(
+        ...,
+        description=(
+            "Response type indicator based on result volume. "
+            "Possible values: 'full' (complete logs, < 20 results), "
+            "'sample' (statistics + sample records, 20-1000 results), "
+            "'summary' (statistics only, > 1000 results)"
+        )
+    )
+    total_hits: int = Field(
+        ...,
+        description="Total number of matching records in the SIEM backend"
+    )
+    message: str = Field(
+        ...,
+        description="Human-readable status message describing the response"
+    )
+    statistics: List[FieldStat] = Field(
+        ...,
+        description=(
+            "Top-N value distribution for each aggregation field. "
+            "Each FieldStat contains field_name and top_values (dict mapping values to their counts)"
+        )
+    )
+    records: List[Dict[str, Any]] = Field(
+        ...,
+        description=(
+            "Actual log records returned based on status: "
+            "'full' status returns all records up to SAMPLE_THRESHOLD; "
+            "'sample' status returns first 3 representative records; "
+            "'summary' status returns empty list"
+        )
+    )

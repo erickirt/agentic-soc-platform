@@ -28,7 +28,7 @@ def main():
         time_range_end=time_range_end,
         filters={
             "event.outcome": "success",
-            "user.name": "user_002"
+            # "user.name": "user_002"
         }
     )
 
@@ -41,25 +41,25 @@ def main():
         # 验证返回数据
         print(f"Sample: {result.records[0]}")
 
-    query_input = AdaptiveQueryInput(
-        index_name="siem-network-traffic",
-        time_range_start=time_range_start,
-        time_range_end=time_range_end,
-        filters={
-            "event.dataset": "network",
-            "destination.ip": "104.21.11.22",
-            "event.action": "deny"
-        }
-    )
-
-    result = toolkit.execute_adaptive_query(query_input)
-    print(f"Using time field: {query_input.time_field}")
-    print(f"Status: {result.status}")
-    print(f"Total Hits: {result.total_hits}")
-
-    if result.records:
-        # 验证返回数据
-        print(f"Sample: {result.records[0]}")
+    # query_input = AdaptiveQueryInput(
+    #     index_name="siem-network-traffic",
+    #     time_range_start=time_range_start,
+    #     time_range_end=time_range_end,
+    #     filters={
+    #         "event.dataset": "network",
+    #         "destination.ip": "104.21.11.22",
+    #         "event.action": "deny"
+    #     }
+    # )
+    #
+    # result = toolkit.execute_adaptive_query(query_input)
+    # print(f"Using time field: {query_input.time_field}")
+    # print(f"Status: {result.status}")
+    # print(f"Total Hits: {result.total_hits}")
+    #
+    # if result.records:
+    #     # 验证返回数据
+    #     print(f"Sample: {result.records[0]}")
 
 
 if __name__ == "__main__":
