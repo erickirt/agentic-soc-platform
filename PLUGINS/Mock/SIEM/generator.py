@@ -7,7 +7,8 @@ import settings
 
 # --- 基础日志生成类 ---
 class NetworkGenerator:
-    def generate(self):
+    @classmethod
+    def generate(cls):
         patterns = [
             {"port": 443, "proto": "tcp", "action": "allow", "weight": 90},
             {"port": 22, "proto": "tcp", "action": "deny", "weight": 10}
@@ -24,7 +25,8 @@ class NetworkGenerator:
 
 
 class HostGenerator:
-    def generate(self):
+    @classmethod
+    def generate(cls):
         return {
             "@timestamp": datetime.utcnow().isoformat() + "Z",
             "event.dataset": "host",
@@ -36,7 +38,8 @@ class HostGenerator:
 
 
 class CloudGenerator:
-    def generate(self):
+    @classmethod
+    def generate(cls):
         event_name = random.choice(settings.EVENT_NAMES)
         return {
             "@timestamp": datetime.utcnow().isoformat() + "Z",

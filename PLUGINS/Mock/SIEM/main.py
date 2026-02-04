@@ -4,7 +4,7 @@ import time
 
 import httpx
 
-import config as secrets
+import CONFIG
 import settings
 from generator import NetworkGenerator, HostGenerator, CloudGenerator
 from scenarios import BruteForceScenario, SqlInjectionScenario, RansomwareScenario, CloudPrivilegeEscalationScenario
@@ -13,8 +13,8 @@ from scenarios import BruteForceScenario, SqlInjectionScenario, RansomwareScenar
 # --- 发送器类 (同步版本) ---
 class ELKSender:
     def __init__(self):
-        self.url = f"{secrets.ELK_HOST}/_bulk"
-        self.auth = (secrets.ELK_USER, secrets.ELK_PASS)
+        self.url = f"{CONFIG.ELK_HOST}/_bulk"
+        self.auth = (CONFIG.ELK_USER, CONFIG.ELK_PASS)
 
     def send(self, batch, index_name):
         payload = ""
@@ -35,8 +35,8 @@ class ELKSender:
 
 class SplunkSender:
     def __init__(self):
-        self.url = secrets.SPLUNK_HEC_URL
-        self.headers = {"Authorization": f"Splunk {secrets.SPLUNK_TOKEN}"}
+        self.url = CONFIG.SPLUNK_HEC_URL
+        self.headers = {"Authorization": f"Splunk {CONFIG.SPLUNK_TOKEN}"}
 
     def send(self, batch, index_name):
         payload = "".join([json.dumps({"event": doc, "index": index_name}) for doc in batch])
@@ -85,9 +85,9 @@ if __name__ == "__main__":
 
     # 2. 定义你想启用的发送器
     my_senders = []
-    if secrets.ELK_ENABLED:
+    if CONFIG.ELK_ENABLED:
         my_senders.append(ELKSender())
-    if secrets.SPLUNK_ENABLED:
+    if CONFIG.SPLUNK_ENABLED:
         my_senders.append(SplunkSender())
 
     # 3. 定义你想注入的攻击场景

@@ -13,12 +13,12 @@ class SchemaExplorerInput(BaseModel):
 
 
 class AdaptiveQueryInput(BaseModel):
-    index_name: str = Field(..., description="Target ES index")
+    index_name: str = Field(..., description="Target index")
 
     # 新增：允许指定用于过滤的时间字段，默认为 @timestamp
     time_field: str = Field(
         default="@timestamp",
-        description="The field to apply time range filter on (e.g., 'event.created', '@timestamp'). Must be a Date type in ELK."
+        description="The field to apply time range filter on (e.g., 'event.created', '@timestamp'). Must be a Date type in SIEM."
     )
 
     time_range_start: str = Field(
@@ -32,14 +32,15 @@ class AdaptiveQueryInput(BaseModel):
 
     filters: Dict[str, str] = Field(
         default_factory=dict,
-        description="Key-value pairs for exact matching (term query)"
+        description="Key-value pairs for exact matching (term query) e.g., {'event.outcome': 'success', 'source.ip': '45.33.22.11'}"
     )
     aggregation_fields: List[str] = Field(
         default_factory=list,
-        description="Fields to get statistics for. If empty, uses default key fields."
+        description="Fields to get statistics for. If empty, uses default key fields. e.g., ['event.outcome','source.ip'] "
     )
 
     @field_validator('time_range_start', 'time_range_end')
+    @classmethod
     def validate_utc_format(cls, v):
         try:
             if not v.endswith("Z"):
