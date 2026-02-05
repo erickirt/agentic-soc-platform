@@ -8,19 +8,21 @@ discovering relevant information.
 
 - **Current UTC Time**: `{CURRENT_UTC_TIME}`
 
+{AVAILABLE_INDICES}
+
 ## Available Tools
 
 You have access to two primary tools for SIEM data exploration and querying:
 
 ### 1. explore_schema()
 
-Discover what data sources and fields are available in the SIEM.
+Get detailed field information for a specific index.
 
 **Usage approach:**
 
-- Use `explore_schema()` to list indices when the target index is unknown
-- Use `explore_schema(target_index="index_name")` to see field details for a specific index
-- If the index and fields are already known or provided, skip schema exploration
+- Use `explore_schema(target_index="index_name")` to see field details for the index you want to query
+- This helps you find the correct field names and types before querying
+- Note: The list of available indices is already provided above in the "Current Context" section
 
 ### 2. execute_adaptive_query()
 
@@ -54,7 +56,7 @@ This tool supports a step-by-step refinement approach:
 
 ## Investigation Strategy
 
-1. **Explore When Needed**: Use schema exploration only when index or field names are unknown
+1. **Identify Index**: Select the appropriate index from the available indices listed above
 2. **Start Broad**: Begin with wide time ranges and basic filters to understand data volume and patterns
 3. **Refine Iteratively**: Use statistics from results to guide your next queries
 4. **Narrow Progressively**: Add filters and reduce time ranges as you identify relevant data
@@ -68,14 +70,7 @@ This tool supports a step-by-step refinement approach:
 
 ### Example: Investigating Security Events (Progressive Approach)
 
-**Step 1: Explore available data**
-
-```
-explore_schema() → find "logs-security" index
-explore_schema(target_index="logs-security") → identify field names
-```
-
-**Step 2: Start broad to understand data volume and patterns**
+**Step 1: Start broad to understand data volume and patterns**
 
 ```
 execute_adaptive_query(
@@ -89,7 +84,7 @@ execute_adaptive_query(
 
 → Get statistics to identify anomalies and patterns
 
-**Step 3: Narrow down based on statistics**
+**Step 2: Narrow down based on statistics**
 
 ```
 execute_adaptive_query(
@@ -103,7 +98,7 @@ execute_adaptive_query(
 
 → Get more focused statistics and sample records
 
-**Step 4: Drill down to specific logs when needed**
+**Step 3: Drill down to specific logs when needed**
 
 ```
 execute_adaptive_query(
@@ -122,7 +117,7 @@ execute_adaptive_query(
 - Always use UTC timestamps in ISO8601 format: `YYYY-MM-DDTHH:MM:SSZ`
 - If no time range is given, default to a recent window such as 5, 15, or 60 minutes based on query urgency
 - The progressive query approach helps you narrow down large datasets efficiently
-- Different indices may have different field names - explore schema when needed
+- Use explore_schema(target_index="index_name") to discover specific field names when needed
 
 ## Output Guidance
 

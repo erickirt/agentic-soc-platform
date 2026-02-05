@@ -45,8 +45,6 @@ class AgentSIEM:
             natural_query: Annotated[str, "A natural language query for SIEM. (e.g., 'Find connections from 10.10.10.10 to any malicious IP')"],
             time_range_start: Annotated[Optional[str], "UTC start time in ISO8601 format: YYYY-MM-DDTHH:MM:SSZ. Provide together with time_range_end."] = None,
             time_range_end: Annotated[Optional[str], "UTC end time in ISO8601 format: YYYY-MM-DDTHH:MM:SSZ. Provide together with time_range_start."] = None,
-            clear_thread: Annotated[bool, "Whether to clear previous thread state before running the query."] = True,
-            max_iterations: Annotated[int, "Maximum number of agent iterations for this query."] = MAX_ITERATIONS
     ) -> Annotated[str, "A summary of the findings from the SIEM search."]:
         """
         Searches SIEM logs by a natural language query.
@@ -59,7 +57,7 @@ class AgentSIEM:
             adjusted_query = f"{natural_query}\nTime range (UTC): start={time_range_start}, end={time_range_end}."
 
         agent = _get_graph_agent()
-        result = agent.siem_query(adjusted_query, clear_thread=clear_thread, max_iterations=max_iterations)
+        result = agent.siem_query(adjusted_query)
         return result
 
 
@@ -72,10 +70,23 @@ class GraphAgent(LanggraphPlaybook):
     def __init__(self):
         super().__init__()
         self._system_prompt_template = self.load_system_prompt_template("system_prompt")
+        self._schema_info = self._get_schema_info()
         self._llm_api = LLMAPI()
         self._llm_base = self._llm_api.get_model(tag=["fast"])
         self._llm_with_tools = self._llm_api.get_model(tag=["fast", "function_calling"]).bind_tools(tools)
         self.graph = self._build_graph()
+
+    def _get_schema_info(self) -> str:
+        """Get available SIEM indices information from schema explorer."""
+        try:
+            schema_list = SIEMToolKit.explore_schema()
+            schema_text = "Available SIEM Indices:\n"
+            for item in schema_list:
+                schema_text += f"- {item['name']}: {item['description']}\n"
+            return schema_text
+        except Exception as e:
+            logger.warning(f"Failed to retrieve schema info: {e}")
+            return "Available SIEM Indices: (Failed to retrieve)"
 
     def _build_graph(self) -> CompiledStateGraph:
         """Constructs the LangGraph agent graph."""
@@ -89,7 +100,7 @@ class GraphAgent(LanggraphPlaybook):
             if last_message.tool_calls:
                 tool_info = "\n".join([f"  [{idx}] Name: {tc.get('name', 'N/A')}, ID: {tc.get('id', 'N/A')}, Args: {tc.get('args', {})}" for idx, tc in
                                        enumerate(last_message.tool_calls, 1)])
-                self.logger.debug(f"Tool calls detected: {len(last_message.tool_calls)} tool(s)\n{tool_info}\nRouting to TOOL_NODE for execution")
+                self.logger.debug(f"Tool calls detected: {len(last_message.tool_calls)} tool(s) {tool_info}")
                 return TOOL_NODE
             self.logger.debug(f"No tool calls detected, ending agent execution")
             return END
@@ -98,7 +109,10 @@ class GraphAgent(LanggraphPlaybook):
             self.logger.debug(f"Agent Node Invoked (Loop: {state.loop_count})")
             self.logger.debug(f"Current messages count: {len(state.messages)}")
 
-            system_message = self._system_prompt_template.format(CURRENT_UTC_TIME=get_current_time_str())
+            system_message = self._system_prompt_template.format(
+                CURRENT_UTC_TIME=get_current_time_str(),
+                AVAILABLE_INDICES=self._schema_info
+            )
 
             messages = [system_message, *state.messages]
             self.logger.debug(f"Total messages to send to LLM: {len(messages)}")
