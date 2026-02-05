@@ -1,4 +1,4 @@
-from typing import Annotated, List, Literal, Any
+from typing import Annotated, List, Literal, Any, Optional
 
 from langchain.agents import create_agent
 from langchain_core.messages import HumanMessage, AIMessage
@@ -21,25 +21,45 @@ AGENT_NODE = "AGENT"
 TOOL_NODE = "TOOL_NODE"
 MAX_ITERATIONS = 10
 
+_graph_agent_instance = None
+
+
+def _get_graph_agent() -> "GraphAgent":
+    global _graph_agent_instance
+    if _graph_agent_instance is None:
+        _graph_agent_instance = GraphAgent()
+    return _graph_agent_instance
+
 
 # Define the state for the graph
 class AgentState(BaseModel):
     messages: Annotated[List[Any], add_messages] = Field(default_factory=list)
     loop_count: int = Field(default=0, description="Count of agent iterations")
+    max_iterations: int = Field(default=MAX_ITERATIONS)
 
 
 # Main class for the SIEM Agent, serving as the public interface
 class AgentSIEM:
     @staticmethod
     def siem_search_by_natural_language(
-            natural_query: Annotated[str, "A natural language query for SIEM. (e.g., 'Find connections from 10.10.10.10 to any malicious IP')"]
+            natural_query: Annotated[str, "A natural language query for SIEM. (e.g., 'Find connections from 10.10.10.10 to any malicious IP')"],
+            time_range_start: Annotated[Optional[str], "UTC start time in ISO8601 format: YYYY-MM-DDTHH:MM:SSZ. Provide together with time_range_end."] = None,
+            time_range_end: Annotated[Optional[str], "UTC end time in ISO8601 format: YYYY-MM-DDTHH:MM:SSZ. Provide together with time_range_start."] = None,
+            clear_thread: Annotated[bool, "Whether to clear previous thread state before running the query."] = True,
+            max_iterations: Annotated[int, "Maximum number of agent iterations for this query."] = MAX_ITERATIONS
     ) -> Annotated[str, "A summary of the findings from the SIEM search."]:
         """
-        Searches SIEM logs by translating a natural language query into an SPL query,
-        executing it, and returning a summarized result.
+        Searches SIEM logs by a natural language query.
         """
-        agent = GraphAgent()
-        result = agent.siem_query(natural_query)
+        if (time_range_start and not time_range_end) or (time_range_end and not time_range_start):
+            raise ValueError("time_range_start and time_range_end must be provided together.")
+
+        adjusted_query = natural_query
+        if time_range_start and time_range_end:
+            adjusted_query = f"{natural_query}\nTime range (UTC): start={time_range_start}, end={time_range_end}."
+
+        agent = _get_graph_agent()
+        result = agent.siem_query(adjusted_query, clear_thread=clear_thread, max_iterations=max_iterations)
         return result
 
 
@@ -51,6 +71,10 @@ class GraphAgent(LanggraphPlaybook):
 
     def __init__(self):
         super().__init__()
+        self._system_prompt_template = self.load_system_prompt_template("system_prompt")
+        self._llm_api = LLMAPI()
+        self._llm_base = self._llm_api.get_model(tag=["fast"])
+        self._llm_with_tools = self._llm_api.get_model(tag=["fast", "function_calling"]).bind_tools(tools)
         self.graph = self._build_graph()
 
     def _build_graph(self) -> CompiledStateGraph:
@@ -59,8 +83,8 @@ class GraphAgent(LanggraphPlaybook):
 
         def route_after_agent(state: AgentState) -> Literal["TOOL_NODE", "__end__"]:
             last_message = state.messages[-1]
-            if state.loop_count >= MAX_ITERATIONS:
-                self.logger.debug(f"Max iterations ({MAX_ITERATIONS}) reached, ending agent.")
+            if state.loop_count >= state.max_iterations:
+                self.logger.debug(f"Max iterations ({state.max_iterations}) reached, ending agent.")
                 return END
             if last_message.tool_calls:
                 tool_info = "\n".join([f"  [{idx}] Name: {tc.get('name', 'N/A')}, ID: {tc.get('id', 'N/A')}, Args: {tc.get('args', {})}" for idx, tc in
@@ -74,12 +98,12 @@ class GraphAgent(LanggraphPlaybook):
             self.logger.debug(f"Agent Node Invoked (Loop: {state.loop_count})")
             self.logger.debug(f"Current messages count: {len(state.messages)}")
 
-            system_message = self.load_system_prompt_template(f"system_prompt").format(CURRENT_UTC_TIME=get_current_time_str())
+            system_message = self._system_prompt_template.format(CURRENT_UTC_TIME=get_current_time_str())
 
             messages = [system_message, *state.messages]
             self.logger.debug(f"Total messages to send to LLM: {len(messages)}")
 
-            if state.loop_count >= MAX_ITERATIONS - 1:
+            if state.loop_count >= state.max_iterations - 1:
                 self.logger.warning("Approaching max iterations, forcing agent to provide final answer.")
 
                 stop_instruction = (
@@ -90,20 +114,15 @@ class GraphAgent(LanggraphPlaybook):
                 messages.append(HumanMessage(content=stop_instruction))
                 self.logger.debug("Stop instruction appended to messages")
 
-                llm_api = LLMAPI()
-                base_llm = llm_api.get_model(tag=["fast"])
-                self.logger.debug(f"Using base LLM model (no tool binding) for final response")
-                response: AIMessage = base_llm.invoke(messages)
+                self.logger.debug("Using base LLM model (no tool binding) for final response")
+                response: AIMessage = self._llm_base.invoke(messages)
                 self.logger.debug(f"Final response generated, tool_calls count: {len(response.tool_calls) if response.tool_calls else 0}")
             else:
-                llm_api = LLMAPI()
-                llm = llm_api.get_model(tag=["fast", "function_calling"])
-                llm_with_tools = llm.bind_tools(tools)
                 self.logger.debug(f"Using LLM with tools binding, available tools: {len(tools)}")
-                response: AIMessage = llm_with_tools.invoke(messages)
+                response: AIMessage = self._llm_with_tools.invoke(messages)
                 self.logger.debug(f"Response generated, tool_calls count: {len(response.tool_calls) if response.tool_calls else 0}")
 
-            if state.loop_count >= MAX_ITERATIONS - 1:
+            if state.loop_count >= state.max_iterations - 1:
                 if response.tool_calls:
                     self.logger.info("Stripping hallucinated tool calls in final round.")
                     response.tool_calls = []
@@ -122,16 +141,17 @@ class GraphAgent(LanggraphPlaybook):
         self.logger.debug(f"LangGraph workflow compiled successfully")
         return compiled_graph
 
-    def siem_query(self, query: str) -> str:
+    def siem_query(self, query: str, clear_thread: bool = True, max_iterations: int = MAX_ITERATIONS) -> str:
         """Executes a query against the graph."""
         self.logger.info(f"SIEM Query started: {query[:100]}...")
-        self.graph.checkpointer.delete_thread(self.module_name)
-        self.logger.debug(f"Deleted previous thread state for module: {self.module_name}")
+        if clear_thread:
+            self.graph.checkpointer.delete_thread(self.module_name)
+            self.logger.debug(f"Deleted previous thread state for module: {self.module_name}")
 
         config = RunnableConfig(configurable={"thread_id": self.module_name})
         self.logger.debug(f"RunnableConfig created with thread_id: {self.module_name}")
 
-        initial_state = AgentState(messages=[HumanMessage(content=query)], loop_count=0)
+        initial_state = AgentState(messages=[HumanMessage(content=query)], loop_count=0, max_iterations=max_iterations)
         self.logger.debug(f"Initial state created")
 
         self.logger.info(f"Starting graph invocation...")

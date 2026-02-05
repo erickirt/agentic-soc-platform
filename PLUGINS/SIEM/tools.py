@@ -208,18 +208,17 @@ class SIEMToolKit(object):
                         clean_record["@timestamp"] = log["_time"]
                 hits_data.append(clean_record)
 
-        if total_hits > SUMMARY_THRESHOLD:
-            status = "summary"
+        status = cls._resolve_funnel_status(total_hits)
+
+        if status == "summary":
             msg = f"Found {total_hits} events in Splunk. Showing statistics only."
             final_records = []
 
-        elif SUMMARY_THRESHOLD < total_hits <= SUMMARY_THRESHOLD:
-            status = "sample"
+        elif status == "sample":
             msg = f"Found {total_hits} events in Splunk. Showing statistics + samples."
             final_records = hits_data
 
         else:
-            status = "full"
             msg = "Low volume. Returning full logs."
             # Fetch up to SAMPLE_THRESHOLD
             final_records = []
@@ -264,23 +263,30 @@ class SIEMToolKit(object):
     # ==========================================
     @classmethod
     def _apply_funnel_strategy(cls, total, stats, initial_hits, input_data, client, query_body):
-        # 这是一个辅助函数，用于处理 ELK 的返回逻辑，保持代码整洁
-        if total > SUMMARY_THRESHOLD:
+        status = cls._resolve_funnel_status(total)
+        if status == "summary":
             return AdaptiveQueryOutput(
                 status="summary", total_hits=total, statistics=stats, records=[],
                 message=f"Matches {total} records (ELK). High volume."
             )
-        elif SAMPLE_THRESHOLD < total <= SUMMARY_THRESHOLD:
+        if status == "sample":
             return AdaptiveQueryOutput(
                 status="sample", total_hits=total, statistics=stats, records=initial_hits,
                 message=f"Matches {total} records (ELK). Showing samples."
             )
-        else:
-            final_recs = initial_hits
-            if total > 3:
-                resp = client.search(index=input_data.index_name, query=query_body, size=SAMPLE_THRESHOLD)
-                final_recs = [h["_source"] for h in resp["hits"]["hits"]]
-            return AdaptiveQueryOutput(
-                status="full", total_hits=total, statistics=stats, records=final_recs,
-                message="Low volume. Returning full logs."
-            )
+        final_recs = initial_hits
+        if total > 3:
+            resp = client.search(index=input_data.index_name, query=query_body, size=SAMPLE_THRESHOLD)
+            final_recs = [h["_source"] for h in resp["hits"]["hits"]]
+        return AdaptiveQueryOutput(
+            status="full", total_hits=total, statistics=stats, records=final_recs,
+            message="Low volume. Returning full logs."
+        )
+
+    @classmethod
+    def _resolve_funnel_status(cls, total_hits: int) -> str:
+        if total_hits > SUMMARY_THRESHOLD:
+            return "summary"
+        if SAMPLE_THRESHOLD < total_hits <= SUMMARY_THRESHOLD:
+            return "sample"
+        return "full"

@@ -18,9 +18,9 @@ Discover what data sources and fields are available in the SIEM.
 
 **Usage approach:**
 
-- Start with `explore_schema()` to list all available indices and understand your data sources
-- Then use `explore_schema(target_index="index_name")` to see field details for the index you're interested in
-- This helps you find the correct field names and types before querying
+- Use `explore_schema()` to list indices when the target index is unknown
+- Use `explore_schema(target_index="index_name")` to see field details for a specific index
+- If the index and fields are already known or provided, skip schema exploration
 
 ### 2. execute_adaptive_query()
 
@@ -54,7 +54,7 @@ This tool supports a step-by-step refinement approach:
 
 ## Investigation Strategy
 
-1. **Explore First**: Always start by exploring the schema to understand available indices and field names
+1. **Explore When Needed**: Use schema exploration only when index or field names are unknown
 2. **Start Broad**: Begin with wide time ranges and basic filters to understand data volume and patterns
 3. **Refine Iteratively**: Use statistics from results to guide your next queries
 4. **Narrow Progressively**: Add filters and reduce time ranges as you identify relevant data
@@ -120,5 +120,11 @@ execute_adaptive_query(
 ## Important Notes
 
 - Always use UTC timestamps in ISO8601 format: `YYYY-MM-DDTHH:MM:SSZ`
+- If no time range is given, default to a recent window such as 5, 15, or 60 minutes based on query urgency
 - The progressive query approach helps you narrow down large datasets efficiently
-- Different indices may have different field names - always explore schema first
+- Different indices may have different field names - explore schema when needed
+
+## Output Guidance
+
+- Provide concise conclusions and key statistics first
+- Avoid long narratives unless explicitly requested

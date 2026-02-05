@@ -69,7 +69,8 @@ class AlienVaultOTX(object):
         except requests.RequestException as e:
             return {"error": str(e)}
 
-    def calculate_reputation_score(self, attributes: dict) -> int:
+    @classmethod
+    def calculate_reputation_score(cls, attributes: dict) -> int:
         """
         重新计算OTX的reputation分值(简化版)
 
@@ -126,13 +127,8 @@ class AlienVaultOTX(object):
         return -score
 
 
-def ip_reputation_by_alien_vault(ip: str) -> int:
-    """使用 AlienVaultOTX 查询 IP 的威胁情报分数,分数越高风险越大"""
-    score = AlienVaultOTX().query_ip(ip)
-    return score
-
-
 if __name__ == "__main__":
     avotx = AlienVaultOTX()
     target_ip = "66.240.205.34"
     result = avotx.query_ip(target_ip)
+    print(result)
