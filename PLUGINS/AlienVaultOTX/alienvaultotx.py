@@ -4,40 +4,83 @@ from PLUGINS.AlienVaultOTX.CONFIG import API_KEY, HTTP_PROXY
 
 
 class AlienVaultOTX(object):
-    def __init__(self):
-        """初始化 AlienVaultOTX,设置 API 密钥和基础 URL"""
-        self.api_key = API_KEY
-        self.base_url = "https://otx.alienvault.com/api/v1"
-        self.headers = {
-            "accept": "application/json",
-            "X-OTX-API-KEY": self.api_key
-        }
+    headers = {
+        "accept": "application/json",
+        "X-OTX-API-KEY": API_KEY
+    }
+    base_url = "https://otx.alienvault.com/api/v1"
 
-    def query_ip(self, ip: str) -> dict:
-        """查询 IP 的情报信息"""
-        url = f"{self.base_url}/indicators/IPv4/{ip}/general"
-        req_result = self._get(url)
-        req_result["reputation_score"] = self.calculate_reputation_score(req_result)  # 在返回结果中添加
+    def __init__(self):
+        pass
+
+    @classmethod
+    def query_ip(cls, ip: str) -> dict:
+        """
+        查询指定 IP 地址的威胁情报信息
+
+        Args:
+            ip (str): 要查询的 IPv4 地址，格式为标准 IP 地址（如 "192.168.1.1"）
+
+        Returns:
+            dict: 包含以下字段的字典：
+                - reputation_score (int): 计算得出的信誉分数，负数表示有风险，0或正数表示无风险
+                - pulse_info (dict): 脉冲信息，包含相关威胁情报
+                - validation (list): 验证信息列表
+                - false_positive (list): 误报标记列表
+                - error (str): 如果请求失败，返回错误信息
+        """
+
+        url = f"{cls.base_url}/indicators/IPv4/{ip}/general"
+        req_result = cls._get(url)
+        req_result["reputation_score"] = cls.calculate_reputation_score(req_result)
         return req_result
 
-    def query_url(self, url: str) -> dict:
-        """查询 URL 的情报信息(不主动请求目标 URL)"""
-        try:
-            # URL 编码避免路径参数导致接口异常
-            encoded_url = requests.utils.quote(url, safe='')
-            otx_url = f"{self.base_url}/indicators/url/{encoded_url}/general"
+    @classmethod
+    def query_url(cls, url: str) -> dict:
+        """
+        查询指定 URL 的威胁情报信息（不主动请求目标 URL）
 
-            # 在返回结果中额外保存原始URL
-            result = self._get(otx_url)
+        Args:
+            url (str): 要查询的 URL 地址，格式为完整 URL（如 "http://example.com/path"）
+
+        Returns:
+            dict: 包含以下字段的字典：
+                - original_url (str): 原始输入的 URL 地址
+                - pulse_info (dict): 脉冲信息，包含相关威胁情报
+                - validation (list): 验证信息列表
+                - false_positive (list): 误报标记列表
+                - error (str): 如果请求失败，返回错误信息
+        """
+        try:
+            encoded_url = requests.utils.quote(url, safe='')
+            otx_url = f"{cls.base_url}/indicators/url/{encoded_url}/general"
+
+            result = cls._get(otx_url)
             if result and not result.get('error'):
                 result['original_url'] = url
             return result
         except Exception as e:
             return {"error": str(e)}
 
-    def query_file(self, file_hash: str) -> dict:
-        """查询文件哈希的情报信息(支持 MD5、SHA1、SHA256)"""
-        # 根据哈希长度确定类型
+    @classmethod
+    def query_file(cls, file_hash: str) -> dict:
+        """
+        查询指定文件哈希的威胁情报信息
+
+        Args:
+            file_hash (str): 文件的哈希值，支持以下格式：
+                - MD5: 32 个十六进制字符
+                - SHA1: 40 个十六进制字符
+                - SHA256: 64 个十六进制字符
+
+        Returns:
+            dict: 包含以下字段的字典：
+                - reputation_score (int): 计算得出的信誉分数，负数表示有风险，0或正数表示无风险
+                - pulse_info (dict): 脉冲信息，包含相关威胁情报
+                - validation (list): 验证信息列表
+                - false_positive (list): 误报标记列表
+                - error (str): 如果哈希格式无效或请求失败，返回错误信息
+        """
         hash_length = len(file_hash)
         if hash_length == 32:
             hash_type = "MD5"
@@ -48,12 +91,13 @@ class AlienVaultOTX(object):
         else:
             return {"error": "Invalid hash length. Must be 32 (MD5), 40 (SHA1), or 64 (SHA256)."}
 
-        url = f"{self.base_url}/indicators/file/{file_hash}/general"
-        req_result = self._get(url)
-        req_result["reputation_score"] = self.calculate_reputation_score(req_result)  # 在返回结果中添加
+        url = f"{cls.base_url}/indicators/file/{file_hash}/general"
+        req_result = cls._get(url)
+        req_result["reputation_score"] = cls.calculate_reputation_score(req_result)
         return req_result
 
-    def _get(self, url: str) -> dict:
+    @classmethod
+    def _get(cls, url: str) -> dict:
         """通用 GET 请求方法"""
         try:
             if HTTP_PROXY is not None:
@@ -63,7 +107,7 @@ class AlienVaultOTX(object):
                 }
             else:
                 proxies = None
-            resp = requests.get(url, headers=self.headers, proxies=proxies, timeout=10)
+            resp = requests.get(url, headers=cls.headers, proxies=proxies, timeout=10)
             resp.raise_for_status()
             return resp.json()
         except requests.RequestException as e:
@@ -128,7 +172,6 @@ class AlienVaultOTX(object):
 
 
 if __name__ == "__main__":
-    avotx = AlienVaultOTX()
     target_ip = "66.240.205.34"
-    result = avotx.query_ip(target_ip)
+    result = AlienVaultOTX.query_ip(target_ip)
     print(result)

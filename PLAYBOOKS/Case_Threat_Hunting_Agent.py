@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field, ConfigDict
 
 from AGENTS.agent_cmdb import AgentCMDB
 from AGENTS.agent_siem import AgentSIEM
-from AGENTS.agent_ti import AgentTI
+from AGENTS.agent_threat_intelligence import AgentThreatIntelligence
 from Lib.api import get_current_time_str
 from Lib.baseplaybook import LanggraphPlaybook
 from PLUGINS.LLM.llmapi import LLMAPI
@@ -233,7 +233,7 @@ class Playbook(LanggraphPlaybook):
                 llm_with_tools = base_llm.bind_tools([
                     AgentSIEM.siem_search_by_natural_language,
                     AgentCMDB.cmdb_query_asset,
-                    AgentTI.threat_intelligence_lookup
+                    AgentThreatIntelligence.threat_intelligence_lookup
                 ])
                 response: AIMessage = llm_with_tools.invoke(messages)
 
@@ -253,7 +253,7 @@ class Playbook(LanggraphPlaybook):
             return {"loop_count": state.loop_count + 1, "messages": [response]}
 
         # Tool node
-        tool_node = ToolNode([AgentSIEM.siem_search_by_natural_language, AgentCMDB.cmdb_query_asset, AgentTI.threat_intelligence_lookup])
+        tool_node = ToolNode([AgentSIEM.siem_search_by_natural_language, AgentCMDB.cmdb_query_asset, AgentThreatIntelligence.threat_intelligence_lookup])
 
         # Result generation node: when there is no tool call, it is responsible for converting the last message into a structured output
         def final_answer_node(state: AnalystState):

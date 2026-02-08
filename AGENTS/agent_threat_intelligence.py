@@ -5,7 +5,7 @@ from typing import Annotated, Literal
 from PLUGINS.Mock.TI import TI
 
 
-class AgentTI(object):
+class AgentThreatIntelligence(object):
 
     @staticmethod
     def threat_intelligence_lookup(
