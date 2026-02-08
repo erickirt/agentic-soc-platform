@@ -235,116 +235,6 @@ class SIEMToolKit(object):
         return cls._apply_funnel_strategy(total_hits, stats_output, hits_data, input_data, client, query_body)
 
     @classmethod
-    def _execute_splunk(cls, input_data: AdaptiveQueryInput) -> AdaptiveQueryOutput:
-        service = SplunkClient.get_service()
-
-        try:
-            utc_format = "%Y-%m-%dT%H:%M:%SZ"
-            dt_start_utc = datetime.strptime(input_data.time_range_start, utc_format).replace(tzinfo=timezone.utc)
-            dt_end_utc = datetime.strptime(input_data.time_range_end, utc_format).replace(tzinfo=timezone.utc)
-
-            t_start = dt_start_utc.timestamp()
-            t_end = dt_end_utc.timestamp()
-        except ValueError:
-            raise ValueError("Invalid UTC format.")
-
-        search_query = f"search index=\"{input_data.index_name}\""
-
-        for k, v in input_data.filters.items():
-            search_query += f" {k}=\"{v}\""
-
-        job = service.jobs.create(
-            search_query,
-            earliest_time=t_start,
-            latest_time=t_end,
-            exec_mode="normal"
-        )
-
-        while not job.is_done():
-            time.sleep(0.2)
-
-        total_hits = int(job["eventCount"])
-
-        agg_fields = input_data.aggregation_fields or get_default_agg_fields(input_data.index_name)
-        stats_output = []
-
-        if total_hits > 0:
-            for field in agg_fields:
-                stats_spl = f"{search_query} | top limit={SAMPLE_COUNT} {field}"
-                # oneshot is blocking but fast for stats
-                rr = service.jobs.oneshot(stats_spl, earliest_time=t_start, latest_time=t_end, output_mode="json")
-                reader = JSONResultsReader(rr)
-                top_vals = {}
-                for item in reader:
-                    if isinstance(item, dict) and field in item:
-                        top_vals[item[field]] = int(item['count'])
-                if top_vals:
-                    stats_output.append(FieldStat(field_name=field, top_values=top_vals))
-
-        hits_data = []
-        if total_hits > 0:
-            results = job.results(count=SAMPLE_COUNT, output_mode="json")
-            for result in results:
-                result = json.loads(result)
-                logs = result.get("results", [])
-                for log in logs:
-                    log: dict
-                    clean_record = {k: v for k, v in log.items() if not k.startswith("_")}
-                    if "_time" in log:
-                        clean_record["@timestamp"] = log["_time"]
-                    if "_raw" in log:
-                        try:
-                            raw_parsed = json.loads(log["_raw"])
-                            if isinstance(raw_parsed, dict):
-                                for rk, rv in raw_parsed.items():
-                                    if rk not in clean_record:
-                                        clean_record[rk] = rv
-                        except (json.JSONDecodeError, TypeError):
-                            pass
-                    hits_data.append(clean_record)
-
-        status = cls._resolve_funnel_status(total_hits)
-
-        if status == "summary":
-            msg = f"Found {total_hits} events in Splunk. Showing statistics only."
-            final_records = []
-
-        elif status == "sample":
-            msg = f"Found {total_hits} events in Splunk. Showing statistics + samples."
-            final_records = hits_data
-
-        else:
-            msg = "Low volume. Returning full logs."
-            final_records = []
-            results = job.results(count=SAMPLE_THRESHOLD, output_mode="json")
-            for result in results:
-                result = json.loads(result)
-                logs = result.get("results", [])
-                for log in logs:
-                    log: dict
-                    clean_record = {k: v for k, v in log.items() if not k.startswith("_")}
-                    if "_time" in log:
-                        clean_record["@timestamp"] = log["_time"]
-                    if "_raw" in log:
-                        try:
-                            raw_parsed = json.loads(log["_raw"])
-                            if isinstance(raw_parsed, dict):
-                                for rk, rv in raw_parsed.items():
-                                    if rk not in clean_record:
-                                        clean_record[rk] = rv
-                        except (json.JSONDecodeError, TypeError):
-                            pass
-                    final_records.append(clean_record)
-
-        return AdaptiveQueryOutput(
-            status=status,
-            total_hits=total_hits,
-            message=msg,
-            statistics=stats_output,
-            records=final_records
-        )
-
-    @classmethod
     def _keyword_search_elk(cls, input_data: KeywordSearchInput) -> KeywordSearchOutput:
         client = ELKClient.get_client()
 
@@ -438,6 +328,120 @@ class SIEMToolKit(object):
         )
 
     @classmethod
+    def _execute_splunk(cls, input_data: AdaptiveQueryInput) -> AdaptiveQueryOutput:
+        service = SplunkClient.get_service()
+
+        try:
+            utc_format = "%Y-%m-%dT%H:%M:%SZ"
+            dt_start_utc = datetime.strptime(input_data.time_range_start, utc_format).replace(tzinfo=timezone.utc)
+            dt_end_utc = datetime.strptime(input_data.time_range_end, utc_format).replace(tzinfo=timezone.utc)
+
+            t_start = dt_start_utc.timestamp()
+            t_end = dt_end_utc.timestamp()
+        except ValueError:
+            raise ValueError("Invalid UTC format.")
+
+        search_query = f"search index=\"{input_data.index_name}\""
+
+        for k, v in input_data.filters.items():
+            search_query += f" {k}=\"{v}\""
+
+        job = service.jobs.create(
+            search_query,
+            earliest_time=t_start,
+            latest_time=t_end,
+            exec_mode="normal"
+        )
+
+        while not job.is_done():
+            time.sleep(0.2)
+
+        total_hits = int(job["eventCount"])
+
+        agg_fields = input_data.aggregation_fields or get_default_agg_fields(input_data.index_name)
+        stats_output = []
+
+        if total_hits > 0:
+            for field in agg_fields:
+                stats_spl = f"{search_query} | top limit={SAMPLE_COUNT} {field}"
+                # oneshot is blocking but fast for stats
+                rr = service.jobs.oneshot(stats_spl, earliest_time=t_start, latest_time=t_end, output_mode="json")
+                reader = JSONResultsReader(rr)
+                top_vals = {}
+                for item in reader:
+                    if isinstance(item, dict) and field in item:
+                        top_vals[item[field]] = int(item['count'])
+                if top_vals:
+                    stats_output.append(FieldStat(field_name=field, top_values=top_vals))
+
+        hits_data = []
+        if total_hits > 0:
+            results = job.results(count=SAMPLE_COUNT, output_mode="json")
+            for result in results:
+                result = json.loads(result)
+                logs = result.get("results", [])
+                for log in logs:
+                    log: dict
+                    clean_record = {}
+                    for k, v in log.items():
+                        if not k.startswith("_") and k not in ["_raw", "splunk_server", "host", "source", "sourcetype"]:
+                            clean_record[k] = v
+
+                    if "_time" in log:
+                        clean_record["@timestamp"] = log["_time"]
+                    if "_raw" in log:
+                        try:
+                            raw_parsed = json.loads(log["_raw"])
+                            if isinstance(raw_parsed, dict):
+                                for rk, rv in raw_parsed.items():
+                                    if rk not in clean_record:
+                                        clean_record[rk] = rv
+                        except (json.JSONDecodeError, TypeError):
+                            pass
+                    hits_data.append(clean_record)
+
+        status = cls._resolve_funnel_status(total_hits)
+
+        if status == "summary":
+            msg = f"Found {total_hits} events in Splunk. Showing statistics only."
+            final_records = []
+
+        elif status == "sample":
+            msg = f"Found {total_hits} events in Splunk. Showing statistics + samples."
+            final_records = hits_data
+
+        else:
+            msg = "Low volume. Returning full logs."
+            final_records = []
+            results = job.results(count=SAMPLE_THRESHOLD, output_mode="json")
+            for result in results:
+                result = json.loads(result)
+                logs = result.get("results", [])
+                for log in logs:
+                    log: dict
+                    clean_record = {k: v for k, v in log.items() if not k.startswith("_")}
+                    if "_time" in log:
+                        clean_record["@timestamp"] = log["_time"]
+                    if "_raw" in log:
+                        try:
+                            raw_parsed = json.loads(log["_raw"])
+                            if isinstance(raw_parsed, dict):
+                                for rk, rv in raw_parsed.items():
+                                    if rk not in clean_record:
+                                        clean_record[rk] = rv
+                        except (json.JSONDecodeError, TypeError):
+                            pass
+                    final_records.append(clean_record)
+
+        return AdaptiveQueryOutput(
+            status=status,
+            total_hits=total_hits,
+            message=msg,
+            statistics=stats_output,
+            records=final_records
+        )
+
+    @classmethod
     def _keyword_search_splunk(cls, input_data: KeywordSearchInput) -> KeywordSearchOutput:
         service = SplunkClient.get_service()
 
@@ -485,7 +489,7 @@ class SIEMToolKit(object):
 
             if total_hits > 0:
                 for field in agg_fields:
-                    stats_spl = f"{search_query} | top limit=5 {field}"
+                    stats_spl = f"{search_query} | top limit={SAMPLE_COUNT} {field}"
                     rr = service.jobs.oneshot(stats_spl, earliest_time=t_start, latest_time=t_end, output_mode="json")
                     reader = JSONResultsReader(rr)
                     top_vals = {}
@@ -497,19 +501,27 @@ class SIEMToolKit(object):
 
         hits_data = []
         if total_hits > 0:
-            results = job.results(count=3, output_mode="json")
+            results = job.results(count=SAMPLE_COUNT, output_mode="json")
             for result in results:
                 result = json.loads(result)
-                logs = result["results"]
+                logs = result.get("results", [])
                 for log in logs:
                     log: dict
-                    clean_record = {k: v for k, v in log.items() if not k.startswith("_") or k == "_index"}
-                    if "_time" in log.keys():
+                    clean_record = {}
+                    for k, v in log.items():
+                        if not k.startswith("_") and k not in ["_raw", "splunk_server", "host", "source", "sourcetype"]:
+                            clean_record[k] = v
+                    if "_time" in log:
                         clean_record["@timestamp"] = log["_time"]
-                    if "index" in log.keys():
-                        clean_record["_index"] = log["index"]
-                    elif "_index" not in clean_record:
-                        clean_record["_index"] = effective_index
+                    if "_raw" in log:
+                        try:
+                            raw_parsed = json.loads(log["_raw"])
+                            if isinstance(raw_parsed, dict):
+                                for rk, rv in raw_parsed.items():
+                                    if rk not in clean_record:
+                                        clean_record[rk] = rv
+                        except (json.JSONDecodeError, TypeError):
+                            pass
                     hits_data.append(clean_record)
 
         status = cls._resolve_funnel_status(total_hits)
@@ -528,16 +540,21 @@ class SIEMToolKit(object):
             results = job.results(count=SAMPLE_THRESHOLD, output_mode="json")
             for result in results:
                 result = json.loads(result)
-                logs = result["results"]
+                logs = result.get("results", [])
                 for log in logs:
                     log: dict
-                    clean_record = {k: v for k, v in log.items() if not k.startswith("_") or k == "_index"}
-                    if "_time" in log.keys():
+                    clean_record = {k: v for k, v in log.items() if not k.startswith("_")}
+                    if "_time" in log:
                         clean_record["@timestamp"] = log["_time"]
-                    if "index" in log.keys():
-                        clean_record["_index"] = log["index"]
-                    elif "_index" not in clean_record:
-                        clean_record["_index"] = effective_index
+                    if "_raw" in log:
+                        try:
+                            raw_parsed = json.loads(log["_raw"])
+                            if isinstance(raw_parsed, dict):
+                                for rk, rv in raw_parsed.items():
+                                    if rk not in clean_record:
+                                        clean_record[rk] = rv
+                        except (json.JSONDecodeError, TypeError):
+                            pass
                     final_records.append(clean_record)
 
         return KeywordSearchOutput(
@@ -591,9 +608,6 @@ class SIEMToolKit(object):
             if "properties" in field_info:
                 cls._extract_field_types(field_info["properties"], f"{full_name}.", result)
 
-    # ==========================================
-    # Helper: Shared Logic for ELK (Refactored)
-    # ==========================================
     @classmethod
     def _apply_funnel_strategy(cls, total, stats, initial_hits, input_data, client, query_body, index_name=None):
         effective_index = index_name if index_name is not None else input_data.index_name
