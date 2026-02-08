@@ -7,6 +7,7 @@ SUMMARY_THRESHOLD = 1000
 SAMPLE_THRESHOLD = 20
 SAMPLE_COUNT = 3
 
+
 # --- Input Models ---
 class SchemaExplorerInput(BaseModel):
     target_index: Optional[str] = Field(
@@ -103,15 +104,6 @@ class KeywordSearchInput(BaseModel):
             "If None or empty: searches across all indices. "
             "If provided: searches only in specified index. "
             "Examples: 'logs-security', 'main', 'logs-endpoint'"
-        )
-    )
-
-    aggregation_fields: List[str] = Field(
-        default_factory=list,
-        description=(
-            "Fields to get top-N statistics for. "
-            "If empty, uses backend-specific default key fields. "
-            "Example: ['event.outcome', 'source.ip', 'process.name']"
         )
     )
 

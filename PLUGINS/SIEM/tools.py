@@ -194,6 +194,44 @@ class SIEMToolKit(object):
             raise ValueError(f"Unsupported backend: {backend}")
 
     @classmethod
+    def _build_time_range_clause(cls, time_field: str, time_range_start: str, time_range_end: str) -> dict:
+        return {
+            "range": {
+                time_field: {
+                    "gte": time_range_start,
+                    "lt": time_range_end
+                }
+            }
+        }
+
+    @classmethod
+    def _extract_elk_records(cls, hits: list, include_index: bool = False) -> list[dict]:
+        records = []
+        for hit in hits:
+            record = hit["_source"].copy() if include_index else hit["_source"]
+            if include_index:
+                record["_index"] = hit["_index"]
+            records.append(record)
+        return records
+
+    @classmethod
+    def _extract_elk_stats(cls, response: dict, agg_fields: list) -> list[FieldStat]:
+        stats_output = []
+        if "aggregations" not in response:
+            return stats_output
+
+        for field in agg_fields:
+            agg_key = f"{field}.keyword" if f"{field}.keyword" in response["aggregations"] else field
+            if agg_key in response["aggregations"]:
+                buckets = response["aggregations"][agg_key]["buckets"]
+                if buckets:
+                    stats_output.append(FieldStat(
+                        field_name=field,
+                        top_values={b["key"]: b["doc_count"] for b in buckets}
+                    ))
+        return stats_output
+
+    @classmethod
     def _parse_time_range(cls, time_range_start: str, time_range_end: str) -> tuple[float, float]:
         utc_format = "%Y-%m-%dT%H:%M:%SZ"
         try:
@@ -257,20 +295,12 @@ class SIEMToolKit(object):
     @classmethod
     def _execute_elk(cls, input_data: AdaptiveQueryInput) -> AdaptiveQueryOutput:
         client = ELKClient.get_client()
-        must_clauses = []
-        must_clauses.append({
-            "range": {
-                input_data.time_field: {
-                    "gte": input_data.time_range_start,
-                    "lt": input_data.time_range_end
-                }
-            }
-        })
+
+        must_clauses = [cls._build_time_range_clause(input_data.time_field, input_data.time_range_start, input_data.time_range_end)]
         for k, v in input_data.filters.items():
             must_clauses.append({"term": {k: v}})
 
         query_body = {"bool": {"must": must_clauses}}
-
         agg_fields = input_data.aggregation_fields or get_default_agg_fields(input_data.index_name)
         aggs_dsl = cls._build_safe_aggs(agg_fields, input_data.index_name)
 
@@ -279,114 +309,67 @@ class SIEMToolKit(object):
         )
 
         total_hits = response["hits"]["total"]["value"]
-        hits_data = [hit["_source"] for hit in response["hits"]["hits"]]
-
-        stats_output = []
-        if "aggregations" in response:
-            for field in agg_fields:
-                agg_key = f"{field}.keyword" if f"{field}.keyword" in response["aggregations"] else field
-                if agg_key in response["aggregations"]:
-                    buckets = response["aggregations"][agg_key]["buckets"]
-                    if buckets:
-                        stats_output.append(FieldStat(
-                            field_name=field,
-                            top_values={b["key"]: b["doc_count"] for b in buckets}
-                        ))
+        hits_data = cls._extract_elk_records(response["hits"]["hits"])
+        stats_output = cls._extract_elk_stats(response, agg_fields)
 
         return cls._apply_funnel_strategy(total_hits, stats_output, hits_data, input_data, client, query_body)
 
     @classmethod
     def _keyword_search_elk(cls, input_data: KeywordSearchInput) -> KeywordSearchOutput:
         client = ELKClient.get_client()
-
-        must_clauses = []
-        must_clauses.append({
-            "range": {
-                input_data.time_field: {
-                    "gte": input_data.time_range_start,
-                    "lt": input_data.time_range_end
-                }
-            }
-        })
-
-        must_clauses.append({
-            "query_string": {
-                "query": input_data.keyword,
-                "default_operator": "AND"
-            }
-        })
-
-        query_body = {"bool": {"must": must_clauses}}
-
         effective_index = input_data.index_name or "*"
 
-        aggs_dsl = {}
-        aggs_dsl["_index"] = {"terms": {"field": "_index", "size": 50}}
+        must_clauses = [
+            cls._build_time_range_clause(input_data.time_field, input_data.time_range_start, input_data.time_range_end),
+            {"query_string": {"query": input_data.keyword, "default_operator": "AND"}}
+        ]
+        query_body = {"bool": {"must": must_clauses}}
 
+        aggs_dsl = {"_index": {"terms": {"field": "_index", "size": 50}}}
         agg_fields = []
         if input_data.index_name:
-            agg_fields = input_data.aggregation_fields
-            if not agg_fields:
-                agg_fields = get_default_agg_fields(input_data.index_name)
-
+            agg_fields = get_default_agg_fields(input_data.index_name)
             field_aggs = cls._build_safe_aggs(agg_fields, input_data.index_name)
             aggs_dsl.update(field_aggs)
 
         response = client.search(
-            index=effective_index, query=query_body, aggs=aggs_dsl, size=3, track_total_hits=True
+            index=effective_index, query=query_body, aggs=aggs_dsl, size=SAMPLE_COUNT, track_total_hits=True
         )
 
         total_hits = response["hits"]["total"]["value"]
-        hits_data = []
-        for hit in response["hits"]["hits"]:
-            record = hit["_source"].copy()
-            record["_index"] = hit["_index"]
-            hits_data.append(record)
+        hits_data = cls._extract_elk_records(response["hits"]["hits"], include_index=True)
 
         index_distribution = {}
         if "aggregations" in response and "_index" in response["aggregations"]:
             buckets = response["aggregations"]["_index"]["buckets"]
             index_distribution = {b["key"]: b["doc_count"] for b in buckets}
 
-        stats_output = []
-        if "aggregations" in response and agg_fields:
-            for field in agg_fields:
-                agg_key = f"{field}.keyword" if f"{field}.keyword" in response["aggregations"] else field
-                if agg_key in response["aggregations"]:
-                    buckets = response["aggregations"][agg_key]["buckets"]
-                    if buckets:
-                        stats_output.append(FieldStat(
-                            field_name=field,
-                            top_values={b["key"]: b["doc_count"] for b in buckets}
-                        ))
-
+        stats_output = cls._extract_elk_stats(response, agg_fields)
         status = cls._resolve_funnel_status(total_hits)
+        idx_count = len(index_distribution)
 
         if status == "summary":
-            msg = f"Found {total_hits} events across {len(index_distribution)} index(es). Showing statistics only."
-            final_records = []
+            return KeywordSearchOutput(
+                status=status, total_hits=total_hits, index_distribution=index_distribution,
+                statistics=stats_output, records=[],
+                message=f"Found {total_hits} events across {idx_count} index(es). Showing statistics only."
+            )
         elif status == "sample":
-            msg = f"Found {total_hits} events across {len(index_distribution)} index(es). Showing statistics + samples."
-            final_records = hits_data
+            return KeywordSearchOutput(
+                status=status, total_hits=total_hits, index_distribution=index_distribution,
+                statistics=stats_output, records=hits_data,
+                message=f"Found {total_hits} events across {idx_count} index(es). Showing statistics + samples."
+            )
         else:
-            msg = f"Found {total_hits} events. Returning full logs."
             final_records = hits_data
-            if total_hits > 3:
+            if total_hits > SAMPLE_COUNT:
                 resp = client.search(index=effective_index, query=query_body, size=SAMPLE_THRESHOLD)
-                final_records = []
-                for hit in resp["hits"]["hits"]:
-                    record = hit["_source"].copy()
-                    record["_index"] = hit["_index"]
-                    final_records.append(record)
-
-        return KeywordSearchOutput(
-            status=status,
-            total_hits=total_hits,
-            message=msg,
-            index_distribution=index_distribution,
-            statistics=stats_output,
-            records=final_records
-        )
+                final_records = cls._extract_elk_records(resp["hits"]["hits"], include_index=True)
+            return KeywordSearchOutput(
+                status=status, total_hits=total_hits, index_distribution=index_distribution,
+                statistics=stats_output, records=final_records,
+                message=f"Found {total_hits} events. Returning full logs."
+            )
 
     @classmethod
     def _execute_splunk(cls, input_data: AdaptiveQueryInput) -> AdaptiveQueryOutput:
@@ -445,7 +428,7 @@ class SIEMToolKit(object):
         agg_fields = []
         stats_output = []
         if input_data.index_name:
-            agg_fields = input_data.aggregation_fields or get_default_agg_fields(input_data.index_name)
+            agg_fields = get_default_agg_fields(input_data.index_name)
             if total_hits > 0:
                 stats_output = cls._fetch_splunk_top_stats(service, search_query, t_start, t_end, agg_fields)
 

@@ -1,7 +1,7 @@
 import random
 
 # 运行参数
-EPS = 20
+EPS = 10
 BATCH_SIZE = 100
 
 # 索引/来源定义

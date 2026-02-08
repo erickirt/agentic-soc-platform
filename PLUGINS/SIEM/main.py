@@ -30,7 +30,7 @@ def test_adaptive_query():
         time_range_start=time_range_start,
         time_range_end=time_range_end,
         filters={
-            # "source.ip": "192.168.1.150",
+            "source.ip": "192.168.1.150",
             "host.name": "srv-db-master",
             # "destination.service": "ssh"
         }
@@ -67,13 +67,13 @@ def test_adaptive_query():
 
 def test_keyword_search():
     toolkit = SIEMToolKit()
-    time_range_start, time_range_end = get_recent_time_range(10)
+    time_range_start, time_range_end = get_recent_time_range(30)
 
     input_data = KeywordSearchInput(
+        # index_name="siem-network-traffic",
         keyword="srv-db-master",
         time_range_start=time_range_start,
         time_range_end=time_range_end,
-        # aggregation_fields=["event.action", "source.ip"]
     )
     result: KeywordSearchOutput = toolkit.keyword_search(input_data)
     print(f"Status: {result.status}")
@@ -85,5 +85,5 @@ def test_keyword_search():
 
 
 if __name__ == "__main__":
-    # test_keyword_search()
-    test_adaptive_query()
+    test_keyword_search()
+    # test_adaptive_query()
