@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 from models import AdaptiveQueryInput, SchemaExplorerInput, KeywordSearchInput, KeywordSearchOutput
 from tools import SIEMToolKit
@@ -6,7 +6,7 @@ from tools import SIEMToolKit
 
 def get_recent_time_range(minutes=5):
     """获取最近N分钟的时间范围，返回ISO 8601格式的字符串"""
-    end_time = datetime.utcnow()
+    end_time = datetime.now(UTC)
     start_time = end_time - timedelta(minutes=minutes)
     return start_time.strftime("%Y-%m-%dT%H:%M:%SZ"), end_time.strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -85,5 +85,5 @@ def test_keyword_search():
 
 
 if __name__ == "__main__":
-    test_keyword_search()
-    # test_adaptive_query()
+    # test_keyword_search()
+    test_adaptive_query()

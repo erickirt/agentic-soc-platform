@@ -269,9 +269,6 @@ class SIEMToolKit(object):
         stats_output = []
 
         if total_hits > 0:
-            # Splunk 获取统计需要额外的开销，这里简化处理：
-            # 如果数据量大，我们发一个新的快速统计查询
-            # 使用 "| top limit=5 field"
             for field in agg_fields:
                 stats_spl = f"{search_query} | top limit={SAMPLE_COUNT} {field}"
                 # oneshot is blocking but fast for stats
@@ -285,22 +282,26 @@ class SIEMToolKit(object):
                     stats_output.append(FieldStat(field_name=field, top_values=top_vals))
 
         hits_data = []
-        # Splunk 的 result 是扁平的或者带 _raw，我们需要尽量让它看起来像 ELK 的 dict
         if total_hits > 0:
-            # 获取前 3 条作为样本
-            results = job.results(count=3, output_mode="json")
+            results = job.results(count=SAMPLE_COUNT, output_mode="json")
             for result in results:
-                # 清洗 Splunk 的内部字段 (以_开头的)
                 result = json.loads(result)
-                logs = result["results"]
-                clean_record = {}
+                logs = result.get("results", [])
                 for log in logs:
                     log: dict
                     clean_record = {k: v for k, v in log.items() if not k.startswith("_")}
-                    # 保留关键的时间字段，映射回 @timestamp 以保持一致性
-                    if "_time" in log.keys():
+                    if "_time" in log:
                         clean_record["@timestamp"] = log["_time"]
-                hits_data.append(clean_record)
+                    if "_raw" in log:
+                        try:
+                            raw_parsed = json.loads(log["_raw"])
+                            if isinstance(raw_parsed, dict):
+                                for rk, rv in raw_parsed.items():
+                                    if rk not in clean_record:
+                                        clean_record[rk] = rv
+                        except (json.JSONDecodeError, TypeError):
+                            pass
+                    hits_data.append(clean_record)
 
         status = cls._resolve_funnel_status(total_hits)
 
@@ -314,20 +315,26 @@ class SIEMToolKit(object):
 
         else:
             msg = "Low volume. Returning full logs."
-            # Fetch up to SAMPLE_THRESHOLD
             final_records = []
             results = job.results(count=SAMPLE_THRESHOLD, output_mode="json")
             for result in results:
                 result = json.loads(result)
-                logs = result["results"]
-                clean_record = {}
+                logs = result.get("results", [])
                 for log in logs:
                     log: dict
                     clean_record = {k: v for k, v in log.items() if not k.startswith("_")}
-                    # 保留关键的时间字段，映射回 @timestamp 以保持一致性
-                    if "_time" in log.keys():
+                    if "_time" in log:
                         clean_record["@timestamp"] = log["_time"]
-                final_records.append(clean_record)
+                    if "_raw" in log:
+                        try:
+                            raw_parsed = json.loads(log["_raw"])
+                            if isinstance(raw_parsed, dict):
+                                for rk, rv in raw_parsed.items():
+                                    if rk not in clean_record:
+                                        clean_record[rk] = rv
+                        except (json.JSONDecodeError, TypeError):
+                            pass
+                    final_records.append(clean_record)
 
         return AdaptiveQueryOutput(
             status=status,
