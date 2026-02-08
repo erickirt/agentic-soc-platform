@@ -76,7 +76,8 @@ class GraphAgent(LanggraphPlaybook):
         self._llm_with_tools = self._llm_api.get_model(tag=["fast", "function_calling"]).bind_tools(tools)
         self.graph = self._build_graph()
 
-    def _get_schema_info(self) -> str:
+    @classmethod
+    def _get_schema_info(cls) -> str:
         """Get available SIEM indices information from schema explorer."""
         try:
             schema_list = SIEMToolKit.explore_schema()

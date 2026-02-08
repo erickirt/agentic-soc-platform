@@ -1,0 +1,189 @@
+name: siem-aws-cloudtrail
+backend: ELK
+description: AWS CloudTrail logs
+
+fields:
+  - name: "@timestamp"
+    type: date
+    description: Event time
+    is_key_field: false
+
+  - name: event.dataset
+    type: keyword
+    description: Dataset (aws.cloudtrail)
+    is_key_field: false
+
+  - name: event.module
+    type: keyword
+    description: Module (cloudtrail)
+    is_key_field: false
+
+  - name: event.action
+    type: keyword
+    description: API Action
+    is_key_field: true
+
+  - name: event.category
+    type: keyword
+    description: Event category (iam/cloud)
+    is_key_field: true
+
+  - name: event.outcome
+    type: keyword
+    description: Result (success/failure)
+    is_key_field: true
+
+  - name: event.duration
+    type: long
+    description: Event duration in ms
+    is_key_field: false
+
+  - name: event.risk_score
+    type: long
+    description: Risk score (20-100)
+    is_key_field: false
+
+  - name: cloud.provider
+    type: keyword
+    description: Cloud provider (aws)
+    is_key_field: false
+
+  - name: cloud.service.name
+    type: keyword
+    description: Service name (ec2/iam/s3/lambda/rds)
+    is_key_field: true
+
+  - name: cloud.region
+    type: keyword
+    description: AWS region
+    is_key_field: true
+
+  - name: cloud.account.id
+    type: keyword
+    description: AWS Account ID
+    is_key_field: true
+
+  - name: cloud.account.name
+    type: keyword
+    description: Account name
+    is_key_field: false
+
+  - name: user.name
+    type: keyword
+    description: IAM user name
+    is_key_field: true
+
+  - name: user.id
+    type: keyword
+    description: User ID (AIDAI...)
+    is_key_field: true
+
+  - name: user.type
+    type: keyword
+    description: User type (IAMUser/IAMRole/AssumedRole/RootUser)
+    is_key_field: false
+
+  - name: user.access_key_id
+    type: keyword
+    description: Access key ID (AKIA...)
+    is_key_field: false
+
+  - name: source.ip
+    type: ip
+    description: Requester IP
+    is_key_field: true
+
+  - name: source.address
+    type: ip
+    description: Source address
+    is_key_field: false
+
+  - name: source.geo.country_name
+    type: keyword
+    description: Country name
+    is_key_field: false
+
+  - name: source.geo.country_iso_code
+    type: keyword
+    description: Country ISO code
+    is_key_field: false
+
+  - name: http.request.method
+    type: keyword
+    description: HTTP method (GET/POST/PUT/DELETE/PATCH)
+    is_key_field: false
+
+  - name: http.response.status_code
+    type: long
+    description: HTTP response status code
+    is_key_field: true
+
+  - name: http.request.body.content
+    type: text
+    description: Request body content
+    is_key_field: false
+
+  - name: user_agent
+    type: text
+    description: User agent string
+    is_key_field: false
+
+  - name: request_id
+    type: keyword
+    description: Request ID (UUID)
+    is_key_field: true
+
+  - name: event_id
+    type: keyword
+    description: Event ID (UUID)
+    is_key_field: true
+
+  - name: aws_service
+    type: keyword
+    description: AWS service (cloudtrail/config/guardduty/securityhub)
+    is_key_field: false
+
+  - name: aws_request_id
+    type: keyword
+    description: AWS request ID
+    is_key_field: false
+
+  - name: recipient_account_id
+    type: keyword
+    description: Recipient account ID
+    is_key_field: false
+
+  - name: additional_event_data
+    type: object
+    description: Additional event data (LoginTo/MobileVersion/MFAUsed)
+    is_key_field: false
+
+  - name: request_parameters
+    type: object
+    description: Request parameters
+    is_key_field: false
+
+  - name: response_elements
+    type: object
+    description: Response elements
+    is_key_field: false
+
+  - name: error_code
+    type: keyword
+    description: Error code if failed
+    is_key_field: false
+
+  - name: error_message
+    type: text
+    description: Error message if failed
+    is_key_field: false
+
+  - name: read_only
+    type: boolean
+    description: Read-only operation flag
+    is_key_field: false
+
+  - name: log.level
+    type: keyword
+    description: Log level (info/warning)
+    is_key_field: false

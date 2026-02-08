@@ -13,7 +13,7 @@ from PLUGINS.SIEM.models import (
     SUMMARY_THRESHOLD,
     SAMPLE_THRESHOLD
 )
-from PLUGINS.SIEM.registry import STATIC_SCHEMA_REGISTRY, get_default_agg_fields, get_backend_type
+from PLUGINS.SIEM.registry import _load_yaml_configs, get_default_agg_fields, get_backend_type
 
 
 class SIEMToolKit(object):
@@ -41,17 +41,18 @@ class SIEMToolKit(object):
             explore_schema(SchemaExplorerInput(target_index="logs-security"))
         """
         if not input_data.target_index:
-            # Agent 看到的是统一的列表，不关心 Backend
+            registry = _load_yaml_configs()
             result = [
                 {"name": k, "description": v.description}
-                for k, v in STATIC_SCHEMA_REGISTRY.items()
+                for k, v in registry.items()
             ]
             return result
 
-        if input_data.target_index not in STATIC_SCHEMA_REGISTRY:
+        registry = _load_yaml_configs()
+        if input_data.target_index not in registry:
             raise ValueError(f"Index {input_data.target_index} not found.")
 
-        idx_info = STATIC_SCHEMA_REGISTRY[input_data.target_index]
+        idx_info = registry[input_data.target_index]
         result = [f.model_dump() for f in idx_info.fields]
         return result
 
