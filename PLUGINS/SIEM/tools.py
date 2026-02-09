@@ -225,9 +225,6 @@ class SIEMToolKit(object):
                 result.backend = "Splunk"
                 results.append(result)
 
-        if not results:
-            raise ValueError("No SIEM indices configured in registry or no hits found")
-
         return results
 
     @classmethod

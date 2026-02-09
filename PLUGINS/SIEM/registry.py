@@ -6,6 +6,8 @@ from typing import List, Dict, Literal
 import yaml
 from pydantic import BaseModel
 
+from Lib.log import logger
+
 
 class FieldInfo(BaseModel):
     name: str
@@ -23,7 +25,10 @@ class IndexInfo(BaseModel):
 
 def _load_yaml_configs() -> Dict[str, IndexInfo]:
     registry = {}
-    indexs_dir = Path(__file__).parent / "Indexs"
+
+    script_path = Path(__file__).resolve()
+    project_root = script_path.parents[2]
+    indexs_dir = project_root / "Docker" / "Index"
 
     if not indexs_dir.exists():
         return registry
@@ -42,7 +47,7 @@ def _load_yaml_configs() -> Dict[str, IndexInfo]:
             )
             registry[index_info.name] = index_info
         except Exception as e:
-            print(f"Failed to load {yaml_file}: {e}")
+            logger.exception(f"Error loading YAML file {yaml_file}: {e}")
 
     return registry
 

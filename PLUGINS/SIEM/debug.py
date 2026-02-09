@@ -81,5 +81,10 @@ def test_keyword_search():
 
 
 if __name__ == "__main__":
+    import os
+    import django
+
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
+    django.setup()
     test_keyword_search()
     # test_adaptive_query()
