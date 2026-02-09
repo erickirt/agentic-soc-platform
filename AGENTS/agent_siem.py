@@ -175,15 +175,4 @@ class GraphAgent(LanggraphPlaybook):
         return result
 
 
-# Test code
-if __name__ == "__main__":
-    import os
-    import django
 
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
-    django.setup()
-
-    print("\n--- Using create_agent for Query ---")
-    test_query = "最近5分钟192.168.1.150使用ssh访问了哪些内网主机?"
-    result_simple = AgentSIEM.siem_search_by_natural_language(test_query)
-    print(result_simple)

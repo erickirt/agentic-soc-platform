@@ -28,7 +28,7 @@ def _load_yaml_configs() -> Dict[str, IndexInfo]:
 
     script_path = Path(__file__).resolve()
     project_root = script_path.parents[2]
-    indexs_dir = project_root / "Docker" / "Index"
+    indexs_dir = project_root / "DATA" / "Indexes"
 
     if not indexs_dir.exists():
         return registry
