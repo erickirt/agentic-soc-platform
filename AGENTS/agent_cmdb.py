@@ -14,7 +14,7 @@ from Lib.configs import DATA_DIR
 from Lib.llmapi import load_system_prompt_template
 from PLUGINS.LLM.llmapi import LLMAPI
 # Modify the following functions to the actual CMDB API
-from PLUGINS.Mock.CMDB import get_ci_context_tool, fuzzy_search_ci_tool, get_cis_by_software_tool, get_cis_by_port_tool, get_cis_by_service_tool, \
+from PLUGINS.Mock.CMDB.CMDB import get_ci_context_tool, fuzzy_search_ci_tool, get_cis_by_software_tool, get_cis_by_port_tool, get_cis_by_service_tool, \
     get_cis_by_user_tool
 
 AGENT_NODE = "AGENT_NODE"

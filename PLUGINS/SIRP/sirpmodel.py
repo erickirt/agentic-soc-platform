@@ -231,6 +231,8 @@ class ProductCategory(StrEnum):
     EDR = "EDR"
     NDR = "NDR"
     CLOUD = "Cloud"
+    SIEM = "SIEM"
+    WAF = "WAF"
     OTHER = "Other"
 
 
@@ -238,6 +240,7 @@ class AlertPolicyType(StrEnum):
     IDENTITY_POLICY = "Identity Policy"
     RESOURCE_POLICY = "Resource Policy"
     SERVICE_CONTROL_POLICY = "Service Control Policy"
+    ACCESS_CONTROL_POLICY = "Access Control Policy"
     OTHER = "Other"
 
 
