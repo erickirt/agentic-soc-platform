@@ -314,7 +314,7 @@ case11_brute_force = CaseModel(
     confidence_ai=Confidence.HIGH,
     threat_hunting_report_ai="Query: Show all failed login attempts from external IPs in last 7 days | Show all successful logins from 45.95.11.22 in last 7 days | Check for similar brute force patterns from other IP ranges",
     tickets=[ticket_pagerduty],
-    enrichments=[enrichment_greynoise_scanner, enrichment_geoip_russia],
+    enrichments=[],
     alerts=[alert_brute_force_siem]
 )
 

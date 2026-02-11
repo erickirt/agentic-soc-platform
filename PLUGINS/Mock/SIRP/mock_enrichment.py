@@ -35,11 +35,11 @@ enrichment_otx_8888 = EnrichmentModel(
     data=json.dumps({"pulse_count": 42, "tags": ["malware", "c2", "gootkit"]})
 )
 enrichment_greynoise_scanner = EnrichmentModel(
-    name="GreyNoise Report for 185.220.101.45",
+    name="GreyNoise Report for 45.95.11.22",
     type="Threat Intelligence",
     provider="GreyNoise",
-    value="185.220.101.45",
-    src_url="https://www.greynoise.io/viz/ip/185.220.101.45",
+    value="45.95.11.22",
+    src_url="https://www.greynoise.io/viz/ip/45.95.11.22",
     desc="Known mass-scanner. Classification: malicious. Last seen scanning 2 hours ago.",
     data=json.dumps({"classification": "malicious", "tags": ["SSH Bruteforce", "Mass Scanner"], "last_seen": "2h"})
 )
@@ -80,10 +80,10 @@ enrichment_whois_domain = EnrichmentModel(
     data=json.dumps({"created": "2024-01-18", "registrar": "NameCheap", "privacy": True})
 )
 enrichment_geoip_russia = EnrichmentModel(
-    name="GeoIP Location for 185.220.101.45",
+    name="GeoIP Location for 45.95.11.22",
     type="Geolocation",
     provider="MaxMind GeoIP",
-    value="185.220.101.45",
+    value="45.95.11.22",
     desc="Location: Moscow, Russia. ASN: AS12345 (SuspiciousHosting LLC)",
     data=json.dumps({"country": "RU", "city": "Moscow", "asn": "AS12345", "org": "SuspiciousHosting LLC"})
 )

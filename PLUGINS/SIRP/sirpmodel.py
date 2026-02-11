@@ -337,6 +337,12 @@ class BaseSystemModel(BaseModel):
     # wfftime: Optional[Any] = Field(default=None, description="工作流关注时间")
     # wfstatus: Optional[WfStatus] = Field(default=None, description="工作流状态")
 
+    @field_validator("ownerid", mode="before")
+    def empty_list_to_none(cls, v):
+        if isinstance(v, list) and len(v) == 0:
+            return None
+        return v
+
     @field_validator(
         "ctime", "utime", "wfctime", "wfrtime", "wfcotime", "wfdtime",
         "created_time", "modified_time", "first_seen_time", "last_seen_time", "acknowledged_time", "closed_time",
