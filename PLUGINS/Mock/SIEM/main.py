@@ -6,8 +6,12 @@ import httpx
 
 import CONFIG
 import settings
-from generator import NetworkGenerator, HostGenerator, CloudGenerator
-from scenarios import BruteForceScenario, SqlInjectionScenario, RansomwareScenario, CloudPrivilegeEscalationScenario
+from generator.cloud import CloudGenerator
+from generator.host import HostGenerator
+from generator.network import NetworkGenerator
+from scenarios.cloud import CloudPrivilegeEscalationScenario
+from scenarios.host import RansomwareScenario
+from scenarios.network import BruteForceScenario
 
 
 # --- 发送器类 (同步版本) ---
@@ -91,7 +95,7 @@ if __name__ == "__main__":
         my_senders.append(SplunkSender())
 
     # 3. 定义你想注入的攻击场景
-    my_scenarios = [BruteForceScenario, SqlInjectionScenario, RansomwareScenario, CloudPrivilegeEscalationScenario]
+    my_scenarios = [BruteForceScenario, RansomwareScenario, CloudPrivilegeEscalationScenario]
 
     # 4. 启动引擎 (完全通过传参控制)
     if not my_senders:
