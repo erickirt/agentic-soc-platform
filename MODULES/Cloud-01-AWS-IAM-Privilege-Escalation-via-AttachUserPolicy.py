@@ -12,6 +12,7 @@ from Lib.api import get_current_time_str
 from Lib.basemodule import LanggraphModule
 from Lib.llmapi import BaseAgentState
 from PLUGINS.LLM.llmapi import LLMAPI
+from PLUGINS.SIRP.grouprule import GroupRule, CorrelationConfig, CorrelationStrategy
 from PLUGINS.SIRP.sirpapi import Alert
 from PLUGINS.SIRP.sirpmodel import AlertModel, ArtifactModel, ArtifactType, ArtifactRole, Severity, AlertStatus, AlertAnalyticType, ProductCategory, Confidence, \
     ImpactLevel, AlertRiskLevel, Disposition, AlertAction, AlertPolicyType
@@ -85,54 +86,6 @@ class Module(LanggraphModule):
 
             event_time_formatted = event_time if event_time else get_current_time_str()
 
-            correlation_uid = f"{account_id}-{principal_user}-{target_user}-{event_id}"
-
-            alert_model = AlertModel(
-                title=f"AWS IAM Privilege Escalation: {principal_user} attached {policy_arn.split('/')[-1]} to {target_user}",
-                src_url=f"AWS CloudTrail - Event ID: {event_id}",
-                severity=severity,
-                status=AlertStatus.NEW,
-                status_detail="New alert received from AWS CloudTrail - awaiting analysis",
-                disposition=Disposition.DETECTED,
-                action=AlertAction.OBSERVED,
-                rule_id=self.module_name,
-                rule_name=rule_name,
-                source_uid=event_id,
-                correlation_uid=correlation_uid,
-                count=1,
-                analytic_type=AlertAnalyticType.BEHAVIORAL,
-                analytic_name="AWS IAM Behavioral Anomaly Detection",
-                analytic_desc="Detects suspicious IAM policy attachment operations that indicate privilege escalation attempts or backdoor account creation",
-                analytic_state=None,
-                product_category=ProductCategory.CLOUD,
-                product_name="AWS CloudTrail",
-                product_vendor="Amazon AWS",
-                product_feature="CloudTrail Logging",
-                first_seen_time=event_time_formatted,
-                last_seen_time=event_time_formatted,
-                desc=message or f"IAM user {principal_user} attached policy {policy_arn} to user {target_user} in account {account_id}",
-                data_sources=["AWS CloudTrail"],
-                labels=["iam-privilege-escalation", "aws-cloudtrail", f"account-{account_id}"],
-                raw_data=json.dumps(alert_raw),
-                unmapped=json.dumps({
-                    "userAgent": user_agent,
-                    "awsRegion": aws_region,
-                    "requestID": alert_raw.get("requestID", ""),
-                    "eventVersion": alert_raw.get("eventVersion", "")
-                }),
-                tactic="T1098.003 - AWS IAM Account Manipulation",
-                technique="Privilege Escalation",
-                sub_technique="Create IAM Access Keys",
-                mitigation="Enable IAM access analyzer, enforce MFA, use service control policies to restrict policy attachment",
-                policy_name="AWS IAM Access Policy",
-                policy_type=AlertPolicyType.IDENTITY_POLICY,
-                policy_desc="IAM identity-based policy that grants permissions to AWS services",
-                impact=ImpactLevel.CRITICAL if severity in [Severity.CRITICAL, Severity.HIGH] else ImpactLevel.HIGH,
-                confidence=Confidence.HIGH,
-                risk_level=AlertRiskLevel.CRITICAL if severity == Severity.CRITICAL else AlertRiskLevel.HIGH,
-                risk_details=f"Unauthorized administrator policy attached to {target_user} - potential backdoor account creation or privilege escalation attack"
-            )
-
             artifacts: List[ArtifactModel] = []
 
             artifacts.append(ArtifactModel(
@@ -184,6 +137,64 @@ class Module(LanggraphModule):
                     value=access_key_id,
                     name="Access Key ID"
                 ))
+
+            correlation_config = CorrelationConfig(
+                rule_id=self.module_name,
+                strategy=CorrelationStrategy.BY_ACTOR_AND_TARGET,
+                time_window="24h",
+                case_title_template="AWS IAM Privilege Escalation: {actor} → {target}"
+            )
+            group_rule = GroupRule(config=correlation_config)
+            correlation_uid = group_rule.generate_correlation_uid(
+                artifacts=artifacts,
+                timestamp=event_time_formatted
+            )
+
+            alert_model = AlertModel(
+                title=f"AWS IAM Privilege Escalation: {principal_user} attached {policy_arn.split('/')[-1]} to {target_user}",
+                src_url=f"AWS CloudTrail - Event ID: {event_id}",
+                severity=severity,
+                status=AlertStatus.NEW,
+                status_detail="New alert received from AWS CloudTrail - awaiting analysis",
+                disposition=Disposition.DETECTED,
+                action=AlertAction.OBSERVED,
+                rule_id=self.module_name,
+                rule_name=rule_name,
+                source_uid=event_id,
+                correlation_uid=correlation_uid,
+                count=1,
+                analytic_type=AlertAnalyticType.BEHAVIORAL,
+                analytic_name="AWS IAM Behavioral Anomaly Detection",
+                analytic_desc="Detects suspicious IAM policy attachment operations that indicate privilege escalation attempts or backdoor account creation",
+                analytic_state=None,
+                product_category=ProductCategory.CLOUD,
+                product_name="AWS CloudTrail",
+                product_vendor="Amazon AWS",
+                product_feature="CloudTrail Logging",
+                first_seen_time=event_time_formatted,
+                last_seen_time=event_time_formatted,
+                desc=message or f"IAM user {principal_user} attached policy {policy_arn} to user {target_user} in account {account_id}",
+                data_sources=["AWS CloudTrail"],
+                labels=["iam-privilege-escalation", "aws-cloudtrail", f"account-{account_id}"],
+                raw_data=json.dumps(alert_raw),
+                unmapped=json.dumps({
+                    "userAgent": user_agent,
+                    "awsRegion": aws_region,
+                    "requestID": alert_raw.get("requestID", ""),
+                    "eventVersion": alert_raw.get("eventVersion", "")
+                }),
+                tactic="T1098.003 - AWS IAM Account Manipulation",
+                technique="Privilege Escalation",
+                sub_technique="Create IAM Access Keys",
+                mitigation="Enable IAM access analyzer, enforce MFA, use service control policies to restrict policy attachment",
+                policy_name="AWS IAM Access Policy",
+                policy_type=AlertPolicyType.IDENTITY_POLICY,
+                policy_desc="IAM identity-based policy that grants permissions to AWS services",
+                impact=ImpactLevel.CRITICAL if severity in [Severity.CRITICAL, Severity.HIGH] else ImpactLevel.HIGH,
+                confidence=Confidence.HIGH,
+                risk_level=AlertRiskLevel.CRITICAL if severity == Severity.CRITICAL else AlertRiskLevel.HIGH,
+                risk_details=f"Unauthorized administrator policy attached to {target_user} - potential backdoor account creation or privilege escalation attack"
+            )
 
             alert_model.artifacts = artifacts
             return {"alert": alert_model}

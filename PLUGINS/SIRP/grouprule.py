@@ -1,40 +1,66 @@
+import hashlib
 from datetime import datetime, timezone
+from enum import StrEnum
 from typing import List, Dict, Any, Optional, Union
+
+from pydantic import BaseModel, Field
+
+
+class CorrelationStrategy(StrEnum):
+    BY_ACTOR = "by_actor"
+    BY_TARGET = "by_target"
+    BY_ACTOR_AND_TARGET = "by_actor_and_target"
+    BY_RULE = "by_rule"
+    BY_CUSTOM_FIELDS = "by_custom_fields"
+
+
+class CorrelationConfig(BaseModel):
+    rule_id: str = Field(description="规则ID，用于区分不同类型的告警")
+    strategy: CorrelationStrategy = Field(default=CorrelationStrategy.BY_ACTOR_AND_TARGET, description="关联策略")
+    artifact_types: List[str] = Field(default=[], description="用于关联的artifact类型列表，为空时根据strategy自动选择")
+    artifact_roles: List[str] = Field(default=[], description="用于关联的artifact角色列表，为空时根据strategy自动选择")
+    time_window: str = Field(default="24h", description="时间窗口")
+    case_title_template: str = Field(default="", description="Case标题模板，支持{rule_name}, {actor}, {target}等变量")
+    include_rule_in_key: bool = Field(default=True, description="是否将规则ID包含在关联key中")
 
 
 class GroupRule(object):
-    """
-    告警聚合规则,用于定义如何将多个告警(alert)聚合到同一个案件(case)中.
-    基本方法: 根据规则ID、告警中的凭据(artifact)以及时间窗口,生成去重指纹(deduplication key).还有相同指纹的告警会被聚合到同一个案件中.
-    还可以定义案件标题的模板,以便生成更具描述性的案件标题.
-    方法在心智成本和聚合效果之间取得平衡,适用于绝大多数常见地告警聚合场景.
-    """
+    VALID_WINDOWS = ['10m', '30m', '1h', '8h', '12h', '24h']
+
+    ROLE_PRIORITY = {
+        'Actor': 1,
+        'Target': 2,
+        'Affected': 3,
+        'Related': 4,
+        'Unknown': 5,
+        'Other': 6
+    }
 
     def __init__(self,
-                 rule_id: str,
-                 rule_name: str,
-                 deduplication_fields: List[str],
-                 case_title_template: str = None,
-                 deduplication_window: str = "24h",
-                 source: str = "Default",
-                 workbook: str = None,
-                 follow_alert_severity: bool = True,
-                 append_alert_tags: bool = True,
-                 ):
+                 config: Optional[CorrelationConfig] = None,
+                 rule_id: str = None,
+                 correlation_fields: List[str] = None,
+                 correlation_window: str = "24h"):
 
-        self.rule_id = rule_id
-        self.rule_name = rule_name
-        self.deduplication_fields = deduplication_fields
-        self.case_title_template = case_title_template
-        self.source = source
-        self.workbook = workbook
-        self.follow_alert_severity = follow_alert_severity
-        self.append_alert_tags = append_alert_tags
-        
-        valid_windows = ['10m', '30m', '1h', '8h', '12h', '24h']
-        if deduplication_window not in valid_windows:
-            raise ValueError(f"'{deduplication_window}' 不是一个有效的时间窗口选项.请从 {valid_windows} 中选择.")
-        self.deduplication_window = deduplication_window
+        if config:
+            self.rule_id = config.rule_id
+            self.strategy = config.strategy
+            self.artifact_types = config.artifact_types
+            self.artifact_roles = config.artifact_roles
+            self.time_window = config.time_window
+            self.case_title_template = config.case_title_template
+            self.include_rule_in_key = config.include_rule_in_key
+        else:
+            self.rule_id = rule_id or ""
+            self.strategy = CorrelationStrategy.BY_CUSTOM_FIELDS
+            self.artifact_types = correlation_fields or []
+            self.artifact_roles = []
+            self.time_window = correlation_window
+            self.case_title_template = ""
+            self.include_rule_in_key = True
+
+        if self.time_window not in self.VALID_WINDOWS:
+            raise ValueError(f"'{self.time_window}' 不是一个有效的时间窗口选项. 请从 {self.VALID_WINDOWS} 中选择.")
 
     @staticmethod
     def _get_time_bucket(dt_object: datetime, window: str) -> datetime:
@@ -51,42 +77,83 @@ class GroupRule(object):
                 return dt_object.replace(hour=new_hour, minute=0, second=0, microsecond=0)
         return dt_object
 
-    def generate_deduplication_key(self,
-                                   artifacts: List[Dict[str, Any]],
-                                   timestamp: Optional[Union[int, float]] = None) -> str:
-        """
-        生成包含“时间桶”的去重指纹.
+    def _extract_artifacts_by_strategy(self, artifacts: List[Any]) -> List[Dict[str, str]]:
+        result = []
 
-        :param artifacts: 事件中的凭据列表
-        :param timestamp: (可选) 事件的UTC Unix时间戳 (整数或浮点数).如果为None,则使用当前系统时间.
-        :return: 包含时间桶的去重指纹
-        """
-        if timestamp is not None:
-            processing_dt = datetime.fromtimestamp(timestamp, tz=timezone.utc)
-        else:
+        role_map = {
+            CorrelationStrategy.BY_ACTOR: ['Actor'],
+            CorrelationStrategy.BY_TARGET: ['Target'],
+            CorrelationStrategy.BY_ACTOR_AND_TARGET: ['Actor', 'Target'],
+            CorrelationStrategy.BY_RULE: [],
+            CorrelationStrategy.BY_CUSTOM_FIELDS: self.artifact_roles if self.artifact_roles else []
+        }
 
+        target_roles = role_map.get(self.strategy, [])
+
+        for artifact in artifacts:
+            if hasattr(artifact, 'type') and hasattr(artifact, 'value') and hasattr(artifact, 'role'):
+                art_type = str(artifact.type.value) if hasattr(artifact.type, 'value') else str(artifact.type)
+                art_value = str(artifact.value) if artifact.value else ""
+                art_role = str(artifact.role.value) if hasattr(artifact.role, 'value') else str(artifact.role)
+            elif isinstance(artifact, dict):
+                art_type = str(artifact.get('type', ''))
+                art_value = str(artifact.get('value', ''))
+                art_role = str(artifact.get('role', 'Related'))
+            else:
+                continue
+
+            if self.artifact_types and art_type not in self.artifact_types:
+                continue
+
+            if target_roles and art_role not in target_roles:
+                continue
+
+            result.append({
+                'type': art_type,
+                'value': art_value,
+                'role': art_role
+            })
+
+        result.sort(key=lambda x: (self.ROLE_PRIORITY.get(x['role'], 99), x['type'], x['value']))
+
+        return result
+
+    def generate_correlation_uid(self,
+                                 artifacts: List[Any],
+                                 timestamp: Optional[Union[int, float, str, datetime]] = None,
+                                 rule_id_override: str = None) -> str:
+
+        if timestamp is None:
             processing_dt = datetime.now(timezone.utc)
-
-        time_bucket_dt = self._get_time_bucket(processing_dt, self.deduplication_window)
-        time_bucket_str = time_bucket_dt.strftime('%Y-%m-%dT%H:%M:%S')
-
-        key_parts = [self.rule_id, time_bucket_str]
-        artifacts_map = {art['type']: art['value'] for art in artifacts}
-        for field in sorted(self.deduplication_fields):
-            key_parts.append(artifacts_map.get(field, 'N/A'))
-
-        return "_".join(key_parts)
-
-    def generate_case_title(self, artifacts: List[Dict[str, Any]] = None) -> str:
-        if self.case_title_template is None:
-            title = self.rule_name
-            for art in artifacts:
-                if art.get('type') in self.deduplication_fields:
-                    title = f"{title} {art['type']}:{art['value']}"
-            return title
+        elif isinstance(timestamp, datetime):
+            processing_dt = timestamp if timestamp.tzinfo else timestamp.replace(tzinfo=timezone.utc)
+        elif isinstance(timestamp, str):
+            try:
+                processing_dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+            except ValueError:
+                processing_dt = datetime.now(timezone.utc)
         else:
-            template_values = {"rule_name": self.rule_name}
-            for art in artifacts:
-                template_values[art['type']] = art['value']
-            title = self.case_title_template.format_map(template_values)
-            return title
+            processing_dt = datetime.fromtimestamp(timestamp, tz=timezone.utc)
+
+        time_bucket_dt = self._get_time_bucket(processing_dt, self.time_window)
+        time_bucket_str = time_bucket_dt.strftime('%Y%m%d%H%M')
+
+        key_parts = []
+
+        effective_rule_id = rule_id_override or self.rule_id
+        if self.include_rule_in_key and effective_rule_id:
+            key_parts.append(effective_rule_id)
+
+        key_parts.append(time_bucket_str)
+
+        extracted_artifacts = self._extract_artifacts_by_strategy(artifacts)
+
+        for art in extracted_artifacts:
+            key_parts.append(f"{art['role']}:{art['type']}:{art['value']}")
+
+        raw_key = "|".join(key_parts)
+
+        hash_obj = hashlib.sha256(raw_key.encode('utf-8'))
+        short_hash = hash_obj.hexdigest()[:16]
+
+        return f"corr-{short_hash}"
