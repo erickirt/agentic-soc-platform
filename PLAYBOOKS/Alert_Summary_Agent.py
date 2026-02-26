@@ -29,6 +29,7 @@ class AlertExtraction(BaseModel):
 
 class AgentState(BaseAgentState):
     logs: List[KeywordSearchOutput] = []
+    summary_ai: str = ""
 
 
 class Playbook(LanggraphPlaybook):
@@ -54,10 +55,6 @@ class Playbook(LanggraphPlaybook):
 
             system_message = system_prompt_template.format()
 
-            # Construct few-shot examples
-            few_shot_examples = [
-            ]
-
             # Run
             llm_api = LLMAPI()
 
@@ -66,7 +63,6 @@ class Playbook(LanggraphPlaybook):
             # Construct message list
             messages = [
                 system_message,
-                *few_shot_examples,
                 HumanMessage(content=alert.model_dump_json())
             ]
             llm = llm.with_structured_output(AlertExtraction)
@@ -79,12 +75,29 @@ class Playbook(LanggraphPlaybook):
                 results = SIEMToolKit.keyword_search(
                     KeywordSearchInput(keyword=keyword.keyword, time_range_start=start_time, time_range_end=end_time))
                 logs.extend(results)
-            # response = LLMAPI.extract_think(response)  # Temporary solution for langchain chatollama bug
-            return {"logs": logs}
+
+            # summany
+            llm = llm_api.get_model(tag="fast")
+            human_message = self.load_human_prompt_template("summary_agent_human").format(
+                alert_data=alert.model_dump_json(),
+                threat_intel=None,
+                siem_logs=[log.model_dump_json() for log in logs]
+            )
+
+            messages = [
+                system_message,
+                human_message
+            ]
+
+            response = llm.invoke(messages)
+
+            return {"summary_ai": response.content}
 
         def output_node(state: AgentState):
             """Process analysis results"""
-
+            summary_ai = state.summary_ai
+            model = AlertModel(rowid=self.param_source_rowid, summary_ai=summary_ai)
+            Alert.update(model)
             self.agent_state = state
             return state
 
@@ -115,7 +128,7 @@ if __name__ == "__main__":
 
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
     django.setup()
-    model = PlaybookModel(source_worksheet='alert', source_rowid='f7a4b955-c511-4528-9095-4559bac5e6b7')
+    model = PlaybookModel(source_worksheet='alert', source_rowid='03e21470-edd8-4b19-8ffb-628d5203a1c3')
     module = Playbook()
     module._playbook_model = model
 
