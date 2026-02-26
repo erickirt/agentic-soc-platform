@@ -1,9 +1,9 @@
 import random
 
 # 运行参数
-EPS = 100
+EPS = 10
 BATCH_SIZE = 100
-MALICIOUS_PERCENTAGE = 0.1  # 10% 的日志为恶意/异常日志
+MALICIOUS_PERCENTAGE = 0.05  # 5% 的日志为恶意/异常日志
 
 # 索引/来源定义
 NET_INDEX = "siem-network-traffic"

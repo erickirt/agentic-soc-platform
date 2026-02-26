@@ -324,7 +324,7 @@ class SIEMToolKit(object):
 
         must_clauses = [
             cls._build_time_range_clause(input_data.time_field, input_data.time_range_start, input_data.time_range_end),
-            {"query_string": {"query": input_data.keyword, "default_operator": "AND"}}
+            {"multi_match": {"query": input_data.keyword, "type": "best_fields", "fuzziness": "AUTO"}}
         ]
         query_body = {"bool": {"must": must_clauses}}
 
@@ -471,7 +471,7 @@ class SIEMToolKit(object):
 
         must_clauses = [
             cls._build_time_range_clause(input_data.time_field, input_data.time_range_start, input_data.time_range_end),
-            {"query_string": {"query": input_data.keyword, "default_operator": "AND"}}
+            {"multi_match": {"query": input_data.keyword, "type": "best_fields", "fuzziness": "AUTO"}}
         ]
         query_body = {"bool": {"must": must_clauses}}
         aggs_dsl = {"_index": {"terms": {"field": "_index", "size": 50}}}

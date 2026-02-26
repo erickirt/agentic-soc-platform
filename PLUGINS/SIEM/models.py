@@ -4,8 +4,8 @@ from typing import List, Dict, Any, Optional, Union
 from pydantic import BaseModel, Field, field_validator
 
 SUMMARY_THRESHOLD = 1000
-SAMPLE_THRESHOLD = 20
-SAMPLE_COUNT = 3
+SAMPLE_THRESHOLD = 100
+SAMPLE_COUNT = 5
 
 
 # --- Input Models ---

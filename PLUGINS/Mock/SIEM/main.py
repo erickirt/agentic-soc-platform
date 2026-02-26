@@ -4,14 +4,14 @@ import time
 
 import httpx
 
-import CONFIG
-import settings
-from generator.cloud import CloudGenerator
-from generator.host import HostGenerator
-from generator.network import NetworkGenerator
-from scenarios.cloud import CloudPrivilegeEscalationScenario
-from scenarios.host import RansomwareScenario
-from scenarios.network import BruteForceScenario
+from PLUGINS.Mock.SIEM import CONFIG
+from PLUGINS.Mock.SIEM import settings
+from PLUGINS.Mock.SIEM.generator.cloud import CloudGenerator
+from PLUGINS.Mock.SIEM.generator.host import HostGenerator
+from PLUGINS.Mock.SIEM.generator.network import NetworkGenerator
+from PLUGINS.Mock.SIEM.scenarios.cloud import CloudPrivilegeEscalationScenario
+from PLUGINS.Mock.SIEM.scenarios.host import RansomwareScenario
+from PLUGINS.Mock.SIEM.scenarios.network import BruteForceScenario
 
 
 # --- 发送器类 (同步版本) ---
