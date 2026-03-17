@@ -138,6 +138,23 @@ class Severity(StrEnum):
     OTHER = "Other"
 
 
+class AttackStage(StrEnum):
+    RECONNAISSANCE = "Reconnaissance"
+    RESOURCE_DEVELOPMENT = "Resource Development"
+    INITIAL_ACCESS = "Initial Access"
+    EXECUTION = "Execution"
+    PERSISTENCE = "Persistence"
+    PRIVILEGE_ESCALATION = "Privilege Escalation"
+    DEFENSE_EVASION = "Defense Evasion"
+    CREDENTIAL_ACCESS = "Credential Access"
+    DISCOVERY = "Discovery"
+    LATERAL_MOVEMENT = "Lateral Movement"
+    COLLECTION = "Collection"
+    COMMAND_AND_CONTROL = "Command and Control"
+    EXFILTRATION = "Exfiltration"
+    IMPACT = "Impact"
+
+
 class ImpactLevel(StrEnum):
     UNKNOWN = "Unknown"
     LOW = "Low"
@@ -697,7 +714,7 @@ class CaseModel(BaseSystemModel):
     workbook: Optional[str] = Field(default="", description="事件调查使用的工作簿或调查手册内容")
 
     # ai 字段
-    attack_stage_ai: Optional[str] = Field(default="", description="AI评估的攻击阶段")
+    attack_stage_ai: Optional[AttackStage] = Field(default="", description="AI评估的攻击阶段")
     severity_ai: Optional[Severity] = Field(default=None,
                                             description="AI评估的事件严重性")
     confidence_ai: Optional[Confidence] = Field(default=None, description="AI评估的事件置信度")

@@ -5,7 +5,7 @@ from PLUGINS.SIEM.models import KeywordSearchInput
 from PLUGINS.SIEM.tools import SIEMToolKit
 from PLUGINS.SIRP.nocolymodel import Group, Condition, Operator
 from PLUGINS.SIRP.sirpapi import Case
-from PLUGINS.SIRP.sirpmodel import CaseModel, Severity, CaseStatus, CaseVerdict, Confidence
+from PLUGINS.SIRP.sirpmodel import CaseModel, Severity, CaseStatus, CaseVerdict, Confidence, AttackStage
 
 
 def get_case(
@@ -22,6 +22,7 @@ def get_case(
 def list_cases(
         status: Annotated[Optional[list[CaseStatus]], "Filter by case status or a list of case statuses"] = None,
         severity: Annotated[Optional[list[Severity]], "Filter by severity level or a list of severity levels"] = None,
+        confidence: Annotated[Optional[list[Confidence]], "Filter by severity level or a list of severity levels"] = None,
         limit: Annotated[int, "Maximum number of results to return"] = 10
 ) -> Annotated[list[str], "Security cases matching the filters"]:
     """List security cases with optional filters."""
@@ -29,9 +30,10 @@ def list_cases(
 
     if status:
         conditions.append(Condition(field="status", operator=Operator.IN, value=status))
-
     if severity:
         conditions.append(Condition(field="severity", operator=Operator.IN, value=severity))
+    if confidence:
+        conditions.append(Condition(field="confidence", operator=Operator.IN, value=confidence))
 
     filter_model = Group(logic="AND", children=conditions) if conditions else Group(logic="AND", children=[])
 
@@ -44,11 +46,12 @@ def list_cases(
 
 def update_case(
         case_id: Annotated[str, "Case ID to update"],
-        severity: Annotated[Optional[str], "New severity"] = None,
-        status: Annotated[Optional[str], "New status"] = None,
-        verdict: Annotated[Optional[str], "New verdict"] = None,
-        severity_ai: Annotated[Optional[str], "New AI-assessed severity"] = None,
-        confidence_ai: Annotated[Optional[str], "New AI-assessed confidence"] = None,
+        severity: Annotated[Optional[Severity], "New severity"] = None,
+        status: Annotated[Optional[CaseStatus], "New status"] = None,
+        verdict: Annotated[Optional[CaseVerdict], "New verdict"] = None,
+        severity_ai: Annotated[Optional[Severity], "New AI-assessed severity"] = None,
+        confidence_ai: Annotated[Optional[Confidence], "New AI-assessed confidence"] = None,
+        attack_stage_ai: Annotated[Optional[AttackStage], "New AI-attack stage"] = None,
         comment_ai: Annotated[Optional[
             str], "New AI-comment. Supports Markdown format."] = None,
         summary_ai: Annotated[Optional[
@@ -62,16 +65,17 @@ def update_case(
     case_new = CaseModel()
     case_new.rowid = case_old.rowid
     if severity:
-        case_new.severity = Severity(severity)
+        case_new.severity = severity
     if status:
-        case_new.status = CaseStatus(status)
+        case_new.status = status
     if verdict:
-        case_new.verdict = CaseVerdict(verdict)
+        case_new.verdict = verdict
     if severity_ai:
-        case_new.severity_ai = Severity(severity_ai)
+        case_new.severity_ai = severity_ai
     if confidence_ai:
-        case_new.confidence_ai = Confidence(confidence_ai)
-
+        case_new.confidence_ai = confidence_ai
+    if attack_stage_ai:
+        case_new.attack_stage_ai = attack_stage_ai
     if comment_ai:
         case_new.comment_ai = comment_ai
     if summary_ai:

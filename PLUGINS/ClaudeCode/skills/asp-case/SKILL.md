@@ -58,7 +58,7 @@ Ask the user which operation they want to perform:
 - Total count
 - For each key alert: title, severity, status, source UID, correlation UID, first seen time, last seen time
 
-**Associated Artifacts**
+**Associated Artifacts for each alert**
 
 - Total count
 - For each key artifact: name, value, type, role, reputation score
@@ -108,6 +108,7 @@ Total: [count] cases
   Risk, Managed Externally, Duplicate, Other
 - `severity_ai` - AI-assessed severity
 - `confidence_ai` - Unknown, Low, Medium, High, Other
+- `attack_stage_ai` - MITRE ATT&CK tactics
 - `comment_ai` - Markdown content (use #### as top-level heading)
 - `summary_ai` - Markdown content (use #### as top-level heading)
 

@@ -9,7 +9,7 @@ from Lib.baseplaybook import LanggraphPlaybook
 from Lib.llmapi import BaseAgentState
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.sirpapi import Case
-from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus, PlaybookModel, CaseModel
+from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus, PlaybookModel, CaseModel, AttackStage
 from PLUGINS.SIRP.sirpmodel import Severity, Confidence
 
 
@@ -22,7 +22,7 @@ class AnalyzeResult(BaseModel):
     new_severity: Severity = Field(description="Recommended new severity level")
     confidence: Confidence = Field(description="Confidence score, only one of 'Low', 'Medium', or 'High'")
     analysis_rationale: str | None = Field(description="Analysis process and reasons", default=None)
-    attack_stage: str | dict[str, Any] | None = Field(description="e.g., 'T1059 - Command and Control', 'Lateral Movement'", default=None)
+    attack_stage: AttackStage = Field(description="e.g. 'Lateral Movement'", default=None)
     recommended_actions: str | dict[str, Any] | None = Field(description="e.g., 'Isolate host 10.1.1.5'", default=None)
 
 
@@ -81,9 +81,9 @@ class Playbook(LanggraphPlaybook):
             case_new = CaseModel(rowid=self.param_source_rowid,
                                  severity_ai=analyze_result.new_severity,
                                  confidence_ai=analyze_result.confidence,
-                                 analysis_rationale_ai=analyze_result.analysis_rationale,
+                                 comment_ai=analyze_result.analysis_rationale,
                                  attack_stage_ai=analyze_result.attack_stage,
-                                 recommended_actions_ai=analyze_result.recommended_actions,
+                                 summary_ai=analyze_result.recommended_actions,
                                  )
             Case.update(case_new)
 

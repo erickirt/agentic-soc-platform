@@ -30,7 +30,8 @@ This skill currently focuses on `siem_keyword_search`. More SIEM operations can 
 
 **Required parameters:**
 
-- `keyword` - Search keyword or keyword list. Can be an IP address, hostname, username, email, hash, process name, domain, or any string. If a list is provided, all keywords are matched with AND semantics
+- `keyword` - Search keyword or keyword list. Can be an IP address, hostname, username, email, hash, process name,
+  domain, or any string. If a list is provided, all keywords are matched with AND semantics
 - `time_range_start` - Start time in UTC ISO8601 format, for example `2026-02-04T06:00:00Z`
 - `time_range_end` - End time in UTC ISO8601 format, for example `2026-02-04T07:00:00Z`
 
@@ -48,11 +49,13 @@ This skill currently focuses on `siem_keyword_search`. More SIEM operations can 
 3. If the target source uses a non-default time field, collect `time_field`; otherwise use `@timestamp`
 4. Use MCP tool `siem_keyword_search` with the collected parameters
 5. Check the returned `status` for each result group
-6. If the result is too large, reduce the time range or add more precise keywords so the query moves from `summary` or `sample` toward `full`
+6. If the result is too large, reduce the time range or add more precise keywords so the query moves from `summary` or
+   `sample` toward `full`
 7. If the result is empty or too narrow, expand the time range or remove restrictive keywords
 8. Continue iterating until `full` is reached when the goal is to retrieve the complete original raw logs
 9. Parse each returned JSON string
-10. If the result list is empty after reasonable refinement, state that no matching logs were found in the specified time range
+10. If the result list is empty after reasonable refinement, state that no matching logs were found in the specified
+    time range
 11. Present results grouped by backend and index when multiple results are returned
 
 **Behavior notes:**
@@ -64,7 +67,8 @@ This skill currently focuses on `siem_keyword_search`. More SIEM operations can 
     - `sample` - statistics plus representative sample records for medium result sets
     - `summary` - statistics only for large result sets
 - Use time range changes together with keyword changes to control result volume and converge on `full`
-- The preferred end state for evidence collection is `full`, because it contains the complete original raw logs returned by the backend
+- The preferred end state for evidence collection is `full`, because it contains the complete original raw logs returned
+  by the backend
 - Time values must be UTC and end with `Z`
 
 **Refinement guidance:**
@@ -118,4 +122,5 @@ Then provide statistics and sample records under each result group.
 2. Collect required parameters for the chosen operation
 3. Execute the appropriate MCP tool
 4. Format and present the results according to the operation's output specification
-5. Handle errors gracefully, such as invalid UTC time format, unsupported index, backend connection issues, or no matching logs
+5. Handle errors gracefully, such as invalid UTC time format, unsupported index, backend connection issues, or no
+   matching logs

@@ -12,7 +12,7 @@ from Lib.baseplaybook import LanggraphPlaybook
 from Lib.llmapi import BaseAgentState
 from PLUGINS.LLM.llmapi import LLMAPI
 from PLUGINS.SIRP.sirpapi import Case
-from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus, CaseModel, PlaybookModel
+from PLUGINS.SIRP.sirpmodel import PlaybookJobStatus, CaseModel, PlaybookModel, AttackStage
 from PLUGINS.SIRP.sirpmodel import Severity, Confidence
 
 
@@ -51,9 +51,9 @@ class AnalyzeResult(BaseModel):
         default=None,
         description="详细推理过程.需包含识别到的新证据、新旧告警关联逻辑以及搜索工具返回的情报如何辅助了判断."
     )
-    attack_stage: str | None = Field(
+    attack_stage: AttackStage | None = Field(
         default=None,
-        description="参考 MITRE ATT&CK 战术名称,必须是字符串(如：'T1059 - Command and Control', 'Lateral Movement')."
+        description="MITRE ATT&CK 战术名称(如：'Lateral Movement')."
     )
     recommended_actions: str | None = Field(
         default=None,
@@ -151,9 +151,9 @@ class Playbook(LanggraphPlaybook):
             case_new = CaseModel(rowid=self.param_source_rowid,
                                  severity_ai=analyze_result.new_severity,
                                  confidence_ai=analyze_result.confidence,
-                                 analysis_rationale_ai=analyze_result.analysis_rationale,
+                                 comment_ai=analyze_result.analysis_rationale,
                                  attack_stage_ai=analyze_result.attack_stage,
-                                 recommended_actions_ai=analyze_result.recommended_actions,
+                                 summary_ai=analyze_result.recommended_actions,
                                  )
             Case.update(case_new)
 
