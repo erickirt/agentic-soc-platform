@@ -485,35 +485,4 @@ def get_current_time(
     return current_time.isoformat(timespec="seconds")
 
 
-if __name__ == "__main__":
-    import os
 
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
-    import django
-
-    django.setup()
-    print(get_current_time())
-    time_range_end = datetime.now(timezone.utc)
-    time_range_start = time_range_end - timedelta(minutes=10)
-    siem_results = siem_keyword_search(
-        keyword=["227.174.159.18", "CreateAccessKey"],
-        time_range_start=time_range_start.strftime("%Y-%m-%dT%H:%M:%SZ"),
-        time_range_end=time_range_end.strftime("%Y-%m-%dT%H:%M:%SZ")
-    )
-    print(siem_results)
-    cases = list_cases(limit=1)
-    print(cases)
-    if cases:
-        case = Case.list(Group(logic="AND", children=[]), lazy_load=True)[0]
-        result = update_case(
-            case_id=case.id,
-            status=CaseStatus.IN_PROGRESS,
-            verdict=CaseVerdict.SUSPICIOUS,
-            severity_ai=Severity.HIGH,
-            confidence_ai=Confidence.MEDIUM,
-            comment_ai="#### AI Comment\n\nAdditional investigation notes.",
-            summary_ai="#### AI Summary\n\nUpdated case summary."
-        )
-    else:
-        result = None
-    print(result)

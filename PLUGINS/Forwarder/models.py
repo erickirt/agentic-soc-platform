@@ -29,11 +29,3 @@ class KibanaPayload(BaseModel):
     """
     rule: KibanaRule
     context: KibanaContext
-
-
-class NocolyMailPayload(BaseModel):
-    """
-    Pydantic model for NocolyMail webhook payload.
-    Accepts any valid JSON object.
-    """
-    data: Dict[str, Any]

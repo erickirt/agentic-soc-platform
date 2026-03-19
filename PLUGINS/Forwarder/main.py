@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 
 from PLUGINS.Forwarder import CONFIG
 from PLUGINS.Forwarder.models import SplunkPayload, KibanaPayload
@@ -51,26 +51,6 @@ async def webhook_kibana(payload: KibanaPayload):
             redis_stream_api.send_message(rule_name, _source)
             logging.debug("Message sent to Redis stream")
         return {"status": "success", "message": f"{len(hits)} messages sent to Redis stream"}
-    except Exception as e:
-        logging.exception(e)
-        return {"status": "error", "message": str(e)}
-
-
-@app.post("/api/v1/webhook/nocolymail")
-async def webhook_nocolymail(request: Request):
-    """
-    Receives a webhook from NocolyMail and logs the data.
-    """
-    try:
-        data = await request.json()
-        logging.info(f"NocolyMail webhook received: {data}")
-        # Currently, this endpoint only logs the data.
-        # If sending to Redis is needed in the future, the logic can be added here.
-        # For example:
-        # redis_stream_api = RedisStreamAPI()
-        # stream_name = "nocolymail_events" # Or derive from data
-        # redis_stream_api.send_message(stream_name, data)
-        return {"status": "success", "message": "Data logged"}
     except Exception as e:
         logging.exception(e)
         return {"status": "error", "message": str(e)}
