@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from typing import Annotated, Optional
 
 from Lib.playbookloader import PlaybookLoader
@@ -22,7 +22,7 @@ def _dump_models_for_ai(models, limit: int) -> list[str]:
 
 # Case
 def list_cases(
-    case_id: Annotated[Optional[str], "Case ID, e.g. case_000005"] = None,
+        case_id: Annotated[Optional[str], "Case ID, e.g. case_000005"] = None,
         status: Annotated[Optional[list[CaseStatus]], "Case status filter"] = None,
         severity: Annotated[Optional[list[Severity]], "Case severity filter"] = None,
         confidence: Annotated[Optional[list[Confidence]], "Case confidence filter"] = None,
@@ -68,34 +68,30 @@ def get_case_discussions(
 
 def update_case(
         case_id: Annotated[str, "Case ID to update"],
-        severity: Annotated[Optional[Severity], "Updated analyst severity"] = None,
-        status: Annotated[Optional[CaseStatus], "Updated case status"] = None,
-        verdict: Annotated[Optional[CaseVerdict], "Updated final verdict"] = None,
         severity_ai: Annotated[Optional[Severity], "Updated AI-assessed severity"] = None,
         confidence_ai: Annotated[Optional[Confidence], "Updated AI-assessed confidence"] = None,
         attack_stage_ai: Annotated[Optional[AttackStage], "Updated AI-assessed attack stage"] = None,
         comment_ai: Annotated[Optional[
             str], "Updated AI comment. Markdown supported"] = None,
+        verdict_ai: Annotated[Optional[CaseVerdict], "Updated AI-assessed confidence"] = None,
         summary_ai: Annotated[Optional[
             str], "Updated AI summary. Markdown supported"] = None
 ) -> Annotated[Optional[str], "Updated case row ID, or None if not found"]:
     """Update selected fields on a case."""
     return Case.update_by_id(
         case_id=case_id,
-        severity=severity,
-        status=status,
-        verdict=verdict,
         severity_ai=severity_ai,
         confidence_ai=confidence_ai,
         attack_stage_ai=attack_stage_ai,
         comment_ai=comment_ai,
+        verdict_ai=verdict_ai,
         summary_ai=summary_ai
     )
 
 
 # Alert
 def list_alerts(
-    alert_id: Annotated[Optional[str], "Alert ID, e.g. alert_000001"] = None,
+        alert_id: Annotated[Optional[str], "Alert ID, e.g. alert_000001"] = None,
         status: Annotated[Optional[list[AlertStatus]], "Alert status filter"] = None,
         severity: Annotated[Optional[list[Severity]], "Alert severity filter"] = None,
         confidence: Annotated[Optional[list[Confidence]], "Alert confidence filter"] = None,
@@ -147,7 +143,7 @@ def update_alert(
 
 
 # Artifact
-
+# Do not open to mcp , because we think artifact is add only by automation, not human
 def create_artifact(
         name: Annotated[str, "Artifact name"] = "",
         type: Annotated[Optional[ArtifactType], "Artifact type"] = None,
@@ -169,9 +165,10 @@ def create_artifact(
     return Artifact.create(model)
 
 
+# Do not open to mcp , because we think artifact is add only by automation, not human
 def attach_artifact_to_alert(
-    alert_id: Annotated[str, "Target alert ID to receive the existing artifact"],
-    artifact_rowid: Annotated[str, "Artifact record row ID returned by create_artifact"]
+        alert_id: Annotated[str, "Target alert ID to receive the existing artifact"],
+        artifact_rowid: Annotated[str, "Artifact record row ID returned by create_artifact"]
 ) -> Annotated[Optional[str], "Attached artifact record row ID, or None if alert not found"]:
     """Attach one existing artifact record to an existing alert."""
     return Alert.attach_artifact(
@@ -181,7 +178,7 @@ def attach_artifact_to_alert(
 
 
 def list_artifacts(
-    artifact_id: Annotated[Optional[str], "Artifact ID, e.g. artifact_000001"] = None,
+        artifact_id: Annotated[Optional[str], "Artifact ID, e.g. artifact_000001"] = None,
         type: Annotated[Optional[list[ArtifactType]], "Artifact type filter"] = None,
         role: Annotated[Optional[list[ArtifactRole]], "Artifact role filter"] = None,
         reputation_score: Annotated[Optional[list[ArtifactReputationScore]], "Artifact reputation filter"] = None,
@@ -232,32 +229,31 @@ def create_enrichment(
 
 
 def attach_enrichment_to_target(
-    target_type: Annotated[str, "Target object type: case, alert, or artifact"],
-    target_id: Annotated[str, "Target object ID to receive the existing enrichment"],
-    enrichment_rowid: Annotated[str, "Enrichment record row ID returned by create_enrichment"]
+        target_id: Annotated[str, "Target object ID to receive the existing enrichment"],
+        enrichment_rowid: Annotated[str, "Enrichment record row ID returned by create_enrichment"]
 ) -> Annotated[Optional[str], "Attached enrichment record row ID, or None if target not found"]:
     """Attach one existing enrichment record to an existing case, alert, or artifact."""
-    normalized_target_type = target_type.strip().lower()
+    normalized_target_id = target_id.strip().lower()
 
-    if normalized_target_type == "case":
+    if normalized_target_id.startswith("case_"):
         return Case.attach_enrichment(
             case_id=target_id,
             enrichment_rowid=enrichment_rowid
         )
 
-    if normalized_target_type == "alert":
+    if normalized_target_id.startswith("alert_"):
         return Alert.attach_enrichment(
             alert_id=target_id,
             enrichment_rowid=enrichment_rowid
         )
 
-    if normalized_target_type == "artifact":
+    if normalized_target_id.startswith("artifact_"):
         return Artifact.attach_enrichment(
             artifact_id=target_id,
             enrichment_rowid=enrichment_rowid
         )
 
-    raise ValueError("target_type must be one of: case, alert, artifact")
+    raise ValueError("target_id must start with one of: case_, alert_, artifact_")
 
 
 # Ticket
@@ -279,8 +275,8 @@ def create_ticket(
 
 
 def attach_ticket_to_case(
-    case_id: Annotated[str, "Target case ID to receive the existing ticket"],
-    ticket_rowid: Annotated[str, "Ticket record row ID returned by create_ticket"]
+        case_id: Annotated[str, "Target case ID to receive the existing ticket"],
+        ticket_rowid: Annotated[str, "Ticket record row ID returned by create_ticket"]
 ) -> Annotated[Optional[str], "Attached ticket record row ID, or None if case not found"]:
     """Attach one existing ticket record to an existing case."""
     return Case.attach_ticket(
@@ -362,7 +358,7 @@ def list_playbook_runs(
 
 
 def execute_playbook(
-        type: Annotated[PlaybookType, "Target object type for the created playbook run: CASE, ALERT, or ARTIFACT"],
+        type: Annotated[PlaybookType, "Target object type for the created playbook run"],
         name: Annotated[str, "Runnable playbook definition name from list_available_playbook_definitions, not a playbook run ID"],
         record_id: Annotated[str, "Target record ID, e.g. case_000001, alert_000001, artifact_000001"],
         user_input: Annotated[Optional[str], "Optional extra natural-language input for this playbook run"] = None
@@ -488,4 +484,27 @@ def get_current_time(
     return current_time.isoformat(timespec="seconds")
 
 
-
+REGISTERED_MCP_TOOLS = [
+    attach_enrichment_to_target,
+    attach_ticket_to_case,
+    create_enrichment,
+    create_ticket,
+    execute_playbook,
+    get_alert_discussions,
+    get_case_discussions,
+    list_alerts,
+    list_available_playbook_definitions,
+    list_artifacts,
+    list_cases,
+    list_knowledge,
+    list_playbook_runs,
+    list_tickets,
+    update_alert,
+    update_case,
+    update_knowledge,
+    update_ticket,
+    siem_adaptive_query,
+    siem_explore_schema,
+    siem_keyword_search,
+    get_current_time,
+]

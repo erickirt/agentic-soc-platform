@@ -723,6 +723,7 @@ class CaseModel(BaseSystemModel):
     confidence_ai: Optional[Confidence] = Field(default=None, description="AI-assessed confidence")
     comment_ai: Optional[str] = Field(default="", description="AI-generated comment")
     summary_ai: Optional[str] = Field(default="", description="AI-generated closure summary")
+    verdict_ai: Optional[CaseVerdict] = Field(default=None, description="AI-generated Final verdict")
     threat_hunting_report_ai: Optional[str] = Field(default="", description="AI-generated hunting report")
 
     # 公式计算字段

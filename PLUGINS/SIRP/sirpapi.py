@@ -354,6 +354,7 @@ class Case(BaseWorksheetEntity[CaseModel]):
             confidence_ai: Union[Confidence, None] = None,
             attack_stage_ai=None,
             comment_ai: Union[str, None] = None,
+            verdict_ai=None,
             summary_ai: Union[str, None] = None
     ) -> Union[str, None]:
         case_old = cls.get_by_id(case_id, lazy_load=True)
@@ -376,6 +377,8 @@ class Case(BaseWorksheetEntity[CaseModel]):
             case_new.attack_stage_ai = attack_stage_ai
         if comment_ai is not None:
             case_new.comment_ai = comment_ai
+        if verdict_ai is not None:
+            case_new.verdict_ai = verdict_ai
         if summary_ai is not None:
             case_new.summary_ai = summary_ai
 

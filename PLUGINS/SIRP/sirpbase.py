@@ -123,7 +123,7 @@ class BaseWorksheetEntity(ABC, Generic[T]):
     @classmethod
     def list_by_rowids(
             cls,
-            rowids: Union[List[str], None],
+            rowids: Union[List[str], List[BaseSystemModel], None],
             include_system_fields: bool = True,
             lazy_load: bool = False
     ) -> Union[List[T], List[str], None]:
@@ -138,6 +138,8 @@ class BaseWorksheetEntity(ABC, Generic[T]):
             模型实例列表或原始rowids列表
         """
         if rowids is not None and rowids != []:
+            if isinstance(rowids[0], BaseSystemModel):
+                return rowids
             filter_model = Group(
                 logic="AND",
                 children=[

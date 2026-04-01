@@ -48,8 +48,3 @@ class AgentKnowledge(object):
         results = json.dumps(result_all, ensure_ascii=False)
         logger.debug(f"Knowledge search results : {results}")
         return results
-
-# if __name__ == "__main__":
-#     query = "test@gmail.com"
-#     result = KnowledgeAgent.search(query=query)
-#     print(result)
