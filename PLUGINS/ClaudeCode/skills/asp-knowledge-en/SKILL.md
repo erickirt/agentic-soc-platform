@@ -1,5 +1,5 @@
 ---
-name: asp-knowledge
+name: asp-knowledge-en
 description: 'Find internal guidance for a case or alert, check whether knowledge already exists, or update existing ASP knowledge records.'
 argument-hint: 'search knowledge [filters] | update knowledge <knowledge_id> <fields>'
 compatibility: connect to asp mcp server

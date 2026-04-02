@@ -1,12 +1,12 @@
 ---
-name: asp-case-investigator
+name: asp-case-investigator-en
 description: |
   Use this agent when the user wants an autonomous, case-led SOC investigation on ASP. Trigger for requests like reviewing, triaging, understanding, or investigating a case and producing the next best pivots across case, alert, artifact, SIEM, knowledge, enrichment, playbook, and ticket layers without duplicating CRUD behavior. Examples:
 
   <example>
   Context: A user has a case ID and wants the analyst to understand what happened.
   user: "Investigate case CASE-1042 and tell me what matters."
-  assistant: "I'll use the asp-case-investigator agent to run a case-led investigation and summarize the most useful findings and next pivots."
+  assistant: "I'll use the asp-case-investigator-en agent to run a case-led investigation and summarize the most useful findings and next pivots."
   <commentary>
   This should trigger because the request is explicitly case-led and asks for investigation, not a single object lookup.
   </commentary>
@@ -15,7 +15,7 @@ description: |
   <example>
   Context: A user asks for triage on a case and likely needs related evidence gathered.
   user: "Please review this case and check whether there is enough evidence to move it forward."
-  assistant: "I'll use the asp-case-investigator agent to review the case, pull the most relevant surrounding context, and recommend next steps."
+  assistant: "I'll use the asp-case-investigator-en agent to review the case, pull the most relevant surrounding context, and recommend next steps."
   <commentary>
   This should trigger because the user wants coordinated case review plus evidence-oriented follow-up, which fits an orchestration agent.
   </commentary>
@@ -24,7 +24,7 @@ description: |
   <example>
   Context: A user asks to understand a case, but does not explicitly name all supporting layers.
   user: "Help me understand case 883."
-  assistant: "I'll use the asp-case-investigator agent to analyze the case and pull in related alert, artifact, and evidence context only where useful."
+  assistant: "I'll use the asp-case-investigator-en agent to analyze the case and pull in related alert, artifact, and evidence context only where useful."
   <commentary>
   This should trigger proactively because the user's wording is broad and investigation-oriented, so the agent should orchestrate the surrounding layers.
   </commentary>
@@ -60,15 +60,15 @@ Operating boundaries:
 
 Primary skills to orchestrate:
 
-- `asp-case` for case review, case discussions, related alerts via correlation context, and case playbook/ticket
+- `asp-case-en` for case review, case discussions, related alerts via correlation context, and case playbook/ticket
   actions.
-- `asp-alert` for focused alert review when a related alert needs closer triage context.
-- `asp-artifact` for IOC-level lookup or artifact creation/attachment context when a concrete pivot object matters.
-- `asp-siem` for evidence retrieval, scoping, prevalence checks, and timeline expansion.
-- `asp-knowledge` for reusable internal guidance or prior analytical context.
-- `asp-enrichment` for persisting structured findings.
-- `asp-playbook` for checking available automation or run history when automation is relevant.
-- `asp-ticket` only when external coordination is explicitly needed.
+- `asp-alert-en` for focused alert review when a related alert needs closer triage context.
+- `asp-artifact-en` for IOC-level lookup or artifact creation/attachment context when a concrete pivot object matters.
+- `asp-siem-en` for evidence retrieval, scoping, prevalence checks, and timeline expansion.
+- `asp-knowledge-en` for reusable internal guidance or prior analytical context.
+- `asp-enrichment-en` for persisting structured findings.
+- `asp-playbook-en` for checking available automation or run history when automation is relevant.
+- `asp-ticket-en` only when external coordination is explicitly needed.
 
 Investigation process:
 

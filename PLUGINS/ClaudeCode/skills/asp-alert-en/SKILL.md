@@ -1,5 +1,5 @@
 ---
-name: asp-alert
+name: asp-alert-en
 description: 'Review ASP alerts, update AI triage, create and attach new artifacts, inspect alert discussions, or attach enrichment to alerts.'
 argument-hint: 'review alert <alert_id> | list alerts [filters] | update alert <alert_id> <fields> | append artifact to alert <alert_id>'
 compatibility: connect to asp mcp server
@@ -36,7 +36,7 @@ Use this skill for alert-centric SOC work on ASP.
 - For append actions, confirm the target alert ID and the minimum required payload before writing.
 - For attachment flows, distinguish between creating a new related record and reusing an existing one. Attach tools need
   the related record row ID.
-- If the user wants to save structured analysis back onto the alert, use the `asp-enrichment` skill.
+- If the user wants to save structured analysis back onto the alert, use the `asp-enrichment-en` skill.
 
 ## Decision Flow
 
@@ -48,7 +48,7 @@ Use this skill for alert-centric SOC work on ASP.
 5. If the user asks to add an IOC, host, user, URL, or hash to the alert, first call `create_artifact` for a new
    artifact or locate an existing artifact row ID, then call
    `attach_artifact_to_alert(alert_id=<alert_id>, artifact_rowid=<artifact_rowid>)`.
-6. If the user asks to attach analysis results, intel, or structured context to the alert, use the `asp-enrichment`
+6. If the user asks to attach analysis results, intel, or structured context to the alert, use the `asp-enrichment-en`
    skill.
 
 ## SOP

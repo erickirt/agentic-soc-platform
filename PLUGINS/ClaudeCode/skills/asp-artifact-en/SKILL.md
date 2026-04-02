@@ -1,5 +1,5 @@
 ---
-name: asp-artifact
+name: asp-artifact-en
 description: 'Find artifacts by IOC, create new artifacts, attach artifacts to alerts, or save enrichment on artifacts.'
 argument-hint: 'review artifact <artifact_id> | list artifacts [filters] | create artifact <value> | attach artifact to alert <alert_id> | enrich artifact <artifact_id>'
 compatibility: connect to asp mcp server
@@ -34,7 +34,7 @@ Use this skill for artifact-centric investigation work on ASP.
 - Use `attach_artifact_to_alert` only after you already have an artifact row ID.
 - Use `create_enrichment` plus `attach_enrichment_to_target` when the user wants to save analysis on the artifact
   itself.
-- For detailed enrichment persistence workflow, use the `asp-enrichment` skill.
+- For detailed enrichment persistence workflow, use the `asp-enrichment-en` skill.
 - Keep artifact responses short and investigation-oriented.
 
 ## Decision Flow
@@ -43,7 +43,7 @@ Use this skill for artifact-centric investigation work on ASP.
 2. If the user asks to create a new artifact, call `create_artifact`.
 3. If the user asks to add an artifact to an alert, first call `create_artifact` when needed or retrieve an existing
    artifact row ID, then call `attach_artifact_to_alert`.
-4. If the user asks to attach intel, analyst notes, or structured analysis to an artifact, use the `asp-enrichment`
+4. If the user asks to attach intel, analyst notes, or structured analysis to an artifact, use the `asp-enrichment-en`
    skill.
 5. If the user is investigating from an artifact, use the artifact as a pivot and suggest the next useful hop only when
    needed.

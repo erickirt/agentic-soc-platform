@@ -1,5 +1,5 @@
 ---
-name: asp-enrichment
+name: asp-enrichment-en
 description: 'Save structured analysis results as enrichment and attach them to a case, alert, or artifact.'
 argument-hint: 'create enrichment for <case|alert|artifact> <target_id> | attach enrichment to <case|alert|artifact> <target_id>'
 compatibility: connect to asp mcp server

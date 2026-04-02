@@ -1,5 +1,5 @@
 ---
-name: asp-case
+name: asp-case-en
 description: 'Manage ASP security cases. Use when users ask to review a case, list cases, inspect case discussions, check related alerts or playbook runs for a case, or update case workflow and AI analysis fields.'
 argument-hint: 'review case <case_id> | list cases [filters] | update case <case_id> <fields> | run playbook for case <case_id> <playbook_name>'
 compatibility: connect to asp mcp server
@@ -41,7 +41,7 @@ Use this skill for case-centric SOC work on ASP.
   `get_case` tool.
 - Keep case as the primary user view. Pull alerts, discussions, or playbook runs only when they help answer the case
   question.
-- If the user wants to save structured analysis back onto the case, use the `asp-enrichment` skill.
+- If the user wants to save structured analysis back onto the case, use the `asp-enrichment-en` skill.
 
 ## Decision Flow
 
@@ -53,7 +53,7 @@ Use this skill for case-centric SOC work on ASP.
 4. If the user wants case automation status, call `list_playbook_runs(source_id=case_id, type=[CASE])`.
 5. If the user wants to run automation on the case, use `list_available_playbook_definitions` only when the playbook
    name is missing, then call `execute_playbook(type=CASE, record_id=case_id, name=...)`.
-6. If the user asks to attach enrichment or structured analysis to the case, use the `asp-enrichment` skill.
+6. If the user asks to attach enrichment or structured analysis to the case, use the `asp-enrichment-en` skill.
 7. If the user asks to attach an external ticket to the case, first call `create_ticket`, then call
    `attach_ticket_to_case(case_id=<case_id>, ticket_rowid=<created_rowid>)`.
 8. If the user asks to find, browse, or compare cases, use `list_cases`.

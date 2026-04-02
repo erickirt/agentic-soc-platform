@@ -1,5 +1,5 @@
 ---
-name: asp-ticket
+name: asp-ticket-en
 description: 'Sync external tickets into ASP, link tickets to cases, list synced tickets, or update existing ticket records.'
 argument-hint: 'list tickets [filters] | create ticket <uid> | attach ticket to case <case_id> | update ticket <ticket_id> <fields>'
 compatibility: connect to asp mcp server

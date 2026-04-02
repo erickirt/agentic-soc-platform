@@ -1,5 +1,5 @@
 ---
-name: asp-playbook
+name: asp-playbook-en
 description: 'Operate ASP playbook definitions and playbook run records. Use when users ask which playbooks can run, want to execute a playbook on a case, alert, or artifact, or want to inspect existing playbook runs.'
 argument-hint: 'list playbook definitions | run playbook <name> for <target_type> <target_id> | list playbook runs [filters]'
 compatibility: connect to asp mcp server
