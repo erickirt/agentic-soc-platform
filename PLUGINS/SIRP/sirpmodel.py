@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import StrEnum
 from typing import List, Optional, Any, Union, ClassVar
 
@@ -367,12 +367,28 @@ class BaseSystemModel(BaseModel):
     )
     @classmethod
     def parse_datetime(cls, v: Any) -> Any:
-        if isinstance(v, str) and v.strip():
-            try:
-                return datetime.strptime(v, "%Y-%m-%dT%H:%M:%SZ")
-            except ValueError:
-                return v
-        return v
+        local_timezone = datetime.now().astimezone().tzinfo or timezone.utc
+
+        if isinstance(v, datetime):
+            return v if v.tzinfo is not None else v.replace(tzinfo=local_timezone)
+
+        if not isinstance(v, str):
+            return v
+
+        value = v.strip()
+        if not value:
+            return v
+
+        try:
+            return datetime.strptime(value, "%Y-%m-%d %H:%M:%S").replace(tzinfo=local_timezone)
+        except ValueError:
+            pass
+
+        try:
+            parsed_datetime = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            return parsed_datetime if parsed_datetime.tzinfo is not None else parsed_datetime.replace(tzinfo=local_timezone)
+        except ValueError:
+            return v
 
     @field_serializer(
         "ctime", "utime", "wfctime", "wfrtime", "wfcotime", "wfdtime",
@@ -382,8 +398,7 @@ class BaseSystemModel(BaseModel):
     )
     def serialize_datetime(self, v: Any) -> Any:
         if isinstance(v, datetime):
-            # 强制输出为你需要的格式
-            return v.strftime("%Y-%m-%dT%H:%M:%SZ")
+            return self._format_datetime_for_serialize(v)
         return v
 
     def model_dump_json_for_ai(
@@ -506,11 +521,18 @@ class BaseSystemModel(BaseModel):
         序列化特殊类型的值（datetime、枚举等）。
         """
         if isinstance(value, datetime):
-            return value.strftime("%Y-%m-%dT%H:%M:%SZ")
+            return self._format_datetime_for_serialize(value)
         elif isinstance(value, StrEnum):
             return value.value
         else:
             return value
+
+    @classmethod
+    def _format_datetime_for_serialize(cls, value: datetime) -> str:
+        local_timezone = datetime.now().astimezone().tzinfo or timezone.utc
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=local_timezone)
+        return value.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 class MessageModel(BaseSystemModel):
