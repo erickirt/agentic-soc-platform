@@ -31,38 +31,36 @@ metadata:
 
 - 如果请求已经隐含操作，不要先问用户想执行什么。
 - 只补充收集缺失的必要输入。
-- 当用户请求足够具体时优先使用一次 MCP 调用；但如果用户要真正的 case 审查，可以使用简短的多步流程。
-- 除非为了澄清枚举值或缺失输入，不要把 MCP 字段定义原样回显给用户。
 - 总结 case 数据时要服务于行动判断，而不是输出原始 schema。
 - 如果更新请求有歧义，先问一个聚焦问题再写入。
 - 更新后只确认实际变更的字段。
-- 查询单个 case 时，使用 `list_cases(case_id=...)`，因为当前 MCP surface 没有单独的 `get_case` 工具。
 - 保持 case 作为用户的主要视图。只有在能帮助回答 case 问题时，才拉取相关告警、讨论或 playbook run。
-- 如果用户想把结构化分析保存回 case，使用 `asp-enrichment-zh` skill。
 
 ## 决策流程
 
 1. 如果用户提供了具体 case ID，或说要“open”“show”“review”“summarize”某个 case，调用 `list_cases(case_id=<id>, limit=1)`。
 2. 如果用户想看讨论历史或分析上下文，在取回 case 后调用 `get_case_discussions`。
-3. 如果用户想看相关告警，上下文可以通过 case 的 `correlation_uid` 进行 pivot，并在有助于回答 case 问题时调用 `list_alerts`。
-4. 如果用户想看 case 自动化状态，调用 `list_playbook_runs(source_id=case_id, type=[CASE])`。
-5. 如果用户想在 case 上运行自动化，但没有提供 playbook 名称，仅在名称缺失时调用 `list_available_playbook_definitions`，然后调用 `execute_playbook(type=CASE, record_id=case_id, name=...)`。
-6. 如果用户要把 enrichment 或结构化分析附加到 case，使用 `asp-enrichment-zh` skill。
-7. 如果用户要把外部 ticket 附加到 case，先调用 `create_ticket`，再调用 `attach_ticket_to_case(case_id=<case_id>, ticket_rowid=<created_rowid>)`。
-8. 如果用户要查找、浏览或对比 case，使用 `list_cases`。
-9. 如果用户要修改 status、verdict、severity 或 AI 字段，使用 `update_case`。
-10. 如果用户要更新 case 但没提供 case ID，询问 case ID。
-11. 如果用户给出了多个过滤条件，只应用 ASP 直接支持的部分，并明确说明不支持的过滤条件。
+3. 如果用户想看 case 自动化状态，调用 `list_playbook_runs(source_id=case_id, type=[CASE])`。
+4. 如果用户想在 case 上运行自动化，但没有提供 playbook 名称，仅在名称缺失时调用 `list_available_playbook_definitions`，然后调用
+   `execute_playbook(type=CASE, record_id=case_id, name=...)`。
+5. 如果用户要把 enrichment 或结构化分析附加到 case，使用 `asp-enrichment-zh` skill。
+6. 如果用户要把外部 ticket 附加到 case，先调用 `create_ticket`，再调用
+   `attach_ticket_to_case(case_id=<case_id>, ticket_rowid=<created_rowid>)`。
+7. 如果用户要查找、浏览或对比 case，使用 `list_cases`。
+8. 如果用户要修改 status、verdict、severity 或 AI 字段，使用 `update_case`。
+9. 如果用户要更新 case 但没提供 case ID，询问 case ID。
+10. 如果用户给出了多个过滤条件，只应用 ASP 直接支持的部分，并明确说明不支持的过滤条件。
 
 ## SOP
 
 ### 审查单个 Case
 
-1. 调用 `list_cases(case_id=<id>, limit=1)`。
-2. 如果结果为空，直接说明找不到该 case。
-3. 解析第一条 JSON 记录。
-4. 如果用户想看分析上下文，调用 `get_case_discussions(case_id)`。
-5. 如果 case 中有有用的 `correlation_uid`，且用户需要相关告警上下文，则用它做 pivot 调用 `list_alerts(correlation_uid=...)`。
+1. 如果用户要求审查、分析或查看 case 详情，调用 `list_cases(case_id=<id>, limit=1, lazy_load=false)`
+   获取完整关联数据（alerts、enrichments、tickets）。
+2. 如果只需要快速查看 case 基本信息，调用 `list_cases(case_id=<id>, limit=1)` 即可。
+3. 如果结果为空，直接说明找不到该 case。
+4. 解析第一条 JSON 记录。
+5. 如果用户想看分析上下文，调用 `get_case_discussions(case_id)`。
 6. 如果用户想确认自动化是否运行或仍在等待，调用 `list_playbook_runs(source_id=case_id, type=[CASE])`。
 7. 只展示与用户请求最相关的部分。
 8. 只有在确实影响用户目标时，才强调缺失字段或可疑字段。

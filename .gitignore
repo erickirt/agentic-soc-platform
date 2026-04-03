@@ -189,3 +189,4 @@ DATA/Debug_*/
 PLUGINS/Embeddings/db/*
 
 .claude/*
+.vscode/*
