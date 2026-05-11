@@ -372,7 +372,7 @@ class ArtifactModel(BaseSystemModel):
                                                                 json_schema_extra={"ai": [AI_PROFILE_INVESTIGATION, AI_PROFILE_MCP]})
 
     # 反向关联,无需手动处理
-    alert: Optional[List[Union[AlertModel, str]]] = Field(default=None, init=False, description="Linked alert row_id (关联告警行 ID)")
+    alerts: Optional[List[Union[AlertModel, str]]] = Field(default=None, init=False, description="Linked alert row_ids (关联告警行 IDs)")
 
     # 关联表
     enrichments: Optional[List[Union[EnrichmentModel, str]]] = Field(default=None,

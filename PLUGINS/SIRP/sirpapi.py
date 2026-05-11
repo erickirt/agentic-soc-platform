@@ -401,6 +401,48 @@ class Artifact(BaseWorksheetEntity[ArtifactModel]):
     MODEL_CLASS = ArtifactModel
 
     @classmethod
+    def get_by_identity(cls, model: ArtifactModel, lazy_load: bool = True) -> Union[ArtifactModel, None]:
+        """按 name + type + role + value 查找同一个 Artifact"""
+        if model.name is None or model.type is None or model.role is None or model.value is None:
+            return None
+
+        type_value = model.type.value if hasattr(model.type, "value") else model.type
+        role_value = model.role.value if hasattr(model.role, "value") else model.role
+
+        filter_model = Group(
+            logic="AND",
+            children=[
+                Condition(field="name", operator=Operator.EQ, value=model.name),
+                Condition(field="type", operator=Operator.IN, value=[type_value]),
+                Condition(field="role", operator=Operator.IN, value=[role_value]),
+                Condition(field="value", operator=Operator.EQ, value=model.value),
+            ]
+        )
+        result = cls.list(filter_model, lazy_load=lazy_load)
+        if result:
+            if len(result) > 1:
+                logger.warning(
+                    f"More than one artifact has the same identity: "
+                    f"name={model.name}, type={type_value}, role={role_value}, value={model.value}. "
+                    f"Use the first row_id as canonical: {result[0].row_id}"
+                )
+            return result[0]
+        return None
+
+    @classmethod
+    def create(cls, model: ArtifactModel) -> str:
+        existing = cls.get_by_identity(model, lazy_load=True)
+        if existing:
+            return existing.row_id
+        return super().create(model)
+
+    @classmethod
+    def update_or_create(cls, model: ArtifactModel) -> str:
+        if model.row_id is None:
+            return cls.create(model)
+        return cls.update(model)
+
+    @classmethod
     def _load_relations(cls, model: ArtifactModel, include_system_fields: bool = True) -> ArtifactModel:
         """加载关联的enrichments"""
         if not model.enrichments:
