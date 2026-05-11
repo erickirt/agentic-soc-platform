@@ -26,6 +26,7 @@ Use this skill to guide the user through the full workflow — from requirement 
 
 - The module filename must exactly match the SIEM rule name (case-sensitive) — Rule name = Redis Stream name = filename. This is a hard constraint; any mismatch will prevent the framework from routing alerts to the module.
 - A raw_alert sample must be obtained before writing any code. Never guess field structure.
+- Before writing code, read `PLUGINS/SIRP/sirpcoremodel.py`; enum values must come only from the actual definitions in that file, never from memory or inference.
 - All modules must inherit `BaseModule` and implement the `run()` method.
 - SIRP data hierarchy: `Case → Alert → Artifact` (three-tier). Artifact is the smallest atomic investigation entity (an IP, a username); Alerts are attached to Cases; related alerts are aggregated into the same Case via `correlation_uid`. Enrichment is a cross-cutting attachment layer independent of the three-tier hierarchy — it can be attached to any level (Case / Alert / Artifact).
 - Reference implementation: `MODULES/Cloud-01-AWS-IAM-Privilege-Escalation-via-AttachUserPolicy.py`.
@@ -78,12 +79,42 @@ Read the sample and identify:
 - Risk scoring fields (e.g. `event.risk_score`, `log.level`)
 - Any other fields with investigation value
 
-Determine the correlation aggregation keys (typically 2–3 fields that uniquely identify "the same attack behaviour"):
-- Too broad (e.g. only `account_id`) → unrelated alerts merge into the same Case, creating noise
-- Too narrow (e.g. includes a random `session_id`) → alerts from the same attack are split into multiple Cases, losing context
-- A good key set should answer: "Do these alerts describe the same attacker targeting the same victim with the same type of behaviour?"
+Before determining `correlation_uid`, first identify what kind of SOC scenario the rule describes. Different alert types require different aggregation logic. Do not mechanically reuse fixed fields or a fixed time window.
+
+**Aggregation design goals:**
+- One Case should represent one investigable, actionable security event or attack activity, not one log line and not an overly broad asset bucket.
+- Prefer aggregation keys that are stable invariants of the attack activity. Avoid fields that vary by victim, session, request, or timestamp.
+- Match the aggregation window to the response cadence: too short splits one activity and repeats notifications; too long delays response to a new wave.
+
+**Think through aggregation keys in this order:**
+1. Attacker dimension: source IP, sender, external account, malicious domain, malicious file hash, C2 domain, etc.
+2. Target/victim dimension: target user, target host, target resource. Include these only when "same attacker against same target" is what defines one event.
+3. Behaviour/payload dimension: email subject, URL domain, file hash, command-line signature, API name, rule subtype, etc. Include only when the field is stable and separates activities.
+4. Environment dimension: cloud account, tenant, business system, region, etc. These are usually auxiliary keys and should not be the only aggregation key.
+
+**Avoid using these as aggregation keys:**
+- Random or high-cardinality fields: message_id, request_id, session_id, trace_id, uuid, exact timestamp.
+- Victim fields when the scenario is broad delivery/scanning/brute force from the same attacker. Do not add every recipient/user/host to the key, or one campaign will fragment into many Cases.
+- Overly broad fields: account_id, tenant_id, or rule_name alone will merge unrelated alerts.
+
+**Common scenario guidance:**
+- User-reported phishing mail: prefer sender/sender domain. If the email title does not contain random values such as recipient names, timestamps, or order numbers, include a normalized title. Usually do not include recipient. Recommended window: `12h`, which keeps one phishing wave together without delaying notifications and response too much.
+- Same malicious URL/domain delivery: use URL domain or normalized URL + sender domain. If the URL contains one-time tokens, use only the domain or stable path.
+- Malicious process/command on endpoint: use host + stable process/command signature. If it looks like lateral movement or a hash-wide outbreak, aggregate by file hash/command signature and do not necessarily include host.
+- Cloud IAM abnormal operation: usually use cloud account/tenant + principal identity + API/target resource. If investigating one broad attack wave, aggregate by principal identity or source IP and keep target resources as supporting context.
+- C2 communication: use C2 IP/domain + internal host. If one C2 affects many hosts, aggregate by C2 first and keep affected hosts in the Case.
+
+**Time-window guidance:**
+- User-reporting/notification-driven alerts: `6h`-`12h`, commonly `12h`.
+- High-frequency scanning, brute force, C2 beaconing: `15m`-`2h`, adjusted by detection frequency and response need.
+- Cloud permission changes, account anomalies, low-frequency high-risk operations: `4h`-`24h`.
+- When using a window, explain the reason after generating the code.
+
+If the aggregation key is unclear, propose candidate keys based on raw_alert and alert semantics, then ask the user to confirm. Do not default to `24h` or include every principal/target field without explaining why.
 
 ### Step 5 — Write the Module Code
+
+**Prerequisite action:** read `PLUGINS/SIRP/sirpcoremodel.py` and confirm all enum values that will be used before writing code.
 
 Generate `MODULES/<rule-name>.py` using the following structure:
 
@@ -120,10 +151,11 @@ class Module(BaseModule):
         # artifacts.append(ArtifactModel(type=..., role=..., value=..., name=...))
 
         # 4. Compute correlation_uid
+        # Choose keys and time window based on alert semantics; do not reuse fixed fields mechanically.
         correlation_uid = Correlation.generate_correlation_uid(
             rule_id=self.module_name,
-            time_window="24h",
-            keys=[...],  # aggregation key list
+            time_window=...,  # e.g. user-reported phishing mail can use "12h"
+            keys=[...],  # stable attack-activity invariants; avoid random request/session IDs
             timestamp=event_time_formatted
         )
 
@@ -203,6 +235,17 @@ if __name__ == "__main__":
 ```
 
 Remind the user to replace `debug_message_id` with a real message ID from the Redis Stream to enable direct script execution for debugging.
+
+If batch validation is useful, add this note as well for testing the earliest alerts in order:
+
+```python
+# Batch test the earliest 100 alerts
+module = Module()
+message_ids = module.read_stream_head_ids(100)
+for message_id in message_ids:
+    module.debug_message_id = message_id
+    module.run()
+```
 
 ## Clarification Rules
 

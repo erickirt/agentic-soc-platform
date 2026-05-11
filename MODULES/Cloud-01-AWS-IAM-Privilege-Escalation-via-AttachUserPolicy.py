@@ -111,8 +111,8 @@ class Module(BaseModule):
 
         correlation_uid = Correlation.generate_correlation_uid(
             rule_id=self.module_name,
-            time_window="5m",
-            keys=[account_id],
+            time_window="24h",
+            keys=[principal_user, target_user, account_id],
             timestamp=event_time_formatted
         )
 
@@ -225,11 +225,8 @@ if __name__ == "__main__":
     # module.run()
 
     # 批量测试最早的100条告警
-    import time
-
-    module = Module()
-    message_ids = module.read_stream_head_ids(2)
-    for message_id in message_ids:
-        time.sleep(10)
-        module.debug_message_id = message_id
-        module.run()
+    # module = Module()
+    # message_ids = module.read_stream_head_ids(2)
+    # for message_id in message_ids:
+    #     module.debug_message_id = message_id
+    #     module.run()
