@@ -82,10 +82,10 @@ class MainMonitor(object):
         delay_time = 3
 
         # Start background tasks
-        # self.start_background_task(self.subscribe_pending_playbook, "subscribe_pending_playbook", delay_time)
-        # self.start_background_task(self.subscribe_knowledge_action, "subscribe_knowledge_action", delay_time)
-        self.start_background_task(self.subscribe_case_analysis_scheduler, "subscribe_case_analysis_scheduler", delay_time)
-        self.start_background_task(self.subscribe_case_analysis_queue, "subscribe_case_analysis_queue", delay_time)
+        self.start_background_task(self.subscribe_pending_playbook, "subscribe_pending_playbook", delay_time)
+        self.start_background_task(self.subscribe_knowledge_action, "subscribe_knowledge_action", delay_time)
+        # self.start_background_task(self.subscribe_case_analysis_scheduler, "subscribe_case_analysis_scheduler", delay_time)
+        # self.start_background_task(self.subscribe_case_analysis_queue, "subscribe_case_analysis_queue", delay_time)
 
         # engine
         # self.engine.start()
@@ -96,15 +96,15 @@ class MainMonitor(object):
         models = Playbook.list_pending_playbooks()
 
         for model in models:
-            module_config = Xcache.get_module_config_by_name_and_type(model.type, model.name)
+            module_config = Xcache.get_module_config_by_name(model.name)
             model_tmp = PlaybookModel(row_id=model.row_id)
             if module_config is None:
                 PlaybookLoader.load_all_playbook_config()  # try again
-                module_config = Xcache.get_module_config_by_name_and_type(model.type, model.name)
+                module_config = Xcache.get_module_config_by_name(model.name)
             if module_config is None:
-                logger.error(f"PlaybookLoader module config not found: {model.type} - {model.name}")
+                logger.error(f"PlaybookLoader module config not found:  {model.name}")
                 model_tmp.job_status = PlaybookJobStatus.FAILED
-                model_tmp.remark = f"PlaybookLoader module config not found: {model.type} - {model.name}"
+                model_tmp.remark = f"PlaybookLoader module config not found:  {model.name}"
                 Playbook.update(model_tmp)
                 continue
 

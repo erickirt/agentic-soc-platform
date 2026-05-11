@@ -45,10 +45,8 @@ class PlaybookModel(BaseSystemModel):
     source_row_id: Optional[str] = Field(default="", description="Trigger source row ID (触发源行 ID)",
                                          json_schema_extra={"ai": [AI_PROFILE_MCP]})
     source_id: Optional[str] = Field(default="",
-                                     description="Trigger source record ID e.g. case_00000_1,alert_000001,artifact_000001 (触发源记录 ID e.g. case_00000_1,alert_000001,artifact_000001)",
+                                     description="Trigger source record ID e.g. case_000001(触发源记录 ID e.g. case_0000001)",
                                      json_schema_extra={"ai": [AI_PROFILE_MCP]})
-    type: Optional[PlaybookType] = Field(default=None, description="Linked object type (关联对象类型)",
-                                         json_schema_extra={"ai": [AI_PROFILE_MCP]})
     name: Optional[str] = Field(default="", description="Executed playbook name (执行剧本名称)",
                                 json_schema_extra={"ai": [AI_PROFILE_MCP]})
     user_input: Optional[str] = Field(default="", description="Initial or follow-up user input (初始或后续用户输入)",
