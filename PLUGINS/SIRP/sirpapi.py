@@ -1226,15 +1226,14 @@ class Knowledge(BaseWorksheetEntity[KnowledgeModel]):
         return cls.update(knowledge_new)
 
     @classmethod
-    def search(cls, query: Annotated[str, "The search query."]) -> Annotated[
-        str, "relevant knowledge entries, policies, and special handling instructions."]:
+    def search_models(cls, query: str, limit: int = 10) -> List[KnowledgeModel]:
         """
-        Search the internal knowledge base for specific entities, business-specific logic, SOPs, or historical context.
+        Search the internal knowledge base and return KnowledgeModel records.
         """
         logger.debug(f"knowledge search : {query}")
         keywords = [keyword.strip() for keyword in query.split() if keyword.strip()]
         if not keywords:
-            return "[]"
+            return []
 
         keyword_conditions = []
         for keyword in keywords:
@@ -1256,7 +1255,16 @@ class Knowledge(BaseWorksheetEntity[KnowledgeModel]):
             ]
         )
         models = cls.list(filter_model, lazy_load=True)
-        result_all = [model.model_dump_for_ai(profile=AI_PROFILE_MCP) for model in models[:10]]
+        return models[:limit]
+
+    @classmethod
+    def search(cls, query: Annotated[str, "The search query."]) -> Annotated[
+        str, "relevant knowledge entries, policies, and special handling instructions."]:
+        """
+        Search the internal knowledge base for specific entities, business-specific logic, SOPs, or historical context.
+        """
+        models = cls.search_models(query, limit=10)
+        result_all = [model.model_dump_for_ai(profile=AI_PROFILE_MCP) for model in models]
 
         results = json.dumps(result_all, ensure_ascii=False)
         logger.debug(f"Knowledge search results : {results}")
