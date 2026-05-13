@@ -38,9 +38,9 @@ class PlaybookModel(BaseSystemModel):
                               json_schema_extra={"ai": [AI_PROFILE_MCP]})
     source_row_id: Optional[str] = Field(default="", description="Trigger source row ID (触发源行 ID)",
                                          json_schema_extra={"ai": [AI_PROFILE_MCP]})
-    source_id: Optional[str] = Field(default="",
-                                     description="Trigger source record ID e.g. case_000001(触发源记录 ID e.g. case_0000001)",
-                                     json_schema_extra={"ai": [AI_PROFILE_MCP]})
+    case_id: Optional[str] = Field(default="",
+                                   description="Trigger source record ID e.g. case_000001(触发源记录 ID e.g. case_0000001)",
+                                   json_schema_extra={"ai": [AI_PROFILE_MCP]})
     name: Optional[str] = Field(default="", description="Executed playbook name (执行剧本名称)",
                                 json_schema_extra={"ai": [AI_PROFILE_MCP]})
     user_input: Optional[str] = Field(default="", description="Initial or follow-up user input (初始或后续用户输入)",
@@ -62,7 +62,8 @@ class KnowledgeModel(BaseSystemModel):
                                  json_schema_extra={"ai": [AI_PROFILE_MCP]})
     body: Optional[str] = Field(default="", description="Knowledge content (知识内容)",
                                 json_schema_extra={"ai": [AI_PROFILE_MCP]})
-    expires_at: Optional[AutoDatetime] = Field(default=None, description="Knowledge expiration time; empty means permanently valid (知识过期时间，空表示永久有效)",
+    expires_at: Optional[AutoDatetime] = Field(default=None,
+                                               description="Knowledge expiration time; empty means permanently valid (知识过期时间，空表示永久有效)",
                                                json_schema_extra={"ai": [AI_PROFILE_MCP]})
     source: Optional[KnowledgeSource] = Field(default=None, description="Knowledge source (知识来源)",
                                               json_schema_extra={"ai": [AI_PROFILE_MCP]})

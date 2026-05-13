@@ -112,7 +112,7 @@ class Module(BaseModule):
         correlation_uid = Correlation.generate_correlation_uid(
             rule_id=self.module_name,
             time_window="24h",
-            keys=[target_user, account_id],
+            keys=[principal_user, account_id],
             timestamp=event_time_formatted
         )
 
@@ -194,7 +194,7 @@ class Module(BaseModule):
         else:
             # 根据 Alert 计算 Case字段
             new_case = CaseModel(
-                title=f"Potential IAM Privilege Escalation in Account {account_id} by {target_user}",
+                title=f"Potential IAM Privilege Escalation in Account {account_id} by {principal_user}",
                 severity=severity,
                 impact=Impact.HIGH if outcome == "success" else Impact.MEDIUM,
                 priority=CasePriority.HIGH if outcome == "success" else CasePriority.MEDIUM,
@@ -225,7 +225,7 @@ if __name__ == "__main__":
 
     # 批量测试最早的100条告警
     module = Module()
-    message_ids = module.read_stream_head_ids(100)
+    message_ids = module.read_stream_head_ids(10)
     for message_id in message_ids:
         module.debug_message_id = message_id
         module.run()
