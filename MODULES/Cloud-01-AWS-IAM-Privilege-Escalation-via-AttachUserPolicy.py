@@ -9,7 +9,6 @@ from PLUGINS.SIRP.sirpapi import Alert, Case
 from PLUGINS.SIRP.sirpcoremodel import ArtifactType, ArtifactRole, Severity, Impact, Disposition, AlertAction, Confidence, AlertAnalyticType, ProductCategory, \
     AlertPolicyType, AlertRiskLevel, AlertStatus, CasePriority, ArtifactModel, AlertModel, CaseModel, EnrichmentModel
 
-
 class Module(BaseModule):
     def __init__(self):
         super().__init__()
@@ -33,10 +32,10 @@ class Module(BaseModule):
         access_key_id = user_identity.get("accessKeyId", "")
         account_id = user_identity.get("accountId", raw_alert.get("recipientAccountId", raw_alert.get("cloud.account.id", "")))
 
-        request_params = raw_alert.get("requestParameters", {})
+        request_params = raw_alert.get("requestParameters") or {}
         target_user = request_params.get("userName", "")
         policy_arn = request_params.get("policyArn", "")
-        policy_name = policy_arn.split('/')[-1] if policy_arn else ""
+        policy_name = policy_arn.split('/')[-1] if policy_arn else "UnknownPolicy"
 
         error_code = raw_alert.get("errorCode")
         error_message = raw_alert.get("errorMessage")
@@ -76,7 +75,7 @@ class Module(BaseModule):
             action = AlertAction.OTHER
         else:
             disposition = Disposition.DETECTED
-            action = AlertAction.OBSERVED
+            action = AlertAction.MODIFIED
 
         # 状态计算 (定制化字段处理)
         status_detail = f"Outcome: {outcome}"
@@ -91,6 +90,8 @@ class Module(BaseModule):
             artifacts.append(ArtifactModel(type=ArtifactType.USER_NAME, role=ArtifactRole.ACTOR, value=principal_user, name="Principal User"))
         if principal_arn:
             artifacts.append(ArtifactModel(type=ArtifactType.RESOURCE_UID, role=ArtifactRole.ACTOR, value=principal_arn, name="Principal ARN"))
+        if principal_id:
+            artifacts.append(ArtifactModel(type=ArtifactType.RESOURCE_UID, role=ArtifactRole.ACTOR, value=principal_id, name="Principal ID"))
         if access_key_id:
             artifacts.append(ArtifactModel(type=ArtifactType.USER_CREDENTIAL_ID, role=ArtifactRole.ACTOR, value=access_key_id, name="Access Key ID"))
 
@@ -104,27 +105,27 @@ class Module(BaseModule):
         if policy_arn:
             artifacts.append(ArtifactModel(type=ArtifactType.RESOURCE_UID, role=ArtifactRole.RELATED, value=policy_arn, name="Attached Policy ARN"))
         if account_id:
-            artifacts.append(ArtifactModel(type=ArtifactType.ACCOUNT, role=ArtifactRole.RELATED, value=account_id, name="AWS Account ID"))
+            artifacts.append(ArtifactModel(type=ArtifactType.ACCOUNT, role=ArtifactRole.AFFECTED, value=account_id, name="AWS Account ID"))
 
         # 3. 计算 correlation_uid (Correlation Logic)
-        # 选择 [目标用户, 账号] 作为聚合键，这能有效捕获针对特定目标的持续攻击
+        # 选择 [账号, 操作者, 目标用户] 作为聚合键，聚合同一主体对同一 IAM 用户的高危策略绑定
 
         correlation_uid = Correlation.generate_correlation_uid(
             rule_id=self.module_name,
             time_window="24h",
-            keys=[principal_user, account_id],
+            keys=[account_id, principal_user, target_user],
             timestamp=event_time_formatted
         )
 
         # 4. 组装 Alert (Alert Assembly)
         alert_enrichments: List[EnrichmentModel] = []
         if aws_region:
-            enrichment_location = EnrichmentModel(name="Alert AWS region", type="Location", provider="aws", value=aws_region,
+            enrichment_location = EnrichmentModel(name="AWS Region", type="Location", provider="aws", value=aws_region,
                                                   desc="Alert region from raw alert", data=json.dumps({"awsRegion": aws_region}))
             alert_enrichments.append(enrichment_location)
 
         alert_model = AlertModel(
-            title=f"AWS IAM PrivyEsc: {principal_user} attempted to attach {policy_name} to {target_user}",
+            title=f"AWS IAM PrivEsc: {principal_user} attached {policy_name} to {target_user}",
             severity=severity,
             status=AlertStatus.NEW,
             status_detail=status_detail,
@@ -176,6 +177,9 @@ class Module(BaseModule):
         else:
             alert_model.enrichments = None
 
+        case_impact = Impact.CRITICAL if outcome == "success" else Impact.MEDIUM
+        case_priority = CasePriority.HIGH if outcome == "success" else CasePriority.MEDIUM
+
         # 保存告警
         saved_alert_row_id = Alert.create(alert_model)
 
@@ -184,22 +188,30 @@ class Module(BaseModule):
         existing_case = Case.get_by_correlation_uid(correlation_uid, lazy_load=True)
         if existing_case:
             # 附加到已有 Case
-            existing_case_row_id: str = existing_case.row_id
+            existing_case_row_id = existing_case.row_id
+            assert existing_case_row_id is not None
+            existing_alerts = existing_case.alerts or []
+            updated_alerts = existing_alerts if saved_alert_row_id in existing_alerts else [*existing_alerts, saved_alert_row_id]
             update_case = CaseModel(
-                alerts=[*existing_case.alerts, saved_alert_row_id],
+                alerts=updated_alerts,
                 row_id=existing_case_row_id
             )
+            severity_order = {Severity.UNKNOWN: 0, Severity.LOW: 1, Severity.MEDIUM: 2, Severity.HIGH: 3, Severity.CRITICAL: 4}
+            if severity_order.get(severity or Severity.UNKNOWN, 0) > severity_order.get(existing_case.severity or Severity.UNKNOWN, 0):
+                update_case.severity = severity
+                update_case.impact = case_impact
+                update_case.priority = case_priority
             Case.update(update_case)
             Case.mark_analysis_requested(row_id=existing_case_row_id, cooldown_minutes=3)
         else:
             # 根据 Alert 计算 Case字段
             new_case = CaseModel(
-                title=f"Potential IAM Privilege Escalation in Account {account_id} by {principal_user}",
+                title=f"IAM Privilege Escalation: {principal_user} -> {target_user} in Account {account_id}",
                 severity=severity,
-                impact=Impact.HIGH if outcome == "success" else Impact.MEDIUM,
-                priority=CasePriority.HIGH if outcome == "success" else CasePriority.MEDIUM,
+                impact=case_impact,
+                priority=case_priority,
                 confidence=Confidence.HIGH,
-                description=f"Investigation required for multiple AttachUserPolicy attempts by {principal_user} "
+                description=f"Investigation required for high-risk AttachUserPolicy activity by {principal_user} "
                             f"targeting {target_user} in account {account_id}.",
                 category=ProductCategory.CLOUD,
                 tags=["iam", "aws", "privesc"],
@@ -225,7 +237,7 @@ if __name__ == "__main__":
 
     # 批量测试最早的100条告警
     module = Module()
-    message_ids = module.read_stream_head_ids(10)
+    message_ids = module.read_stream_head_ids(20)
     for message_id in message_ids:
         module.debug_message_id = message_id
         module.run()

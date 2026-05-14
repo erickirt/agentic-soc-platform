@@ -55,7 +55,7 @@ if __name__ == "__main__":
 
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ASP.settings")
     django.setup()
-    model = PlaybookModel(source_row_id='b084aea5-7d00-4429-a96f-058c63319d87')
+    model = PlaybookModel(source_row_id='256b38c4-625b-4b31-bafc-45ff919150d9')
     module = Playbook()
     module._playbook_model = model
 
