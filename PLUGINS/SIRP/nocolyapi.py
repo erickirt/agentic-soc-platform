@@ -407,24 +407,29 @@ class WorksheetRow(object):
 
         url = f"{SIRP_URL}/api/v3/app/worksheets/{worksheet_id}/rows/batch"
 
-        data = {
-            "rowIds": row_ids,
-            "triggerWorkflow": trigger_workflow,
-        }
+        results = []
+        for i in range(0, len(row_ids), 1000):
+            chunk = row_ids[i:i + 1000]
+            data = {
+                "rowIds": chunk,
+                "triggerWorkflow": trigger_workflow,
+            }
 
-        response = _request_with_timing("DELETE",
-                                        url,
-                                        timeout=SIRP_REQUEST_TIMEOUT,
-                                        json=data)
-        response.raise_for_status()
+            response = _request_with_timing("DELETE",
+                                            url,
+                                            timeout=SIRP_REQUEST_TIMEOUT,
+                                            json=data)
+            response.raise_for_status()
 
-        response_data = response.json()
-        if response_data.get("success"):
-            return response_data.get("data")
-        elif response_data.get("error_code") == 0:
-            return True
-        else:
-            raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
+            response_data = response.json()
+            if response_data.get("success"):
+                results.append(response_data.get("data"))
+            elif response_data.get("error_code") == 0:
+                results.append(True)
+            else:
+                raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
+
+        return results
 
     @staticmethod
     def get_discussions(worksheet_id: str, row_id: str) -> List[Dict]:
