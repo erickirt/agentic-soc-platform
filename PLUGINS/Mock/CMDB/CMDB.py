@@ -2,12 +2,10 @@ from __future__ import annotations
 
 import hashlib
 import ipaddress
-import json
-import logging
 import re
 import sys
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 if str(PROJECT_ROOT) not in sys.path:
@@ -634,45 +632,3 @@ class MockCMDB:
 
 
 cmdb_instance = MockCMDB()
-
-
-def lookup_cmdb_context_tool(
-        artifact_type: Annotated[ArtifactType, "ArtifactType value. Only CMDB-related ArtifactType values are supported."],
-        artifact_value: Annotated[str, "Artifact value observed in a SOC alert, for example IP, hostname, user, email, subnet, port or resource UID."],
-) -> Annotated[dict[str, Any], "Deterministic mock CMDB context for SOC alert investigation."]:
-    """
-    Query the mock CMDB with a SIRP ArtifactType and artifact value.
-
-    Supported ArtifactType values: Hostname, IP Address, MAC Address, User Name,
-    User, Account, Email Address, Email, Endpoint, Device, Resource UID, Resource,
-    Port, Subnet and Serial Number. Unsupported types return a structured error.
-    """
-    return cmdb_instance.lookup(artifact_type, artifact_value)
-
-
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG, format="%(levelname)s:%(name)s:%(message)s")
-
-    demo_cases = [
-        (ArtifactType.HOSTNAME, "prod-web-99"),
-        (ArtifactType.IP_ADDRESS, "192.168.10.55"),
-        (ArtifactType.MAC_ADDRESS, "00:1A:2B:3C:4D:5E"),
-        (ArtifactType.USER_NAME, "dba_zhang"),
-        (ArtifactType.USER, "sec_analyst01"),
-        (ArtifactType.ACCOUNT, "cloud_admin"),
-        (ArtifactType.EMAIL_ADDRESS, "hr.li@corp.example"),
-        (ArtifactType.EMAIL, "soc.alert@corp.example"),
-        (ArtifactType.ENDPOINT, "pc-hr-04"),
-        (ArtifactType.DEVICE, "fw-dmz-01"),
-        (ArtifactType.RESOURCE_UID, "arn:aws:ec2:us-east-1:123456789012:instance/i-abc123"),
-        (ArtifactType.RESOURCE, "iam-role-prod-admin"),
-        (ArtifactType.PORT, "443"),
-        (ArtifactType.SUBNET, "10.30.8.0/24"),
-        (ArtifactType.SERIAL_NUMBER, "FW-SN-778899"),
-        (ArtifactType.CVE, "CVE-2024-1234"),
-    ]
-
-    for artifact_type, artifact_value in demo_cases:
-        print(f"\n=== {artifact_type.value}: {artifact_value} ===")
-        result = lookup_cmdb_context_tool(artifact_type, artifact_value)
-        print(json.dumps(result, ensure_ascii=False, indent=2))

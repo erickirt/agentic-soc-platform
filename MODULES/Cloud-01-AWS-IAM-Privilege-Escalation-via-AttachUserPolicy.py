@@ -4,10 +4,13 @@ from typing import List
 from dateutil import parser
 
 from Lib.basemodule import BaseModule
+from PLUGINS.CMDB.tools import lookup_cmdb_context_tool
 from PLUGINS.SIRP.correlation import Correlation
 from PLUGINS.SIRP.sirpapi import Alert, Case
-from PLUGINS.SIRP.sirpcoremodel import ArtifactName, ArtifactType, ArtifactRole, Severity, Impact, Disposition, AlertAction, Confidence, AlertAnalyticType, ProductCategory, \
+from PLUGINS.SIRP.sirpcoremodel import ArtifactName, ArtifactType, ArtifactRole, Severity, Impact, Disposition, AlertAction, Confidence, AlertAnalyticType, \
+    ProductCategory, \
     AlertPolicyType, AlertRiskLevel, AlertStatus, CasePriority, ArtifactModel, AlertModel, CaseModel, EnrichmentModel, EnrichmentType, EnrichmentProvider
+
 
 class Module(BaseModule):
     def __init__(self):
@@ -106,6 +109,22 @@ class Module(BaseModule):
             artifacts.append(ArtifactModel(type=ArtifactType.RESOURCE_UID, role=ArtifactRole.RELATED, value=policy_arn, name=ArtifactName.IAM_POLICY_ARN))
         if account_id:
             artifacts.append(ArtifactModel(type=ArtifactType.ACCOUNT, role=ArtifactRole.AFFECTED, value=account_id, name=ArtifactName.AWS_ACCOUNT_ID))
+
+        # 2b. CMDB 富化: 为每个 artifact 附加 CMDB 上下文
+        for artifact in artifacts:
+            if not artifact.type or not artifact.value:
+                continue
+            cmdb_result = lookup_cmdb_context_tool(artifact.type, artifact.value)
+            if cmdb_result.get("supported"):
+                cmdb_enrichment = EnrichmentModel(
+                    name=f"CMDB: {artifact.name or artifact.type}",
+                    type=EnrichmentType.CMDB,
+                    provider=EnrichmentProvider.INTERNAL_CMDB,
+                    value=artifact.value,
+                    desc=f"CMDB context for {artifact.type} {artifact.value}",
+                    data=json.dumps(cmdb_result),
+                )
+                artifact.enrichments = [cmdb_enrichment]
 
         # 3. 计算 correlation_uid (Correlation Logic)
         # 选择 [账号, 操作者, 目标用户] 作为聚合键，聚合同一主体对同一 IAM 用户的高危策略绑定
