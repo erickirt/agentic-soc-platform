@@ -286,7 +286,7 @@ class CaseVerdict(StrEnum):
 
 
 class EnrichmentModel(BaseSystemModel):
-    """Artifact/Alert/Case结构化的富化信息"""
+    """结构化的内联增强数据,通过添加更多相关细节或上下文来增强或补充与 Artifact/Alert/Case 关联的信息。"""
     id: Optional[str] = Field(default=None,
                               init=False,
                               description="Record ID e.g. enrichment_000001 (记录 ID e.g. enrichment_000001)",
@@ -303,14 +303,11 @@ class EnrichmentModel(BaseSystemModel):
     value: Optional[str] = Field(default="",
                                  description="Enrichment value (富化值)",
                                  json_schema_extra={"ai": [AI_PROFILE_INVESTIGATION, AI_PROFILE_MCP]})
-    src_url: Optional[str] = Field(default="",
-                                   description="Enrichment source URL (富化来源 URL)",
-                                   json_schema_extra={"ai": [AI_PROFILE_MCP]})
     desc: Optional[str] = Field(default="",
                                 description="Enrichment summary (富化摘要)",
                                 json_schema_extra={"ai": [AI_PROFILE_INVESTIGATION, AI_PROFILE_MCP]})
     data: Optional[str] = Field(default="",
-                                description="Detailed enrichment JSON (详细富化 JSON)")
+                                description="Detailed enrichment JSON Format (详细富化 JSON 格式)")
 
 
 class TicketModel(BaseSystemModel):
