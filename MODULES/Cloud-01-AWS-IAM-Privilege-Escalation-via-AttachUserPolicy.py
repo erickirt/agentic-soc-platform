@@ -6,8 +6,8 @@ from dateutil import parser
 from Lib.basemodule import BaseModule
 from PLUGINS.SIRP.correlation import Correlation
 from PLUGINS.SIRP.sirpapi import Alert, Case
-from PLUGINS.SIRP.sirpcoremodel import ArtifactType, ArtifactRole, Severity, Impact, Disposition, AlertAction, Confidence, AlertAnalyticType, ProductCategory, \
-    AlertPolicyType, AlertRiskLevel, AlertStatus, CasePriority, ArtifactModel, AlertModel, CaseModel, EnrichmentModel
+from PLUGINS.SIRP.sirpcoremodel import ArtifactName, ArtifactType, ArtifactRole, Severity, Impact, Disposition, AlertAction, Confidence, AlertAnalyticType, ProductCategory, \
+    AlertPolicyType, AlertRiskLevel, AlertStatus, CasePriority, ArtifactModel, AlertModel, CaseModel, EnrichmentModel, EnrichmentType, EnrichmentProvider
 
 class Module(BaseModule):
     def __init__(self):
@@ -87,25 +87,25 @@ class Module(BaseModule):
 
         # 主体身份
         if principal_user:
-            artifacts.append(ArtifactModel(type=ArtifactType.USER_NAME, role=ArtifactRole.ACTOR, value=principal_user, name="Principal User"))
+            artifacts.append(ArtifactModel(type=ArtifactType.USER_NAME, role=ArtifactRole.ACTOR, value=principal_user, name=ArtifactName.PRINCIPAL_USER))
         if principal_arn:
-            artifacts.append(ArtifactModel(type=ArtifactType.RESOURCE_UID, role=ArtifactRole.ACTOR, value=principal_arn, name="Principal ARN"))
+            artifacts.append(ArtifactModel(type=ArtifactType.RESOURCE_UID, role=ArtifactRole.ACTOR, value=principal_arn, name=ArtifactName.CLOUD_RESOURCE_ARN))
         if principal_id:
-            artifacts.append(ArtifactModel(type=ArtifactType.RESOURCE_UID, role=ArtifactRole.ACTOR, value=principal_id, name="Principal ID"))
+            artifacts.append(ArtifactModel(type=ArtifactType.RESOURCE_UID, role=ArtifactRole.ACTOR, value=principal_id, name=ArtifactName.CLOUD_RESOURCE_ID))
         if access_key_id:
-            artifacts.append(ArtifactModel(type=ArtifactType.USER_CREDENTIAL_ID, role=ArtifactRole.ACTOR, value=access_key_id, name="Access Key ID"))
+            artifacts.append(ArtifactModel(type=ArtifactType.USER_CREDENTIAL_ID, role=ArtifactRole.ACTOR, value=access_key_id, name=ArtifactName.ACCESS_KEY_ID))
 
         # 目标与环境
         if target_user:
-            artifacts.append(ArtifactModel(type=ArtifactType.USER_NAME, role=ArtifactRole.TARGET, value=target_user, name="Target User"))
+            artifacts.append(ArtifactModel(type=ArtifactType.USER_NAME, role=ArtifactRole.TARGET, value=target_user, name=ArtifactName.TARGET_USER))
         if source_ip:
-            artifacts.append(ArtifactModel(type=ArtifactType.IP_ADDRESS, role=ArtifactRole.ACTOR, value=source_ip, name="Source IP"))
+            artifacts.append(ArtifactModel(type=ArtifactType.IP_ADDRESS, role=ArtifactRole.ACTOR, value=source_ip, name=ArtifactName.SOURCE_IP))
         if user_agent:
-            artifacts.append(ArtifactModel(type=ArtifactType.HTTP_USER_AGENT, role=ArtifactRole.OTHER, value=user_agent, name="User Agent"))
+            artifacts.append(ArtifactModel(type=ArtifactType.HTTP_USER_AGENT, role=ArtifactRole.OTHER, value=user_agent, name=ArtifactName.HTTP_USER_AGENT))
         if policy_arn:
-            artifacts.append(ArtifactModel(type=ArtifactType.RESOURCE_UID, role=ArtifactRole.RELATED, value=policy_arn, name="Attached Policy ARN"))
+            artifacts.append(ArtifactModel(type=ArtifactType.RESOURCE_UID, role=ArtifactRole.RELATED, value=policy_arn, name=ArtifactName.IAM_POLICY_ARN))
         if account_id:
-            artifacts.append(ArtifactModel(type=ArtifactType.ACCOUNT, role=ArtifactRole.AFFECTED, value=account_id, name="AWS Account ID"))
+            artifacts.append(ArtifactModel(type=ArtifactType.ACCOUNT, role=ArtifactRole.AFFECTED, value=account_id, name=ArtifactName.AWS_ACCOUNT_ID))
 
         # 3. 计算 correlation_uid (Correlation Logic)
         # 选择 [账号, 操作者, 目标用户] 作为聚合键，聚合同一主体对同一 IAM 用户的高危策略绑定
@@ -120,7 +120,7 @@ class Module(BaseModule):
         # 4. 组装 Alert (Alert Assembly)
         alert_enrichments: List[EnrichmentModel] = []
         if aws_region:
-            enrichment_location = EnrichmentModel(name="AWS Region", type="Location", provider="aws", value=aws_region,
+            enrichment_location = EnrichmentModel(name="AWS Region", type=EnrichmentType.GEO_LOCATION, provider=EnrichmentProvider.AWS, value=aws_region,
                                                   desc="Alert region from raw alert", data=json.dumps({"awsRegion": aws_region}))
             alert_enrichments.append(enrichment_location)
 

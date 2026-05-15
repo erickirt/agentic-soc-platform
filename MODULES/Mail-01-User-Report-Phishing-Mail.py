@@ -10,6 +10,7 @@ from Lib.basemodule import BaseModule
 from PLUGINS.SIRP.correlation import Correlation
 from PLUGINS.SIRP.sirpapi import Alert, Case
 from PLUGINS.SIRP.sirpcoremodel import (
+    ArtifactName,
     ArtifactModel,
     ArtifactRole,
     ArtifactType,
@@ -223,7 +224,7 @@ class Module(BaseModule):
                     type=ArtifactType.EMAIL_ADDRESS,
                     role=ArtifactRole.ACTOR,
                     value=sender_email,
-                    name="Sender Email",
+                    name=ArtifactName.SENDER_EMAIL,
                 )
             )
         if recipient_email:
@@ -232,7 +233,7 @@ class Module(BaseModule):
                     type=ArtifactType.EMAIL_ADDRESS,
                     role=ArtifactRole.TARGET,
                     value=recipient_email,
-                    name="Recipient Email",
+                    name=ArtifactName.RECIPIENT_EMAIL,
                 )
             )
         if subject:
@@ -241,7 +242,7 @@ class Module(BaseModule):
                     type=ArtifactType.MESSAGE,
                     role=ArtifactRole.RELATED,
                     value=subject,
-                    name="Mail Subject",
+                    name=ArtifactName.MAIL_SUBJECT,
                 )
             )
         for url in urls:
@@ -250,7 +251,7 @@ class Module(BaseModule):
                     type=ArtifactType.UNIFORM_RESOURCE_LOCATOR,
                     role=ArtifactRole.RELATED,
                     value=url,
-                    name="Mail URL",
+                    name=ArtifactName.MAIL_URL,
                 )
             )
         for attachment in attachments:
@@ -263,7 +264,7 @@ class Module(BaseModule):
                         type=ArtifactType.FILE_NAME,
                         role=ArtifactRole.RELATED,
                         value=filename,
-                        name="Attachment File",
+                        name=ArtifactName.ATTACHMENT_FILE,
                         owner=filepath or content_type or "",
                     )
                 )

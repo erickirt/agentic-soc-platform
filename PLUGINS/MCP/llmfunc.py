@@ -12,8 +12,8 @@ from PLUGINS.SIEM.tools import SIEMToolKit
 from PLUGINS.SIRP.nocolymodel import Group, Condition, Operator
 from PLUGINS.SIRP.sirpapi import Alert, Artifact, Case, Enrichment, Knowledge, Playbook, Ticket
 from PLUGINS.SIRP.sirpbasemodel import AI_PROFILE_MCP
-from PLUGINS.SIRP.sirpcoremodel import TicketStatus, TicketType, ArtifactType, ArtifactRole, ArtifactReputationScore, Severity, AttackStage, Confidence, \
-    AlertStatus, CaseStatus, CaseVerdict, EnrichmentModel, TicketModel, ArtifactModel
+from PLUGINS.SIRP.sirpcoremodel import TicketStatus, TicketType, ArtifactName, ArtifactType, ArtifactRole, ArtifactReputationScore, Severity, AttackStage, Confidence, \
+    AlertStatus, CaseStatus, CaseVerdict, EnrichmentModel, EnrichmentType, EnrichmentProvider, TicketModel, ArtifactModel
 from PLUGINS.SIRP.sirpextramodel import PlaybookType, KnowledgeSource, PlaybookJobStatus
 
 
@@ -164,7 +164,7 @@ def get_alert_discussions(
 # Artifact
 # Do not open to mcp , because we think artifact is add only by automation, not human
 def create_artifact(
-        name: Annotated[str, Field(description="Artifact name (实体名称)")] = "",
+        name: Annotated[ArtifactName, Field(description="Artifact name (实体名称)")] = ArtifactName.UNKNOWN,
         type: Annotated[Optional[ArtifactType], Field(description="Artifact type (实体类型)")] = None,
         role: Annotated[Optional[ArtifactRole], Field(description="Artifact role in event (实体在事件中的角色)")] = None,
         owner: Annotated[str, Field(description="Owning system or user (所属系统或用户)")] = "",
@@ -233,8 +233,8 @@ def list_artifacts(
 # Enrichment
 def create_enrichment(
         name: Annotated[str, Field(description="Enrichment name (富化名称)")] = "",
-        type: Annotated[str, Field(description="Enrichment type (富化类型)")] = "Other",
-        provider: Annotated[str, Field(description="Enrichment provider (富化提供商)")] = "Other",
+        type: Annotated[EnrichmentType, Field(description="Enrichment type (富化类型)")] = EnrichmentType.OTHER,
+        provider: Annotated[EnrichmentProvider, Field(description="Enrichment provider (富化提供商)")] = EnrichmentProvider.OTHER,
         value: Annotated[str, Field(description="Enrichment value (富化值)")] = "",
         src_url: Annotated[str, Field(description="Enrichment source URL (富化来源 URL)")] = "",
         desc: Annotated[str, Field(description="Enrichment summary (富化摘要)")] = "",

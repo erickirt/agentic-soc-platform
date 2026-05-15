@@ -6,7 +6,7 @@ from dateutil import parser
 from Lib.basemodule import BaseModule
 from PLUGINS.SIRP.correlation import Correlation
 from PLUGINS.SIRP.sirpapi import Alert, Case
-from PLUGINS.SIRP.sirpcoremodel import ArtifactType, ArtifactRole, Severity, Impact, Disposition, AlertAction, Confidence, AlertAnalyticType, ProductCategory, \
+from PLUGINS.SIRP.sirpcoremodel import ArtifactName, ArtifactType, ArtifactRole, Severity, Impact, Disposition, AlertAction, Confidence, AlertAnalyticType, ProductCategory, \
     AlertPolicyType, AlertRiskLevel, AlertStatus, CasePriority, ArtifactModel, AlertModel, CaseModel
 
 
@@ -73,15 +73,15 @@ class Module(BaseModule):
         artifacts: List[ArtifactModel] = []
 
         if user_name:
-            artifacts.append(ArtifactModel(type=ArtifactType.USER_NAME, role=ArtifactRole.ACTOR, value=user_name, name="Executing User"))
+            artifacts.append(ArtifactModel(type=ArtifactType.USER_NAME, role=ArtifactRole.ACTOR, value=user_name, name=ArtifactName.EXECUTING_USER))
         if host_name:
-            artifacts.append(ArtifactModel(type=ArtifactType.HOSTNAME, role=ArtifactRole.AFFECTED, value=host_name, name="Affected Host"))
+            artifacts.append(ArtifactModel(type=ArtifactType.HOSTNAME, role=ArtifactRole.AFFECTED, value=host_name, name=ArtifactName.AFFECTED_HOST))
         if process_hash_sha256:
-            artifacts.append(ArtifactModel(type=ArtifactType.HASH, role=ArtifactRole.RELATED, value=process_hash_sha256, name="Process SHA256"))
+            artifacts.append(ArtifactModel(type=ArtifactType.HASH, role=ArtifactRole.RELATED, value=process_hash_sha256, name=ArtifactName.PROCESS_HASH))
         if process_hash_md5:
-            artifacts.append(ArtifactModel(type=ArtifactType.HASH, role=ArtifactRole.RELATED, value=process_hash_md5, name="Process MD5"))
+            artifacts.append(ArtifactModel(type=ArtifactType.HASH, role=ArtifactRole.RELATED, value=process_hash_md5, name=ArtifactName.PROCESS_HASH))
         if process_cmd:
-            artifacts.append(ArtifactModel(type=ArtifactType.COMMAND_LINE, role=ArtifactRole.RELATED, value=process_cmd, name="Command Line"))
+            artifacts.append(ArtifactModel(type=ArtifactType.COMMAND_LINE, role=ArtifactRole.RELATED, value=process_cmd, name=ArtifactName.PROCESS_COMMAND_LINE))
 
         # 3. Correlation：同一主机 + 同一用户，24h 内聚合为一个 Case
         correlation_uid = Correlation.generate_correlation_uid(

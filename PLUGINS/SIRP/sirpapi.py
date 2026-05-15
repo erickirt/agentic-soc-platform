@@ -12,7 +12,7 @@ from PLUGINS.SIRP.CONFIG import SIRP_NOTICE_WEBHOOK
 from PLUGINS.SIRP.nocolyapi import WorksheetRow
 from PLUGINS.SIRP.nocolymodel import Condition, Group, Operator
 from PLUGINS.SIRP.sirpbasemodel import AutoAccount, BaseSystemModel, AI_PROFILE_MCP
-from PLUGINS.SIRP.sirpcoremodel import Severity, Confidence, EnrichmentModel, TicketModel, ArtifactModel, AlertModel, CaseModel
+from PLUGINS.SIRP.sirpcoremodel import Severity, Confidence, EnrichmentModel, TicketModel, ArtifactModel, AlertModel, CaseModel, ArtifactType
 from PLUGINS.SIRP.sirpextramodel import PlaybookType, PlaybookJobStatus, PlaybookModel, KnowledgeModel
 
 
@@ -339,6 +339,48 @@ class Enrichment(BaseWorksheetEntity[EnrichmentModel]):
     WORKSHEET_ID = "enrichment"
     MODEL_CLASS = EnrichmentModel
 
+    @classmethod
+    def get_by_identity(cls, model: EnrichmentModel, lazy_load: bool = True) -> Union[EnrichmentModel, None]:
+        """按 type + provider + value 查找同一个 Enrichment"""
+        if model.type is None or model.provider is None or model.value is None:
+            return None
+
+        type_value = model.type.value if hasattr(model.type, "value") else model.type
+        provider_value = model.provider.value if hasattr(model.provider, "value") else model.provider
+
+        filter_model = Group(
+            logic="AND",
+            children=[
+                Condition(field="type", operator=Operator.IN, value=[type_value]),
+                Condition(field="provider", operator=Operator.IN, value=[provider_value]),
+                Condition(field="value", operator=Operator.EQ, value=model.value),
+            ]
+        )
+        result = cls.list(filter_model, lazy_load=lazy_load)
+        if result:
+            if len(result) > 1:
+                logger.warning(
+                    f"More than one enrichment has the same identity: "
+                    f"type={type_value}, provider={provider_value}, value={model.value}. "
+                    f"Use the first row_id as canonical: {result[0].row_id}"
+                )
+            return result[0]
+        return None
+
+    @classmethod
+    def create(cls, model: EnrichmentModel) -> str:
+        existing = cls.get_by_identity(model, lazy_load=True)
+        if existing and existing.row_id:
+            model.row_id = existing.row_id
+            return super().update(model)
+        return super().create(model)
+
+    @classmethod
+    def update_or_create(cls, model: EnrichmentModel) -> str:
+        if model.row_id is None:
+            return cls.create(model)
+        return cls.update(model)
+
 
 class Ticket(BaseWorksheetEntity[TicketModel]):
     """Ticket 实体类"""
@@ -398,19 +440,39 @@ class Artifact(BaseWorksheetEntity[ArtifactModel]):
     WORKSHEET_ID = "artifact"
     MODEL_CLASS = ArtifactModel
 
+    @staticmethod
+    def normalize_value(artifact_type, value) -> str:
+        """Normalize Artifact.value before identity lookup/save (保存/查重前统一 Artifact.value)."""
+        if value is None:
+            return value
+
+        normalized_value = str(value).strip()
+        type_value = artifact_type.value if hasattr(artifact_type, "value") else artifact_type
+
+        if type_value in [ArtifactType.EMAIL_ADDRESS.value, ArtifactType.EMAIL.value, ArtifactType.HASH.value]:
+            return normalized_value.lower()
+        if type_value == ArtifactType.HOSTNAME.value:
+            return normalized_value.lower().rstrip(".")
+        if type_value == ArtifactType.MAC_ADDRESS.value:
+            return normalized_value.lower().replace("-", ":")
+        return normalized_value
+
     @classmethod
     def get_by_identity(cls, model: ArtifactModel, lazy_load: bool = True) -> Union[ArtifactModel, None]:
         """按 name + type + role + value 查找同一个 Artifact"""
         if model.name is None or model.type is None or model.role is None or model.value is None:
             return None
 
+        model.value = cls.normalize_value(model.type, model.value)
+
+        name_value = model.name.value if hasattr(model.name, "value") else model.name
         type_value = model.type.value if hasattr(model.type, "value") else model.type
         role_value = model.role.value if hasattr(model.role, "value") else model.role
 
         filter_model = Group(
             logic="AND",
             children=[
-                Condition(field="name", operator=Operator.EQ, value=model.name),
+                Condition(field="name", operator=Operator.EQ, value=name_value),
                 Condition(field="type", operator=Operator.IN, value=[type_value]),
                 Condition(field="role", operator=Operator.IN, value=[role_value]),
                 Condition(field="value", operator=Operator.EQ, value=model.value),
@@ -421,7 +483,7 @@ class Artifact(BaseWorksheetEntity[ArtifactModel]):
             if len(result) > 1:
                 logger.warning(
                     f"More than one artifact has the same identity: "
-                    f"name={model.name}, type={type_value}, role={role_value}, value={model.value}. "
+                    f"name={name_value}, type={type_value}, role={role_value}, value={model.value}. "
                     f"Use the first row_id as canonical: {result[0].row_id}"
                 )
             return result[0]
@@ -429,8 +491,9 @@ class Artifact(BaseWorksheetEntity[ArtifactModel]):
 
     @classmethod
     def create(cls, model: ArtifactModel) -> str:
+        model.value = cls.normalize_value(model.type, model.value)
         existing = cls.get_by_identity(model, lazy_load=True)
-        if existing:
+        if existing and existing.row_id:
             return existing.row_id
         return super().create(model)
 
@@ -438,6 +501,8 @@ class Artifact(BaseWorksheetEntity[ArtifactModel]):
     def update_or_create(cls, model: ArtifactModel) -> str:
         if model.row_id is None:
             return cls.create(model)
+        if "value" in model.model_fields_set:
+            model.value = cls.normalize_value(model.type, model.value)
         return cls.update(model)
 
     @classmethod

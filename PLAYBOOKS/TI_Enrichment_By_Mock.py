@@ -2,11 +2,11 @@ import json
 
 from Lib.baseplaybook import BasePlaybook
 from PLUGINS.SIRP.sirpapi import Artifact, Case
-from PLUGINS.SIRP.sirpcoremodel import EnrichmentModel, ArtifactModel, ArtifactType
+from PLUGINS.SIRP.sirpcoremodel import EnrichmentModel, ArtifactModel, ArtifactType, EnrichmentType, EnrichmentProvider
 from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus, PlaybookModel
 
-TI_ENRICHMENT_TYPE = "Threat Intelligence"
-TI_PROVIDER = "MockTIProvider"
+TI_ENRICHMENT_TYPE = EnrichmentType.THREAT_INTELLIGENCE
+TI_PROVIDER = EnrichmentProvider.MOCK_TI_PROVIDER
 
 
 def _mock_ip_result(value: str) -> dict:

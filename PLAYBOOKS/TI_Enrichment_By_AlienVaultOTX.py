@@ -4,12 +4,12 @@ from Lib.api import is_ipaddress
 from Lib.baseplaybook import BasePlaybook
 from PLUGINS.AlienVaultOTX.alienvaultotx import AlienVaultOTX
 from PLUGINS.SIRP.sirpapi import Artifact, Case
-from PLUGINS.SIRP.sirpcoremodel import EnrichmentModel, ArtifactModel, ArtifactType
+from PLUGINS.SIRP.sirpcoremodel import EnrichmentModel, ArtifactModel, ArtifactType, EnrichmentType, EnrichmentProvider
 from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus, PlaybookModel
 
 
-TI_ENRICHMENT_TYPE = "Threat Intelligence"
-TI_PROVIDER = "OTX"
+TI_ENRICHMENT_TYPE = EnrichmentType.THREAT_INTELLIGENCE
+TI_PROVIDER = EnrichmentProvider.ALIENVAULT_OTX
 
 
 def _query_ip(value: str) -> dict:
