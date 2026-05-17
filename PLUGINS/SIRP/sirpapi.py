@@ -3,13 +3,12 @@ from abc import ABC
 from datetime import datetime, timedelta
 from typing import List, Union, Annotated, Dict, Any, TypeVar, Generic, Type
 
-import requests
 from pydantic import BaseModel
 
 from Lib.log import logger
 from PLUGINS.Redis.redis_stream_api import RedisStreamAPI
 from PLUGINS.SIRP.CONFIG import SIRP_NOTICE_WEBHOOK
-from PLUGINS.SIRP.nocolyapi import WorksheetRow
+from PLUGINS.SIRP.nocolyapi import HTTP_SESSION, WorksheetRow
 from PLUGINS.SIRP.nocolymodel import Condition, Group, Operator
 from PLUGINS.SIRP.sirpbasemodel import AutoAccount, BaseSystemModel, AI_PROFILE_MCP
 from PLUGINS.SIRP.sirpcoremodel import Severity, Confidence, EnrichmentModel, TicketModel, ArtifactModel, AlertModel, CaseModel, ArtifactType
@@ -1405,5 +1404,5 @@ class Notice(object):
             logger.error("user 参数必须是 AutoAccount 实例或 AutoAccount 实例列表")
             return False
         for user in users:
-            result = requests.post(SIRP_NOTICE_WEBHOOK, json={"title": title, "body": body, "user": user})
+            result = HTTP_SESSION.post(SIRP_NOTICE_WEBHOOK, json={"title": title, "body": body, "user": user})
         return True

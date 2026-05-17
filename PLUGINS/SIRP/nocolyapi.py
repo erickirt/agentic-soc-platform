@@ -18,7 +18,7 @@ HEADERS = {"HAP-Appkey": SIRP_APPKEY,
 
 SIRP_REQUEST_TIMEOUT = 10  # seconds
 
-HTTP_SESSION = requests.Session()
+HTTP_SESSION = requests.Session(trust_env=False)
 HTTP_SESSION.headers.update(HEADERS)
 HTTP_SESSION.verify = False
 adapter = HTTPAdapter(

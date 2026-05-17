@@ -251,7 +251,7 @@ class AlienVaultOTX(object):
                     "https": HTTP_PROXY,
                 }
             else:
-                proxies = None
+                proxies = {}
             resp = requests.get(url, headers=cls.headers, proxies=proxies, timeout=10)
             resp.raise_for_status()
             return resp.json()
