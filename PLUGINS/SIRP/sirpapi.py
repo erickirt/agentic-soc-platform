@@ -805,11 +805,15 @@ class Case(BaseWorksheetEntity[CaseModel]):
         return cls.update(case_new)
 
     @classmethod
-    def get_discussions(cls, case_id) -> Union[List[dict], None]:
+    def get_discussions_by_id(cls, case_id) -> Union[List[dict], None]:
         case_model = cls.get_by_id(case_id, lazy_load=True)
         if not case_model:
             return None
         return WorksheetRow.get_discussions(cls.WORKSHEET_ID, case_model.row_id)
+
+    @classmethod
+    def get_discussions_by_row_id(cls, row_id: str) -> Union[List[dict], None]:
+        return WorksheetRow.get_discussions(cls.WORKSHEET_ID, row_id)
 
     @classmethod
     def attach_enrichment(

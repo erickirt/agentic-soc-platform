@@ -91,7 +91,7 @@ def get_case_discussions(
 ) -> Annotated[Optional[list[str]], Field(
     description="Case discussions as JSON string list, or None if case not found (Case 讨论记录 JSON 字符串列表,Case 不存在时返回 None)")]:
     """Get case discussions by case ID. (通过 Case ID 获取讨论记录)"""
-    discussions = Case.get_discussions(case_id)
+    discussions = Case.get_discussions_by_id(case_id)
     if discussions is None:
         return None
     return [json.dumps(item, ensure_ascii=False) for item in discussions]
