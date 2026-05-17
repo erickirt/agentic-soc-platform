@@ -18,9 +18,10 @@ HEADERS = {"HAP-Appkey": SIRP_APPKEY,
 
 SIRP_REQUEST_TIMEOUT = 10  # seconds
 
-HTTP_SESSION = requests.Session(trust_env=False)
+HTTP_SESSION = requests.Session()
 HTTP_SESSION.headers.update(HEADERS)
 HTTP_SESSION.verify = False
+HTTP_SESSION.trust_env = False
 adapter = HTTPAdapter(
     pool_connections=10,
     pool_maxsize=10
@@ -432,6 +433,41 @@ class WorksheetRow(object):
         return results
 
     @staticmethod
+    def _filter_discussions(raw_discussions: List[Dict]) -> List[Dict]:
+        import re
+        filtered = []
+        for d in raw_discussions:
+            created_by = d.get("_createdBy") or {}
+            reply_to_author = d.get("replyToAuthor") or {}
+            mentions = d.get("mentions") or []
+            account_map = {m.get("accountId", ""): m.get("fullname", "") for m in mentions}
+            message = d.get("message", "")
+            message = re.sub(
+                r'\[aid\](.*?)\[/aid\]',
+                lambda m: f"@{account_map.get(m.group(1), m.group(1))}",
+                message
+            ).strip()
+            item = {
+                "message": message,
+                "created_at": d.get("_createdAt", ""),
+                "created_by": created_by.get("fullname", ""),
+                "reply_to_author": reply_to_author.get("fullname", ""),
+            }
+            item["mentions"] = [m.get("fullname", "") for m in mentions]
+            attachments = d.get("attachments") or []
+            item["attachments"] = [
+                {
+                    "filename": a.get("originalFilename", ""),
+                    "ext": a.get("ext", ""),
+                    "filesize": a.get("filesize", 0),
+                    "download_url": a.get("downloadUrl", ""),
+                }
+                for a in attachments
+            ]
+            filtered.append(item)
+        return filtered
+
+    @staticmethod
     def get_discussions(worksheet_id: str, row_id: str) -> List[Dict]:
         url = f"{SIRP_URL}/api/v3/app/worksheets/{worksheet_id}/rows/{row_id}/discussions"
 
@@ -459,7 +495,7 @@ class WorksheetRow(object):
             #     }
             # ]
             discussions = response_data.get("data", {}).get("discussions", [])
-            return discussions
+            return WorksheetRow._filter_discussions(discussions)
         else:
             raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
 
