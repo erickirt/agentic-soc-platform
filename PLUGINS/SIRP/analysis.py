@@ -4,7 +4,7 @@ import json
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import List, Any
+from typing import List, Any, Optional
 
 from langchain_core.messages import SystemMessage, HumanMessage
 from pydantic import BaseModel, ConfigDict, Field
@@ -18,6 +18,7 @@ from PLUGINS.SIRP.sirpcoremodel import AttackStage, CaseModel, CasePriority, Cas
 
 PROMPT_PATH = Path(DATA_DIR) / "SYSTEM" / "ANALYSIS" / "System_EN.md"
 KNOWLEDGE_KEYWORDS_PROMPT_PATH = Path(DATA_DIR) / "SYSTEM" / "ANALYSIS" / "KnowledgeKeywords_EN.md"
+KNOWLEDGE_EXTRACTION_PROMPT_PATH = Path(DATA_DIR) / "SYSTEM" / "KNOWLEDGE_EXTRACTION" / "System_EN.md"
 MAX_KNOWLEDGE_KEYWORDS = 8
 MAX_KNOWLEDGE_RECORDS = 10
 
@@ -292,3 +293,26 @@ def run_case_analysis(case_row_id: str, trigger: str, queue_message_id: str | No
     except Exception as e:
         logger.exception(e)
         Case.mark_analysis_failed(case_row_id, error=str(e))
+
+
+class KnowledgeExtractionResult(BaseModel):
+    has_knowledge: bool = Field(description="Whether the case contains reusable knowledge. 是否包含可复用知识。")
+    title: Optional[str] = Field(default=None, description="Knowledge title. 知识标题。")
+    body: Optional[str] = Field(default=None, description="Knowledge content in Markdown. Markdown 格式的知识内容。")
+    tags: Optional[List[str]] = Field(default=None, description="Knowledge tags for searchability. 可用于搜索的知识标签。")
+    reason: str = Field(description="Brief explanation of the extraction decision. 提取或不提取的简要原因。")
+
+
+def extract_knowledge_from_case(case_id: str, case_json: str, discussions: List[dict[str, Any]]) -> KnowledgeExtractionResult:
+    system_prompt = KNOWLEDGE_EXTRACTION_PROMPT_PATH.read_text(encoding="utf-8")
+    llm = LLMAPI().get_model(tag="structured_output").with_structured_output(KnowledgeExtractionResult)
+    try:
+        case_data = json.loads(case_json)
+    except json.JSONDecodeError:
+        case_data = case_json
+    input_json = json.dumps({"case_id": case_id, "case": case_data, "discussions": discussions}, ensure_ascii=False, separators=(",", ":"))
+    result = llm.invoke([
+        SystemMessage(content=system_prompt),
+        HumanMessage(content=input_json),
+    ])
+    return result
