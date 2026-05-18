@@ -193,6 +193,8 @@ def list_artifacts(
 
 # Enrichment
 def create_enrichment(
+        target_id: Annotated[str, Field(
+            description="Target object ID to attach the enrichment to; must start with case_, alert_, or artifact_ (挂载富化的目标对象 ID,须以 case_、alert_ 或 artifact_ 开头)")],
         name: Annotated[str, Field(description="Enrichment name (富化名称)")] = "",
         type: Annotated[EnrichmentType, Field(description="Enrichment type (富化类型)")] = EnrichmentType.OTHER,
         provider: Annotated[EnrichmentProvider, Field(description="Enrichment provider (富化提供商)")] = EnrichmentProvider.OTHER,
@@ -201,7 +203,7 @@ def create_enrichment(
         desc: Annotated[str, Field(description="Enrichment summary (富化摘要)")] = "",
         data: Annotated[str, Field(description="Detailed enrichment JSON string (详细富化 JSON 字符串)")] = ""
 ) -> Annotated[str, Field(description="Created enrichment record row ID (创建的 Enrichment 行 ID)")]:
-    """Create one enrichment record. (创建一条富化记录)"""
+    """Create one enrichment record and attach it to a target case, alert, or artifact. (创建一条富化记录并挂载到目标 Case、Alert 或 Artifact)"""
     model = EnrichmentModel()
     model.name = name
     model.type = type
@@ -210,38 +212,19 @@ def create_enrichment(
     model.src_url = src_url
     model.desc = desc
     model.data = data
-    return Enrichment.create(model)
+    enrichment_row_id = Enrichment.create(model)
 
-
-def attach_enrichment_to_target(
-        target_id: Annotated[str, Field(
-            description="Target object ID to receive the enrichment; must start with case_, alert_, or artifact_ (接收富化的目标对象 ID,须以 case_、alert_ 或 artifact_ 开头)")],
-        enrichment_row_id: Annotated[
-            str, Field(description="Enrichment record row ID returned by create_enrichment (由 create_enrichment 返回的 Enrichment 行 ID)")]
-) -> Annotated[
-    Optional[str], Field(description="Attached enrichment record row ID, or None if target not found (挂载后的 Enrichment 行 ID,目标不存在时返回 None)")]:
-    """Attach one existing enrichment record to an existing case, alert, or artifact. (将已有富化记录挂载到 Case、Alert 或 Artifact)"""
     normalized_target_id = target_id.strip().lower()
-
     if normalized_target_id.startswith("case_"):
-        return Case.attach_enrichment(
-            case_id=target_id,
-            enrichment_row_id=enrichment_row_id
-        )
+        Case.attach_enrichment(case_id=target_id, enrichment_row_id=enrichment_row_id)
+    elif normalized_target_id.startswith("alert_"):
+        Alert.attach_enrichment(alert_id=target_id, enrichment_row_id=enrichment_row_id)
+    elif normalized_target_id.startswith("artifact_"):
+        Artifact.attach_enrichment(artifact_id=target_id, enrichment_row_id=enrichment_row_id)
+    else:
+        raise ValueError("target_id must start with one of: case_, alert_, artifact_")
 
-    if normalized_target_id.startswith("alert_"):
-        return Alert.attach_enrichment(
-            alert_id=target_id,
-            enrichment_row_id=enrichment_row_id
-        )
-
-    if normalized_target_id.startswith("artifact_"):
-        return Artifact.attach_enrichment(
-            artifact_id=target_id,
-            enrichment_row_id=enrichment_row_id
-        )
-
-    raise ValueError("target_id must start with one of: case_, alert_, artifact_")
+    return enrichment_row_id
 
 
 # Ticket
@@ -475,7 +458,6 @@ REGISTERED_MCP_TOOLS = [
 
     # enrichment
     create_enrichment,
-    attach_enrichment_to_target,
 
     # playbook
     list_available_playbook_definitions,

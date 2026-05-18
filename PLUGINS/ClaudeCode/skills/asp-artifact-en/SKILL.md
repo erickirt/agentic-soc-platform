@@ -1,6 +1,6 @@
 ---
 name: asp-artifact-en
-description: 'Find artifacts by IOC and attach enrichment to artifacts.'
+description: 'Find artifacts by IOC.'
 argument-hint: 'review artifact <artifact_id> | list artifacts [filters]'
 compatibility: connect to asp mcp server
 metadata:
@@ -19,15 +19,13 @@ Artifacts are created automatically by system processes. You can list and analyz
 
 ## When to Use
 
-- The user wants to find artifacts by value, type, role, owner, or reputation.
-- The user wants to attach enrichment or structured analysis to an artifact.
+- The user wants to find artifacts by value, type, role, or owner.
 
 ## Operating Rules
 
 - Treat artifacts as the smallest investigation object on the platform.
 - Use `list_artifacts` for lookup and review.
-- If the user wants to save analysis on the artifact itself, use `create_enrichment` plus `attach_enrichment_to_target`.
-- For the full enrichment persistence workflow, use the `asp-enrichment-en` skill.
+- If the user wants to save analysis on the artifact, use the `asp-enrichment-en` skill.
 
 ## Additional Information
 
@@ -51,8 +49,8 @@ Artifacts are created automatically by system processes. You can list and analyz
 
 Preferred response structure:
 
-| Artifact ID | Value | Type | Role | Owner | Reputation | Summary |
-|-------------|-------|------|------|-------|------------|---------|
+| Artifact ID | Value | Type | Role | Owner | Summary |
+|-------------|-------|------|------|-------|---------|
 
 Then add one short explanation line when needed.
 

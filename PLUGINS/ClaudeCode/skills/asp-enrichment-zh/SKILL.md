@@ -1,11 +1,11 @@
 ---
 name: asp-enrichment-zh
 description: '把结构化数据保存为 enrichment，并附加到 case、alert 或 artifact。'
-argument-hint: 'create enrichment for <case|alert|artifact> <target_id> | attach enrichment to <case|alert|artifact> <target_id>'
+argument-hint: 'create enrichment <target_id> [fields]'
 compatibility: connect to asp mcp server
 metadata:
   author: Funnywolf
-  version: 0.1.0
+  version: 0.2.0
   mcp-server: asp
   category: cyber security
   tags: [ enrichment, analysis, context, investigation ]
@@ -14,64 +14,47 @@ metadata:
 
 # ASP Enrichment
 
-当数据需要以结构化上下文形式保存回 ASP 且挂载到对应 case , alert 或 artifact 时，使用这个 skill。
+当数据需要以结构化上下文形式保存回 ASP 且挂载到对应 case、alert 或 artifact 时，使用这个 skill。
 
 ## 适用场景
 
 - 用户想保存结构化分析、情报或调查结论。
 - 用户想把上下文附加到 case、alert 或 artifact。
 - 用户想持久化 SIEM 发现、威胁情报、资产上下文或分析师结论。
-- 用户已经有 enrichment，希望把它复用并附加到目标对象。
 
 ## 运行规则
 
 - 把 enrichment 视为平台的结构化结果层，而不是普通评论字段。
 - 当目标是把分析结果持久化到 `case`、`alert` 或 `artifact` 上时，使用这个 skill。
-- 区分“创建 enrichment”和“附加 enrichment”两个动作。
-- 新结果记录使用 `create_enrichment`。
-- 只有在已经拿到 enrichment row_id 后，才使用 `attach_enrichment_to_target`。
+- 使用 `create_enrichment` 创建 enrichment 记录并自动附加到目标对象。
 - enrichment payload 保持紧凑且可操作。
 - 查看对象本身时优先使用对象对应的 skill；保存结果时再使用本 skill。
 
-## 补充信息
-
-- row_id 为每条 enrichment 记录的UUID,用于数据关联. enrichment_id 是每条 enrichment 记录人类可读的唯一ID
-
 ## 决策流程
 
-1. 如果用户想保存新的结构化结果，先调用 `create_enrichment`。
-2. 如果用户想把结果附加到 case、alert 或 artifact，调用 `attach_enrichment_to_target`。
-3. 如果用户已经有现成的 enrichment row_id，跳过创建，直接附加。
-4. 如果用户还处于对象探索阶段而不是保存结果，先使用对应对象 skill。
+1. 如果用户想在目标对象上保存新的结构化结果，调用 `create_enrichment(target_id=..., ...)`。
+2. 如果用户还处于对象探索阶段而不是保存结果，先使用对应对象 skill。
 
 当你已经有明确的分析结论，例如 verdict、TTP 集合、风险评级或缓解建议，并且这些内容需要保存在目标对象上时，就切换到这个 skill。
 
 ## SOP
 
-### 创建并附加新的 Enrichment
+### 创建 Enrichment
 
-1. 要求提供`target_id` (比如 case_000001 / alert_000001 / artifact_000001)。
+1. 要求提供 `target_id`（如 case_000001 / alert_000001 / artifact_000001）。
 2. 把用户的分析整理成紧凑的结构化 enrichment payload。
-3. 调用 `create_enrichment` 并保留返回的 enrichment row_id。
-4. 调用`attach_enrichment_to_target(target_id=<target_id>, enrichment_row_id=<created_row_id>)`。
-5. 确认 enrichment 已创建并附加成功。
+3. 调用 `create_enrichment(target_id=<target_id>, name=..., type=..., ...)`。
+4. 确认创建后的 enrichment row_id 及其已附加到目标对象。
 
 首选回复结构：
 
 - `Target ID`：目标 ID
 - `Enrichment`：创建出的 enrichment row_id
 
-### 附加已有 Enrichment
-
-1. 要求提供 `target_id` 和 `enrichment_row_id`。
-2. 调用`attach_enrichment_to_target(target_id=<target_id>, enrichment_row_id=<enrichment_row_id>)`。
-3. 确认 enrichment 已附加成功。
-
 ## 澄清规则
 
 - 只有在缺失时才询问 `target_id`。
-- 只有当用户要复用现有 enrichment 且未提供时，才询问 enrichment row_id。
-- 如果用户只说“把这个结果保存一下”，在上下文明确时推断最明显的目标对象,优先选择 Case。
+- 如果用户只说”把这个结果保存一下”，在上下文明确时推断最明显的目标对象，优先选择 Case。
 
 ## 输出规则
 
@@ -84,4 +67,3 @@ metadata:
 
 - 如果目标对象不存在，直接说明。
 - 如果 enrichment payload 不完整，只问一个聚焦问题，不要猜测。
-- 如果附加失败是因为缺少 enrichment row_id，就要求用户提供，或先创建新的 enrichment。
