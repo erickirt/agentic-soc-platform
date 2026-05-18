@@ -7,7 +7,6 @@ from PLUGINS.SIRP.sirpapi import Artifact, Case
 from PLUGINS.SIRP.sirpcoremodel import EnrichmentModel, ArtifactModel, ArtifactType, EnrichmentType, EnrichmentProvider
 from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus, PlaybookModel
 
-
 TI_ENRICHMENT_TYPE = EnrichmentType.THREAT_INTELLIGENCE
 TI_PROVIDER = EnrichmentProvider.ALIENVAULT_OTX
 
@@ -35,7 +34,7 @@ OTX_QUERY_HANDLERS = {
 
 
 class Playbook(BasePlaybook):
-    NAME = "TI Enrichment By AlienVaultOTX"
+    NAME = "TI Enrichment (AlienVaultOTX)"
     DESC = "TI Enrichment By AlienVaultOTX"
 
     def __init__(self):

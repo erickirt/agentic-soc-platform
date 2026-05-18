@@ -6,7 +6,7 @@ from PLUGINS.SIRP.sirpextramodel import KnowledgeModel, KnowledgeSource, Playboo
 
 
 class Playbook(BasePlaybook):
-    NAME = "Case Knowledge Extraction"
+    NAME = "Knowledge Extraction"
     DESC = "Extract reusable knowledge from a closed Case and store it in the Knowledge worksheet."
 
     def __init__(self):

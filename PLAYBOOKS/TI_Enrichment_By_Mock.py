@@ -54,7 +54,7 @@ MOCK_QUERY_HANDLERS = {
 
 
 class Playbook(BasePlaybook):
-    NAME = "TI Enrichment By Mock"
+    NAME = "TI Enrichment (Mock)"
     DESC = "Simulate threat intelligence enrichment. This playbook is for testing and demonstration purposes only. It does not perform real threat intelligence queries."
 
     def __init__(self):
