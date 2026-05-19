@@ -15,7 +15,7 @@ from PLUGINS.SIRP.sirpbasemodel import AI_PROFILE_MCP
 from PLUGINS.SIRP.sirpcoremodel import TicketStatus, TicketType, ArtifactType, ArtifactRole, Severity, AttackStage, \
     Confidence, \
     AlertStatus, CaseStatus, CaseVerdict, EnrichmentModel, EnrichmentType, EnrichmentProvider, TicketModel
-from PLUGINS.SIRP.sirpextramodel import PlaybookType, PlaybookJobStatus
+from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus
 
 
 def _dump_models_for_ai(models, limit: int) -> list[dict]:
@@ -292,7 +292,7 @@ def update_ticket(
 
 
 # Playbook
-def list_available_playbook_definitions(
+def list_playbook_definitions(
 ) -> Annotated[str, Field(
     description="Runnable playbook definitions as JSON string, not playbook run records (可执行的 Playbook 定义列表 JSON 字符串,非 Playbook 执行记录)")]:
     """List all runnable built-in playbook definitions, not playbook run records. (列出所有可执行的内置 Playbook 定义,非 Playbook 执行记录)"""
@@ -305,9 +305,8 @@ def list_playbook_runs(
             Optional[str], Field(description="Playbook run row ID filter, e.g. 03c26478-b213-44c8-b651-3cc88abaac01 (Playbook 执行记录行 ID 过滤)")] = None,
         playbook_id: Annotated[Optional[str], Field(description="Playbook run ID filter, e.g. playbook_000001 (Playbook 执行记录 ID 过滤)")] = None,
         job_status: Annotated[Optional[list[PlaybookJobStatus]], Field(description="Playbook job status filter (Playbook 任务状态过滤)")] = None,
-        type: Annotated[Optional[list[PlaybookType]], Field(description="Playbook type filter (Playbook 类型过滤)")] = None,
-        source_id: Annotated[Optional[str], Field(
-            description="Playbook target record ID filter, e.g. case_000001, alert_000001, artifact_000001 (Playbook 目标记录 ID 过滤)")] = None,
+        case_id: Annotated[Optional[str], Field(
+            description="Target case ID filter, e.g. case_000001 (目标 Case ID 过滤)")] = None,
         limit: Annotated[int, Field(description="Max playbook runs to return (最多返回条数)")] = 10
 ) -> Annotated[list[dict], Field(description="Matching playbook run records as AI-friendly JSON list (匹配的 Playbook 执行记录列表)")]:
     """List playbook run records with optional filters. (列出 Playbook 执行记录,支持多条件过滤)"""
@@ -317,12 +316,10 @@ def list_playbook_runs(
         conditions.append(Condition(field="rowId", operator=Operator.EQ, value=row_id))
     if playbook_id:
         conditions.append(Condition(field="id", operator=Operator.EQ, value=playbook_id))
-    if source_id:
-        conditions.append(Condition(field="source_id", operator=Operator.EQ, value=source_id))
+    if case_id:
+        conditions.append(Condition(field="case_id", operator=Operator.EQ, value=case_id))
     if job_status:
         conditions.append(Condition(field="job_status", operator=Operator.IN, value=job_status))
-    if type:
-        conditions.append(Condition(field="type", operator=Operator.IN, value=type))
 
     filter_model = Group(logic="AND", children=conditions or [])
     models = Playbook.list(filter_model, lazy_load=True)
@@ -330,19 +327,17 @@ def list_playbook_runs(
 
 
 def execute_playbook(
-        type: Annotated[PlaybookType, Field(description="Target object type for the playbook run (Playbook 执行的目标对象类型)")],
         name: Annotated[str, Field(
-            description="Runnable playbook definition name from list_available_playbook_definitions, not a playbook run ID (来自 list_available_playbook_definitions 的 Playbook 定义名称,非执行记录 ID)")],
-        record_id: Annotated[str, Field(description="Target record ID, e.g. case_000001, alert_000001, artifact_000001 (目标记录 ID)")],
+            description="Runnable playbook definition name from list_playbook_definitions, not a playbook run ID (来自 list_playbook_definitions 的 Playbook 定义名称,非执行记录 ID)")],
+        case_id: Annotated[str, Field(description="Target case ID, e.g. case_000001 (目标 Case ID)")],
         user_input: Annotated[
             Optional[str], Field(description="Optional extra natural-language input for this playbook run (本次执行的可选补充自然语言输入)")] = None
 ) -> Annotated[str, Field(description="Created pending playbook run record as AI-friendly JSON string (创建的待执行 Playbook 记录 JSON 字符串)")]:
     """Create one pending playbook run record from a runnable playbook definition. (根据 Playbook 定义创建一条待执行记录)"""
     result = Playbook.add_pending_playbook(
-        type=type,
         name=name,
         user_input=user_input,
-        record_id=record_id
+        case_id=case_id
     )
     return result.model_dump_json_for_ai(profile=AI_PROFILE_MCP)
 
@@ -460,7 +455,7 @@ REGISTERED_MCP_TOOLS = [
     create_enrichment,
 
     # playbook
-    list_available_playbook_definitions,
+    list_playbook_definitions,
     execute_playbook,
     list_playbook_runs,
 

@@ -15,12 +15,6 @@ class MessageType(StrEnum):
     AI = "AIMessage"
 
 
-class PlaybookType(StrEnum):
-    CASE = "CASE"
-    ALERT = "ALERT"
-    ARTIFACT = "ARTIFACT"
-
-
 class KnowledgeSource(StrEnum):
     MANUAL = "Manual"
     CASE = "Case"

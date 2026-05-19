@@ -12,7 +12,7 @@ from PLUGINS.SIRP.nocolyapi import HTTP_SESSION, WorksheetRow
 from PLUGINS.SIRP.nocolymodel import Condition, Group, Operator
 from PLUGINS.SIRP.sirpbasemodel import AutoAccount, BaseSystemModel, AI_PROFILE_MCP
 from PLUGINS.SIRP.sirpcoremodel import Severity, Confidence, EnrichmentModel, TicketModel, ArtifactModel, AlertModel, CaseModel, ArtifactType
-from PLUGINS.SIRP.sirpextramodel import PlaybookType, PlaybookJobStatus, PlaybookModel, KnowledgeModel
+from PLUGINS.SIRP.sirpextramodel import PlaybookJobStatus, PlaybookModel, KnowledgeModel
 
 
 def model_to_fields(model_instance: BaseModel, exclude_unset: bool = True) -> List[Dict[str, Any]]:
@@ -1212,25 +1212,16 @@ class Playbook(BaseWorksheetEntity[PlaybookModel]):
         return row_id
 
     @classmethod
-    def add_pending_playbook(cls, type: PlaybookType, name, user_input=None, source_row_id=None, record_id=None) -> PlaybookModel:
-        if source_row_id is None:
-            if record_id is None:
-                raise Exception("id is required when source_row_id is None")
-            else:
-                if type == PlaybookType.CASE:
-                    record = Case.get_by_id(record_id)
-                    source_row_id = record.row_id
-                elif type == PlaybookType.ALERT:
-                    record = Alert.get_by_id(record_id)
-                    source_row_id = record.row_id
-                elif type == PlaybookType.ARTIFACT:
-                    record = Artifact.get_by_id(record_id)
-                    source_row_id = record.row_id
+    def add_pending_playbook(cls, name, user_input=None, row_id=None, case_id=None) -> PlaybookModel:
+        if row_id is None:
+            if case_id is None:
+                raise Exception("case_id is required when row_id is None")
+            record = Case.get_by_id(case_id)
+            row_id = record.row_id
 
         model = PlaybookModel()
-        model.source_row_id = source_row_id
+        model.source_row_id = row_id
         model.job_status = PlaybookJobStatus.PENDING
-        model.type = type
         model.name = name
         model.user_input = user_input
         row_id = Playbook.create(model)
