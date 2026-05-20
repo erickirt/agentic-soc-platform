@@ -367,8 +367,33 @@ class Enrichment(BaseWorksheetEntity[EnrichmentModel]):
         return None
 
     @classmethod
+    def get_by_uid(cls, uid: str, lazy_load: bool = True) -> Union[EnrichmentModel, None]:
+        """按 uid 查找 Enrichment"""
+        if not uid:
+            return None
+
+        filter_model = Group(
+            logic="AND",
+            children=[
+                Condition(field="uid", operator=Operator.EQ, value=uid),
+            ]
+        )
+        result = cls.list(filter_model, lazy_load=lazy_load)
+        if result:
+            if len(result) > 1:
+                logger.warning(
+                    f"More than one enrichment has the same uid: {uid}. "
+                    f"Use the first row_id as canonical: {result[0].row_id}"
+                )
+            return result[0]
+        return None
+
+    @classmethod
     def create(cls, model: EnrichmentModel) -> str:
-        existing = cls.get_by_identity(model, lazy_load=True)
+        if model.uid:
+            existing = cls.get_by_uid(model.uid, lazy_load=True)
+        else:
+            existing = cls.get_by_identity(model, lazy_load=True)
         if existing and existing.row_id:
             model.row_id = existing.row_id
             return super().update(model)

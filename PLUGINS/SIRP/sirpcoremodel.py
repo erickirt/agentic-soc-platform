@@ -702,6 +702,12 @@ class EnrichmentModel(BaseSystemModel):
                                 json_schema_extra={"ai": [AI_PROFILE_INVESTIGATION, AI_PROFILE_MCP]})
     data: Optional[str] = Field(default="",
                                 description="Detailed enrichment JSON Format (详细富化 JSON 格式)")
+    # uid: 开发者按需赋值的外部稳定标识,用于去重和查找.
+    #   计算方式: 根据外部数据自行计算,如 'cmdb:{record_id}', 或工单名+类型+ID的 hash.
+    #   去重逻辑: Enrichment.create() 优先按 uid 去重,未赋值时回退到 type+provider+value.
+    #   查找方式: Enrichment.get_by_uid(uid)
+    uid: Optional[str] = Field(default="",
+                                description="Externally computed stable identifier for deduplication (外部计算的稳定唯一标识,用于去重)")
 
 
 class TicketModel(BaseSystemModel):
