@@ -4,8 +4,7 @@ from typing import Callable, Dict, List, Optional
 
 from Lib.log import logger
 from PLUGINS.AlienVaultOTX.alienvaultotx import AlienVaultOTX
-from PLUGINS.TI.models import TIProviderResult, TIQueryInput, TIQueryOutput
-
+from PLUGINS.ThreatIntelligence.models import TIProviderResult, TIQueryOutput
 
 # ---------------------------------------------------------------------------
 # Provider registry
