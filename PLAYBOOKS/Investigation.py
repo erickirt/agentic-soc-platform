@@ -32,7 +32,8 @@ class Playbook(BasePlaybook):
         knowledge_keywords = extract_knowledge_keywords(case_json)
         knowledge_records = search_knowledge_records(knowledge_keywords)
         discussions = Case.get_discussions_by_row_id(case_row_id) or []
-        analysis_input_json = build_analysis_input_json(case_json, knowledge_keywords, knowledge_records, discussions)
+        user_input = self.param_user_input or ""
+        analysis_input_json = build_analysis_input_json(case_json, knowledge_keywords, knowledge_records, discussions, user_input)
         report = generate_investigation_report(analysis_input_json)
         analysis_record = build_analysis_record(
             trigger=trigger,

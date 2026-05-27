@@ -150,7 +150,7 @@ def search_knowledge_records(keywords: List[str]) -> List[dict[str, Any]]:
 
 
 def build_analysis_input_json(case_json: str, knowledge_keywords: List[str], knowledge_records: List[dict[str, Any]],
-                              discussions: List[dict[str, Any]] | None = None) -> str:
+                              discussions: List[dict[str, Any]] | None = None, user_input: str = "") -> str:
     try:
         case_data = json.loads(case_json)
     except json.JSONDecodeError:
@@ -164,6 +164,8 @@ def build_analysis_input_json(case_json: str, knowledge_keywords: List[str], kno
         "case": case_data,
         "discussions": discussions or [],
     }
+    if user_input:
+        payload["user_input"] = user_input
     analysis_input_json = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
     estimated_tokens = len(analysis_input_json) // 3
     logger.info(
