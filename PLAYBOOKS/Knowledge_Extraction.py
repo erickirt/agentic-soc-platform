@@ -37,7 +37,8 @@ class Playbook(BasePlaybook):
         discussions = Case.get_discussions_by_row_id(case_row_id) or []
 
         # 5. Call LLM to extract knowledge
-        extraction = extract_knowledge_from_case(case.id or "", case_json, discussions)
+        user_input = self.param_user_input or ""
+        extraction = extract_knowledge_from_case(case.id or "", case_json, discussions, user_input)
 
         # 6. If no knowledge, log and return success
         if not extraction.has_knowledge:
