@@ -5,7 +5,7 @@ from dateutil import parser
 
 from Lib.basemodule import BaseModule
 from PLUGINS.CMDB.tools import lookup_cmdb_context_tool
-from PLUGINS.SIRP.correlation import Correlation
+from Lib.correlation import Correlation
 from PLUGINS.SIRP.sirpapi import Alert, Case
 from PLUGINS.SIRP.sirpcoremodel import ArtifactName, ArtifactType, ArtifactRole, Severity, Impact, Disposition, AlertAction, Confidence, AlertAnalyticType, \
     ProductCategory, \
