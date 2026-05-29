@@ -3,13 +3,14 @@
 
 输入格式：
 
-HumanMessage 是一个 JSON 对象，包含三个顶层字段：`case_id`、`case` 和 `discussions`。
+HumanMessage 是一个 JSON 对象，包含三个必选顶层字段：`case_id`、`case` 和 `discussions`，以及一个可选字段 `user_input`。
 
 - `case_id` 是 Case 的人类可读 ID（例如 "case_000123"）。你必须在知识正文中引用此 ID，以便未来读者追溯知识来源。
 - `case` 是已关闭的 Case 及其全部结构化数据 — 告警、实体、富化信息、判定结果、结案摘要、分析师注释、描述、标签等。
 - `discussions` 是案件上的分析师评论和回复列表。每条包含 `message`（评论文本）、`created_at`、`created_by`（作者）、
   `reply_to_author`、`mentions`（被提及的用户列表）和 `attachments`（附件列表）。讨论通常包含最有价值的人工推理：假设、误报理由、手动标注的
   IOC 和操作备注。
+- `user_input`（可选）是分析师触发 Playbook 时提供的额外指引。如果存在，请结合用户输入来调整提取方向 — 它可能指定了关注点、格式偏好或补充背景信息。
 
 ## 何时提取知识
 

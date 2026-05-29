@@ -4,7 +4,7 @@ from typing import List
 from dateutil import parser
 
 from Lib.basemodule import BaseModule
-from PLUGINS.SIRP.correlation import Correlation
+from Lib.correlation import Correlation
 from PLUGINS.SIRP.sirpapi import Alert, Case
 from PLUGINS.SIRP.sirpcoremodel import ArtifactName, ArtifactType, ArtifactRole, Severity, Impact, Disposition, AlertAction, Confidence, AlertAnalyticType, ProductCategory, \
     AlertPolicyType, AlertRiskLevel, AlertStatus, CasePriority, ArtifactModel, AlertModel, CaseModel

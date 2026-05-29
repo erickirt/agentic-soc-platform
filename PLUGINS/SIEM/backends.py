@@ -182,6 +182,18 @@ def _get_elk_field_types(index_name: str) -> dict[str, str]:
     return field_types
 
 
+def _get_nested_value(source: dict[str, Any], field_name: str) -> Any:
+    """Get a potentially nested value from a doc, e.g. 'source.ip' -> source['source']['ip']."""
+    parts = field_name.split(".")
+    current = source
+    for part in parts:
+        if isinstance(current, dict) and part in current:
+            current = current[part]
+        else:
+            return None
+    return current
+
+
 def _build_safe_aggs(agg_fields: list[str], index_name: str) -> dict[str, Any]:
     field_types = _get_elk_field_types(index_name)
     safe_aggs: dict[str, Any] = {}
@@ -310,27 +322,36 @@ class ELKQueryBackend:
             )
 
         all_fields = [f for f in field_types if not f.startswith("_")]
-        discovered: list[DiscoveredFieldInfo] = []
 
-        batch_size = 50
-        for i in range(0, len(all_fields), batch_size):
-            batch = all_fields[i: i + batch_size]
-            aggs = _build_safe_aggs(batch, index_name)
+        # Sample 10000 docs and extract field values client-side
+        client = ELKClient.get_client()
+        response = client.search(
+            index=index_name, query={"match_all": {}}, size=10000,
+            request_timeout=60,
+        )
+        hits = response.get("hits", {}).get("hits", [])
 
-            client = ELKClient.get_client()
-            response = client.search(
-                index=index_name, query={"match_all": {}}, aggs=aggs, size=0,
+        field_values: dict[str, list] = {}
+        for hit in hits:
+            source = hit.get("_source", {})
+            for field_name in all_fields:
+                if len(field_values.get(field_name, [])) >= 5:
+                    continue
+                value = _get_nested_value(source, field_name)
+                if value is None:
+                    continue
+                str_value = str(value) if not isinstance(value, str) else value
+                if field_name not in field_values:
+                    field_values[field_name] = []
+                if str_value not in field_values[field_name]:
+                    field_values[field_name].append(str_value)
+
+        discovered = [
+            DiscoveredFieldInfo(
+                name=f, type=field_types[f], sample_values=field_values.get(f, []),
             )
-            aggregations = response.get("aggregations", {})
-
-            for field_name in batch:
-                field_type = field_types[field_name]
-                agg_key = f"{field_name}.keyword" if field_type in (None, "text") else field_name
-                buckets = aggregations.get(agg_key, {}).get("buckets", [])
-                sample_values = [b["key"] for b in buckets[:5]]
-                discovered.append(DiscoveredFieldInfo(
-                    name=field_name, type=field_type, sample_values=sample_values,
-                ))
+            for f in all_fields
+        ]
 
         return DiscoverIndexFieldsOutput(
             backend=cls.backend_name,

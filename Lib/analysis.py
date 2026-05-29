@@ -150,7 +150,7 @@ def search_knowledge_records(keywords: List[str]) -> List[dict[str, Any]]:
 
 
 def build_analysis_input_json(case_json: str, knowledge_keywords: List[str], knowledge_records: List[dict[str, Any]],
-                              discussions: List[dict[str, Any]] | None = None) -> str:
+                              discussions: List[dict[str, Any]] | None = None, user_input: str = "") -> str:
     try:
         case_data = json.loads(case_json)
     except json.JSONDecodeError:
@@ -164,6 +164,8 @@ def build_analysis_input_json(case_json: str, knowledge_keywords: List[str], kno
         "case": case_data,
         "discussions": discussions or [],
     }
+    if user_input:
+        payload["user_input"] = user_input
     analysis_input_json = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
     estimated_tokens = len(analysis_input_json) // 3
     logger.info(
@@ -303,14 +305,17 @@ class KnowledgeExtractionResult(BaseModel):
     reason: str = Field(description="Brief explanation of the extraction decision. 提取或不提取的简要原因。")
 
 
-def extract_knowledge_from_case(case_id: str, case_json: str, discussions: List[dict[str, Any]]) -> KnowledgeExtractionResult:
+def extract_knowledge_from_case(case_id: str, case_json: str, discussions: List[dict[str, Any]], user_input: str = "") -> KnowledgeExtractionResult:
     system_prompt = KNOWLEDGE_EXTRACTION_PROMPT_PATH.read_text(encoding="utf-8")
     llm = LLMAPI().get_model(tag="structured_output").with_structured_output(KnowledgeExtractionResult)
     try:
         case_data = json.loads(case_json)
     except json.JSONDecodeError:
         case_data = case_json
-    input_json = json.dumps({"case_id": case_id, "case": case_data, "discussions": discussions}, ensure_ascii=False, separators=(",", ":"))
+    input_data = {"case_id": case_id, "case": case_data, "discussions": discussions}
+    if user_input:
+        input_data["user_input"] = user_input
+    input_json = json.dumps(input_data, ensure_ascii=False, separators=(",", ":"))
     result = llm.invoke([
         SystemMessage(content=system_prompt),
         HumanMessage(content=input_json),

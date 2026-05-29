@@ -376,6 +376,7 @@ def get_current_time() -> Annotated[str, Field(description="Current local time s
 
 
 # ThreatIntelligence
+
 def ti_query(
         indicator: Annotated[str, Field(
             description="Indicator to look up: IP address, file hash, URL, or domain (待查询的指标: IP地址、文件哈希、URL 或域名)")],
