@@ -551,10 +551,60 @@ class OptionSet(object):
         response_data = response.json()
         if response_data.get("success"):
             optionsets: List[Dict[str, Any]] = response_data.get("data").get("optionsets")
+            for optionset in optionsets:
+                optionset.pop("accountId", None)
+                optionset.pop("worksheetIds", None)
+                # 过滤掉已删除的选项
+                optionset["options"] = [opt for opt in optionset.get("options", []) if not opt.get("isDeleted", False)]
             Xcache.set_sirp_optionset(optionsets)
             return optionsets
         else:
             raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
+
+    @staticmethod
+    def cleanup_deleted_options():
+        """清理所有 OptionSet 中已删除的选项"""
+        # 清除缓存，获取最新数据
+        Xcache.delete_sirp_optionset()
+
+        url = f"{SIRP_URL}/api/v3/app/optionsets"
+        response = _request_with_timing("GET", url, timeout=SIRP_REQUEST_TIMEOUT)
+        response.raise_for_status()
+        response_data = response.json()
+
+        if not response_data.get("success"):
+            raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
+
+        optionsets = response_data.get("data").get("optionsets")
+        cleaned = []
+
+        for optionset in optionsets:
+            name = optionset["name"]
+            optionset_id = optionset["id"]
+            options = optionset.get("options", [])
+            enable_color = optionset.get("enableColor", False)
+            enable_score = optionset.get("enableScore", False)
+
+            # 检查是否有已删除的选项
+            has_deleted = any(opt.get("isDeleted", False) for opt in options)
+            if not has_deleted:
+                continue
+
+            # 过滤掉已删除的选项
+            new_options = [opt for opt in options if not opt.get("isDeleted", False)]
+            deleted_count = len(options) - len(new_options)
+
+            print(f"{name}: removing {deleted_count} deleted options")
+            OptionSet.update(
+                optionset_id=optionset_id,
+                name=name,
+                options=new_options,
+                enable_color=enable_color,
+                enable_score=enable_score,
+            )
+            cleaned.append(name)
+
+        return cleaned
 
     @staticmethod
     def get(name):
@@ -586,6 +636,47 @@ class OptionSet(object):
                     if option["value"] == value:
                         return option["key"]
         raise Exception(f"optionset {name} {value} not found")
+
+    @staticmethod
+    def create(name: str, options: List[Dict], enable_color: bool = False, enable_score: bool = False) -> str:
+        url = f"{SIRP_URL}/api/v3/app/optionsets"
+        data = {
+            "name": name,
+            "options": options,
+            "enableColor": enable_color,
+            "enableScore": enable_score,
+        }
+        response = _request_with_timing("POST", url, timeout=SIRP_REQUEST_TIMEOUT, json=data)
+        response.raise_for_status()
+        response_data = response.json()
+        if response_data.get("success"):
+            return response_data.get("data").get("optionsetId")
+        else:
+            raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
+
+    @staticmethod
+    def update(optionset_id: str, name: str, options: List[Dict], enable_color: bool = False, enable_score: bool = False):
+        url = f"{SIRP_URL}/api/v3/app/optionsets/{optionset_id}"
+        data = {
+            "name": name,
+            "options": options,
+            "enableColor": enable_color,
+            "enableScore": enable_score,
+        }
+        response = _request_with_timing("PUT", url, timeout=SIRP_REQUEST_TIMEOUT, json=data)
+        response.raise_for_status()
+        response_data = response.json()
+        if not response_data.get("success"):
+            raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
+
+    @staticmethod
+    def disable(optionset_id: str):
+        url = f"{SIRP_URL}/api/v3/app/optionsets/{optionset_id}"
+        response = _request_with_timing("DELETE", url, timeout=SIRP_REQUEST_TIMEOUT)
+        response.raise_for_status()
+        response_data = response.json()
+        if not response_data.get("success"):
+            raise Exception(f"error_code: {response_data.get('error_code')} error_msg: {response_data.get('error_msg')}")
 
 
 if __name__ == "__main__":
