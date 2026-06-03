@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
@@ -19,9 +20,11 @@ from PLUGINS.SIEM.models import (
     AdaptiveQueryInput,
     DiscoveredFieldInfo,
     DiscoverIndexFieldsOutput,
+    ESQLQueryInput,
     FieldStat,
     KeywordSearchInput,
     SAMPLE_THRESHOLD,
+    SPLQueryInput,
 )
 from PLUGINS.SIEM.query_builders import (
     build_elk_keyword_clauses,
@@ -156,6 +159,40 @@ class ELKQueryBackend:
             params["aggs"] = aggs
         return client.search(**params)
 
+    @classmethod
+    def execute_esql_query(cls, input_data: ESQLQueryInput) -> BackendQueryResult:
+        client = ELKClient.get_client()
+        query = input_data.query
+
+        if input_data.time_range_start and input_data.time_range_end:
+            time_clause = (
+                f'| WHERE {input_data.time_field} >= "{input_data.time_range_start}"'
+                f' AND {input_data.time_field} < "{input_data.time_range_end}"'
+            )
+            limit_match = re.search(r'\|\s*LIMIT\s+\d+', query, re.IGNORECASE)
+            if limit_match:
+                query = query[:limit_match.start()] + time_clause + " " + query[limit_match.start():]
+            else:
+                query = query + " " + time_clause
+
+        if not re.search(r'\|\s*LIMIT\s+\d+', query, re.IGNORECASE):
+            query = f"{query} | LIMIT {input_data.limit}"
+
+        response = client.esql.query(query=query)
+        body = response.body
+        columns = [col["name"] for col in body.get("columns", [])]
+        rows = body.get("values", [])
+        raw_records = [dict(zip(columns, row)) for row in rows]
+
+        return BackendQueryResult(
+            backend="ELK",
+            index_name=input_data.index_name or "unknown",
+            total_hits=len(raw_records),
+            aggregation_fields=[],
+            statistics=[],
+            raw_records=raw_records,
+        )
+
 
 class SplunkQueryBackend:
     backend_name: Literal["ELK", "Splunk"] = "Splunk"
@@ -280,4 +317,24 @@ class SplunkQueryBackend:
         return DiscoverIndexFieldsOutput(
             backend=cls.backend_name, index_name=index_name,
             total_fields=len(discovered), fields=discovered,
+        )
+
+    @classmethod
+    def execute_spl_query(cls, input_data: SPLQueryInput) -> BackendQueryResult:
+        service = SplunkClient.get_service()
+        if input_data.time_range_start and input_data.time_range_end:
+            start_time, end_time = parse_time_range(input_data.time_range_start, input_data.time_range_end)
+        else:
+            start_time, end_time = None, None
+
+        job = create_and_wait_splunk_job(service, input_data.query, start_time, end_time)
+        total_hits = int(job["eventCount"])
+
+        return BackendQueryResult(
+            backend="Splunk",
+            index_name=input_data.index_name or "unknown",
+            total_hits=total_hits,
+            aggregation_fields=[],
+            statistics=[],
+            raw_records=fetch_splunk_records(job, input_data.limit) if total_hits > 0 else [],
         )

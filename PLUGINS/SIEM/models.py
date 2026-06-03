@@ -165,6 +165,59 @@ class KeywordSearchInput(BaseModel):
         raise ValueError("keyword must be a string or a list of strings")
 
 
+class _RawQueryInput(BaseModel):
+    query: str = Field(..., description="Raw query string to execute")
+    index_name: Optional[str] = Field(
+        default=None,
+        description="Index/source name for output labeling. If omitted, defaults to 'unknown' in the response.",
+    )
+    limit: int = Field(
+        default=100,
+        ge=1,
+        le=10000,
+        description="Maximum number of records to return.",
+    )
+    time_range_start: Optional[str] = Field(
+        default=None,
+        description="Optional start time. Accepts common datetime strings, normalized to UTC ISO8601.",
+    )
+    time_range_end: Optional[str] = Field(
+        default=None,
+        description="Optional end time. Accepts common datetime strings, normalized to UTC ISO8601.",
+    )
+    time_field: str = Field(
+        default="@timestamp",
+        description="Field used for time range filtering when time_range_start/end are provided.",
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_time_range_inputs(cls, data: Any) -> Any:
+        return normalize_time_range_inputs(data)
+
+    @model_validator(mode="after")
+    def validate_time_range_order(self):
+        if self.time_range_start is not None and self.time_range_end is not None:
+            validate_time_range_order(self.time_range_start, self.time_range_end)
+        return self
+
+    @field_validator("query")
+    @classmethod
+    def validate_query(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("query must not be empty")
+        return stripped
+
+
+class SPLQueryInput(_RawQueryInput):
+    pass
+
+
+class ESQLQueryInput(_RawQueryInput):
+    pass
+
+
 class FieldStat(BaseModel):
     field_name: str = Field(..., description="Name of the field for which statistics are computed")
     top_values: Dict[Union[str, int], int] = Field(

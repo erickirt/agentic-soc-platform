@@ -5,10 +5,12 @@ from typing import Any, Optional
 from PLUGINS.SIEM.backends import BackendQueryResult
 from PLUGINS.SIEM.models import (
     AdaptiveQueryInput,
+    ESQLQueryInput,
     KeywordSearchInput,
     QueryOutput,
     SAMPLE_COUNT,
     SAMPLE_THRESHOLD,
+    SPLQueryInput,
 )
 from PLUGINS.SIEM.registry import get_default_agg_fields
 
@@ -74,3 +76,23 @@ def _get_nested(record: dict[str, Any], field_path: str) -> Any:
             return _MISSING
         current = current[segment]
     return current
+
+
+def build_raw_query_output(
+        input_data: SPLQueryInput | ESQLQueryInput,
+        result: BackendQueryResult,
+        *,
+        limit: int = 100,
+) -> QueryOutput:
+    records = result.raw_records
+    return QueryOutput(
+        backend=result.backend,
+        index_name=result.index_name,
+        status="records",
+        total_hits=result.total_hits,
+        returned_records=len(records),
+        truncated=len(records) >= limit,
+        message=f"Executed raw {result.backend} query against {result.index_name}. Returned {len(records)} records.",
+        statistics=[],
+        records=records,
+    )

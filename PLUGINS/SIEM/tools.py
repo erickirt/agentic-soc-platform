@@ -5,13 +5,15 @@ from PLUGINS.SIEM.models import (
     AdaptiveQueryInput,
     DiscoverIndexFieldsInput,
     DiscoverIndexFieldsOutput,
+    ESQLQueryInput,
     KeywordSearchInput,
     QueryOutput,
     SchemaExplorerInput,
     SchemaIndexSummary, IndexInfo,
+    SPLQueryInput,
 )
 from PLUGINS.SIEM.registry import get_backend_type, get_default_agg_fields, get_index_info, list_indices
-from PLUGINS.SIEM.response import build_query_output
+from PLUGINS.SIEM.response import build_query_output, build_raw_query_output
 
 
 class SIEMToolKit:
@@ -87,6 +89,31 @@ class SIEMToolKit:
                                                   index_distribution=backend_result.index_distribution))
 
         return results
+
+    @classmethod
+    def execute_spl(cls, input_data: SPLQueryInput) -> QueryOutput:
+        """
+        Execute a raw Splunk SPL query and return results.
+
+        The `limit` parameter controls the maximum number of records returned (default 100).
+        Time range is optional; if omitted, Splunk defaults to all time.
+        """
+        query_backend = cls._get_query_backend("Splunk")
+        backend_result = query_backend.execute_spl_query(input_data)
+        return build_raw_query_output(input_data, backend_result, limit=input_data.limit)
+
+    @classmethod
+    def execute_esql(cls, input_data: ESQLQueryInput) -> QueryOutput:
+        """
+        Execute a raw ELK ES|QL query and return results.
+
+        The `limit` parameter controls the maximum number of records returned (default 100).
+        If the query has no LIMIT clause, one is appended automatically.
+        Time range is optional; if provided, a WHERE clause is injected into the query.
+        """
+        query_backend = cls._get_query_backend("ELK")
+        backend_result = query_backend.execute_esql_query(input_data)
+        return build_raw_query_output(input_data, backend_result, limit=input_data.limit)
 
     @classmethod
     def discover_index_fields(cls, input_data: DiscoverIndexFieldsInput) -> DiscoverIndexFieldsOutput:

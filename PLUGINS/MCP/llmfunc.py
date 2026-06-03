@@ -6,8 +6,8 @@ from pydantic import Field
 
 from Lib.playbookloader import PlaybookLoader
 from PLUGINS.Redis.redis_stream_api import RedisStreamAPI
-from PLUGINS.SIEM.models import AdaptiveQueryInput, KeywordSearchInput, SchemaExplorerInput, QueryOutput, IndexInfo, SchemaIndexSummary, \
-    DiscoverIndexFieldsInput, DiscoverIndexFieldsOutput
+from PLUGINS.SIEM.models import AdaptiveQueryInput, ESQLQueryInput, KeywordSearchInput, SchemaExplorerInput, QueryOutput, IndexInfo, SchemaIndexSummary, \
+    DiscoverIndexFieldsInput, DiscoverIndexFieldsOutput, SPLQueryInput
 from PLUGINS.SIEM.tools import SIEMToolKit
 from PLUGINS.SIRP.nocolymodel import Group, Condition, Operator
 from PLUGINS.SIRP.sirpapi import Alert, Artifact, Case, Enrichment, Knowledge, Playbook
@@ -370,6 +370,42 @@ def siem_discover_index_fields(
     return SIEMToolKit.discover_index_fields(input_data)
 
 
+def siem_execute_spl(
+        query: Annotated[str, Field(description="Raw Splunk SPL query string (原始 Splunk SPL 查询语句)")],
+        limit: Annotated[int, Field(description="Maximum number of records to return, default 100 (最大返回记录数,默认 100)")] = 100,
+        time_range_start: Annotated[Optional[str], Field(description="Optional UTC start time in ISO8601 (可选的 UTC 开始时间,ISO8601 格式)")] = None,
+        time_range_end: Annotated[Optional[str], Field(description="Optional UTC end time in ISO8601 (可选的 UTC 结束时间,ISO8601 格式)")] = None,
+        time_field: Annotated[str, Field(description="Time field for range filtering (时间范围过滤字段名)")] = "@timestamp",
+        index_name: Annotated[Optional[str], Field(description="Index name for output labeling; omit if specified in SPL (用于输出标记的索引名,SPL 中已指定时可不填)")] = None,
+) -> Annotated[str, Field(description="Raw SPL query result as JSON string (原始 SPL 查询结果 JSON 字符串)")]:
+    """Execute a raw Splunk SPL query and return results. (执行原始 Splunk SPL 查询并返回结果)"""
+    input_data = SPLQueryInput(
+        query=query, limit=limit,
+        time_range_start=time_range_start, time_range_end=time_range_end,
+        time_field=time_field, index_name=index_name,
+    )
+    result = SIEMToolKit.execute_spl(input_data)
+    return result.model_dump_json()
+
+
+def siem_execute_esql(
+        query: Annotated[str, Field(description="Raw ELK ES|QL query string (原始 ELK ES|QL 查询语句)")],
+        limit: Annotated[int, Field(description="Maximum number of records to return, default 100 (最大返回记录数,默认 100)")] = 100,
+        time_range_start: Annotated[Optional[str], Field(description="Optional UTC start time in ISO8601 (可选的 UTC 开始时间,ISO8601 格式)")] = None,
+        time_range_end: Annotated[Optional[str], Field(description="Optional UTC end time in ISO8601 (可选的 UTC 结束时间,ISO8601 格式)")] = None,
+        time_field: Annotated[str, Field(description="Time field for range filtering (时间范围过滤字段名)")] = "@timestamp",
+        index_name: Annotated[Optional[str], Field(description="Index name for output labeling; omit if specified in ES|QL (用于输出标记的索引名,ES|QL 中已指定时可不填)")] = None,
+) -> Annotated[str, Field(description="Raw ES|QL query result as JSON string (原始 ES|QL 查询结果 JSON 字符串)")]:
+    """Execute a raw ELK ES|QL query and return results. (执行原始 ELK ES|QL 查询并返回结果)"""
+    input_data = ESQLQueryInput(
+        query=query, limit=limit,
+        time_range_start=time_range_start, time_range_end=time_range_end,
+        time_field=time_field, index_name=index_name,
+    )
+    result = SIEMToolKit.execute_esql(input_data)
+    return result.model_dump_json()
+
+
 def get_current_time() -> Annotated[str, Field(description="Current local time string with UTC (当前本地时间UTC字符串)")]:
     """Get current system UTC time. (获取当前系统 UTC 时间)"""
     return datetime.now(timezone.utc).isoformat(timespec='seconds').replace('+00:00', 'Z')
@@ -418,6 +454,8 @@ REGISTERED_MCP_TOOLS = [
     siem_adaptive_query,
     siem_keyword_search,
     siem_discover_index_fields,
+    siem_execute_spl,
+    siem_execute_esql,
 
     # ThreatIntelligence
     ti_query,

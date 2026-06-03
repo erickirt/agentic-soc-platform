@@ -78,8 +78,13 @@ def fetch_splunk_top_stats(service, search_query: str, start_time: float, end_ti
     return stats_output
 
 
-def create_and_wait_splunk_job(service, search_query: str, start_time: float, end_time: float):
-    job = service.jobs.create(search_query, earliest_time=start_time, latest_time=end_time, exec_mode="normal")
+def create_and_wait_splunk_job(service, search_query: str, start_time: float | None = None, end_time: float | None = None):
+    time_kwargs = {}
+    if start_time is not None:
+        time_kwargs["earliest_time"] = start_time
+    if end_time is not None:
+        time_kwargs["latest_time"] = end_time
+    job = service.jobs.create(search_query, exec_mode="normal", **time_kwargs)
     while not job.is_done():
         time.sleep(0.2)
     return job
