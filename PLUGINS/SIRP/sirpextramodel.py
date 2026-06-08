@@ -8,13 +8,6 @@ from pydantic import Field
 from PLUGINS.SIRP.sirpbasemodel import BaseSystemModel, AutoAccount, AutoDatetime, AI_PROFILE_MCP
 
 
-class MessageType(StrEnum):
-    SYSTEM = "SystemMessage"
-    HUMAN = "HumanMessage"
-    TOOL = "ToolMessage"
-    AI = "AIMessage"
-
-
 class KnowledgeSource(StrEnum):
     MANUAL = "Manual"
     CASE = "Case"

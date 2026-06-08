@@ -1,140 +1,98 @@
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any, Optional
 
 from PLUGINS.SIEM.backends import BackendQueryResult
 from PLUGINS.SIEM.models import (
     AdaptiveQueryInput,
-    AdaptiveQueryOutput,
+    ESQLQueryInput,
     KeywordSearchInput,
-    KeywordSearchOutput,
+    QueryOutput,
     SAMPLE_COUNT,
     SAMPLE_THRESHOLD,
-    SUMMARY_THRESHOLD,
+    SPLQueryInput,
 )
 from PLUGINS.SIEM.registry import get_default_agg_fields
 
 
-def _resolve_status(total_hits: int) -> Literal["records", "sample", "summary"]:
-    if total_hits > SUMMARY_THRESHOLD:
-        return "summary"
-    if total_hits > SAMPLE_THRESHOLD:
-        return "sample"
-    return "records"
+def build_query_output(
+        input_data: AdaptiveQueryInput | KeywordSearchInput,
+        result: BackendQueryResult,
+        *,
+        index_distribution: Optional[dict[str, int]] = None,
+) -> QueryOutput:
+    status = "records" if result.total_hits <= SAMPLE_THRESHOLD else "summary"
+    record_limit = SAMPLE_THRESHOLD if status == "records" else SAMPLE_COUNT
 
+    if isinstance(input_data, AdaptiveQueryInput):
+        explicit_fields = list(input_data.filters.keys()) + result.aggregation_fields
+    else:
+        explicit_fields = result.aggregation_fields
 
-def build_adaptive_output(input_data: AdaptiveQueryInput, result: BackendQueryResult) -> AdaptiveQueryOutput:
-    status = _resolve_status(result.total_hits)
-    records = _project_records(
-        result.raw_records[: _record_limit_for_status(status)],
-        index_name=result.index_name,
-        time_field=input_data.time_field,
-        explicit_fields=list(input_data.filters.keys()) + result.aggregation_fields,
-    )
-    return AdaptiveQueryOutput(
+    fields_to_project = list(dict.fromkeys(
+        [input_data.time_field, *explicit_fields, *get_default_agg_fields(result.index_name)]
+    ))
+
+    records = [
+        project_record(r, fields_to_project)
+        for r in result.raw_records[:record_limit]
+    ]
+
+    return QueryOutput(
         backend=result.backend,
         index_name=result.index_name,
         status=status,
         total_hits=result.total_hits,
         returned_records=len(records),
-        truncated=_is_truncated(result.raw_records, records, result.total_hits, status),
-        message=_build_message(result.backend, result.index_name, result.total_hits, status),
-        statistics=result.statistics,
-        records=records,
-    )
-
-
-def build_keyword_output(input_data: KeywordSearchInput, result: BackendQueryResult) -> KeywordSearchOutput:
-    status = _resolve_status(result.total_hits)
-    records = _project_records(
-        result.raw_records[: _record_limit_for_status(status)],
-        index_name=result.index_name,
-        time_field=input_data.time_field,
-        explicit_fields=result.aggregation_fields,
-    )
-    index_distribution = result.index_distribution or {result.index_name: result.total_hits}
-    return KeywordSearchOutput(
-        backend=result.backend,
-        index_name=result.index_name,
-        status=status,
-        total_hits=result.total_hits,
-        returned_records=len(records),
-        truncated=_is_truncated(result.raw_records, records, result.total_hits, status),
-        message=_build_message(result.backend, result.index_name, result.total_hits, status),
+        truncated=result.total_hits > len(records),
+        message=f"Matched {result.total_hits} events in {result.index_name} ({result.backend}). "
+                + ("Returning projected records." if status == "records" else "Returning statistics and samples."),
         index_distribution=index_distribution,
         statistics=result.statistics,
         records=records,
     )
 
 
-def _record_limit_for_status(status: Literal["records", "sample", "summary"]) -> int:
-    if status == "records":
-        return SAMPLE_THRESHOLD
-    if status == "sample":
-        return SAMPLE_COUNT
-    return SAMPLE_COUNT
-
-
-def _build_message(backend: str, index_name: str, total_hits: int, status: str) -> str:
-    if status == "summary":
-        return f"Matched {total_hits} events in {index_name} ({backend}). Returning statistics only."
-    if status == "sample":
-        return f"Matched {total_hits} events in {index_name} ({backend}). Returning statistics and projected samples."
-    return f"Matched {total_hits} events in {index_name} ({backend}). Returning projected records."
-
-
-def _is_truncated(
-        raw_records: list[dict[str, Any]],
-        projected_records: list[dict[str, Any]],
-        total_hits: int,
-        status: str,
-) -> bool:
-    if status != "records":
-        return total_hits > len(projected_records)
-    if total_hits > len(projected_records):
-        return True
-    return any(len(projected) < len(raw) for raw, projected in zip(raw_records[: len(projected_records)], projected_records))
-
-
-def _project_records(
-        records: list[dict[str, Any]],
-        *,
-        index_name: str,
-        time_field: str,
-        explicit_fields: list[str],
-) -> list[dict[str, Any]]:
-    projection_fields = _build_projection_fields(index_name=index_name, time_field=time_field, explicit_fields=explicit_fields)
-    return [_project_record(record, projection_fields) for record in records]
-
-
-def _build_projection_fields(*, index_name: str, time_field: str, explicit_fields: list[str]) -> list[str]:
-    ordered_fields: list[str] = []
-    for field in [time_field, *explicit_fields, *get_default_agg_fields(index_name)]:
-        if field and field not in ordered_fields:
-            ordered_fields.append(field)
-    return ordered_fields
-
-
-def _project_record(record: dict[str, Any], projection_fields: list[str]) -> dict[str, Any]:
+def project_record(record: dict[str, Any], fields: list[str]) -> dict[str, Any]:
     projected: dict[str, Any] = {}
-    for field in projection_fields:
-        found, value = _extract_field_value(record, field)
-        if found:
-            projected[field] = value
-
+    for field_path in fields:
+        value = _get_nested(record, field_path)
+        if value is not _MISSING:
+            projected[field_path] = value
     if "_index" in record:
         projected["_index"] = record["_index"]
-
     return projected
 
 
-def _extract_field_value(record: dict[str, Any], field_path: str) -> tuple[bool, Any]:
-    if field_path in record:
-        return True, record[field_path]
+_MISSING = object()
 
+
+def _get_nested(record: dict[str, Any], field_path: str) -> Any:
+    if field_path in record:
+        return record[field_path]
     current: Any = record
     for segment in field_path.split("."):
         if not isinstance(current, dict) or segment not in current:
-            return False, None
+            return _MISSING
         current = current[segment]
-    return True, current
+    return current
+
+
+def build_raw_query_output(
+        input_data: SPLQueryInput | ESQLQueryInput,
+        result: BackendQueryResult,
+        *,
+        limit: int = 100,
+) -> QueryOutput:
+    records = result.raw_records
+    return QueryOutput(
+        backend=result.backend,
+        index_name=result.index_name,
+        status="records",
+        total_hits=result.total_hits,
+        returned_records=len(records),
+        truncated=len(records) >= limit,
+        message=f"Executed raw {result.backend} query against {result.index_name}. Returned {len(records)} records.",
+        statistics=[],
+        records=records,
+    )
