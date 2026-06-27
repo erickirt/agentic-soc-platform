@@ -21,6 +21,11 @@ class AuditLog(models.Model):
     class Meta:
         db_table = "audit_logs"
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["content_type", "object_id", "-created_at", "-id"], name="audit_obj_time_idx"),
+            models.Index(fields=["actor", "-created_at", "-id"], name="audit_actor_time_idx"),
+            models.Index(fields=["action", "-created_at", "-id"], name="audit_action_time_idx"),
+        ]
 
     def __str__(self):
         return f"{self.action} by {self.actor} on {self.content_type}:{self.object_id}"

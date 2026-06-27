@@ -7,6 +7,7 @@ from rest_framework import viewsets, permissions
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
+from apps.common.cursor_pagination import cursor_response_payload, paginate_created_at_cursor
 from .helpers import readable_label
 from .models import AuditLog
 
@@ -115,7 +116,7 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
         return qs
 
     def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
+        page = paginate_created_at_cursor(self.get_queryset(), request)
         data = [
             {
                 "id": log.id,
@@ -128,6 +129,6 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
                 "metadata": log.metadata,
                 "created_at": log.created_at,
             }
-            for log in queryset[:100]
+            for log in page.results
         ]
-        return Response(data)
+        return Response(cursor_response_payload(page, data))

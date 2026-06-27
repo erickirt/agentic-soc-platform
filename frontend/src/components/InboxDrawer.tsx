@@ -1,5 +1,5 @@
 import {useCallback, useEffect, useState} from 'react'
-import {Badge, Button, Drawer, Empty, List, message, Popconfirm, Segmented, Space, Spin, Tag, Tooltip, Typography} from 'antd'
+import {Alert, Badge, Button, Drawer, Empty, List, message, Popconfirm, Segmented, Space, Spin, Tag, Tooltip, Typography} from 'antd'
 import {CheckCircleOutlined, CloseOutlined, InboxOutlined, MailOutlined, MessageOutlined, ReloadOutlined} from '@ant-design/icons'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -15,6 +15,8 @@ import {
     replyInboxMessage,
 } from '../api/inbox'
 import {useAuthStore} from '../stores/auth'
+import useCursorFeed from '../hooks/useCursorFeed'
+import FeedLoadMore from './FeedLoadMore'
 import MessageAttachments from './MessageAttachments'
 import MessageComposer from './MessageComposer'
 import UserAvatar from './UserAvatar'
@@ -132,12 +134,30 @@ export default function InboxDrawer({ onOpenResource }: InboxDrawerProps) {
   const currentUser = useAuthStore((state) => state.user)
   const [open, setOpen] = useState(false)
   const [filter, setFilter] = useState<'all' | 'unread'>('all')
-  const [rows, setRows] = useState<InboxMessage[]>([])
   const [selected, setSelected] = useState<InboxMessage | null>(null)
   const [replyTo, setReplyTo] = useState<InboxMessage | null>(null)
   const [unreadCount, setUnreadCount] = useState(0)
-  const [loading, setLoading] = useState(false)
   const [refreshingCount, setRefreshingCount] = useState(false)
+
+  const fetchInboxPage = useCallback((cursor?: string | null) => (
+    fetchInboxMessages({ unread: filter === 'unread', cursor, pageSize: 20 })
+  ), [filter])
+
+  const {
+    items: rows,
+    setItems: setRows,
+    loadingInitial,
+    loadingMore,
+    hasMore,
+    error: loadError,
+    refresh: refreshMessages,
+    loadMore,
+  } = useCursorFeed({
+    enabled: open,
+    fetchPage: fetchInboxPage,
+    getItemKey: (row) => row.id,
+    errorMessage: 'Failed to load messages',
+  })
 
   const loadUnreadCount = useCallback(async () => {
     setRefreshingCount(true)
@@ -150,30 +170,12 @@ export default function InboxDrawer({ onOpenResource }: InboxDrawerProps) {
     }
   }, [])
 
-  const loadMessages = useCallback(async () => {
-    setLoading(true)
-    try {
-      const nextRows = await fetchInboxMessages({ unread: filter === 'unread' })
-      setRows(nextRows)
-    } catch {
-      message.error('Failed to load messages')
-      setRows([])
-    } finally {
-      setLoading(false)
-    }
-  }, [filter])
-
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadUnreadCount()
     const timer = window.setInterval(loadUnreadCount, INBOX_UNREAD_POLL_INTERVAL_MS)
     return () => window.clearInterval(timer)
   }, [loadUnreadCount])
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (open) loadMessages()
-  }, [open, loadMessages])
 
   const canReply = (row: InboxMessage) => {
     return Boolean(row.kind === 'user' && row.sender && row.sender !== currentUser?.id)
@@ -198,7 +200,7 @@ export default function InboxDrawer({ onOpenResource }: InboxDrawerProps) {
         setSelected(null)
       }
       if (replyTo?.id === row.id) setReplyTo(null)
-      await Promise.all([loadMessages(), loadUnreadCount()])
+      await Promise.all([refreshMessages(), loadUnreadCount()])
     } catch {
       message.error('Failed to delete message')
     }
@@ -212,7 +214,7 @@ export default function InboxDrawer({ onOpenResource }: InboxDrawerProps) {
       })
       setReplyTo(null)
       message.success('Reply sent')
-      await Promise.all([loadMessages(), loadUnreadCount()])
+      await Promise.all([refreshMessages(), loadUnreadCount()])
       return
     }
 
@@ -226,7 +228,7 @@ export default function InboxDrawer({ onOpenResource }: InboxDrawerProps) {
       attachments: input.attachments.map((attachment) => attachment.id),
     })
     message.success('Message sent')
-    await Promise.all([loadMessages(), loadUnreadCount()])
+    await Promise.all([refreshMessages(), loadUnreadCount()])
   }
 
   return (
@@ -245,7 +247,7 @@ export default function InboxDrawer({ onOpenResource }: InboxDrawerProps) {
         open={open}
         onClose={() => setOpen(false)}
         closable={false}
-        width={560}
+        size={560}
         styles={{ body: { padding: 0, display: 'flex', flexDirection: 'column', minHeight: 0, overflowX: 'hidden' } }}
       >
         <div style={{ padding: 12, borderBottom: '1px solid #303030' }}>
@@ -257,7 +259,11 @@ export default function InboxDrawer({ onOpenResource }: InboxDrawerProps) {
                   { label: <Tooltip title="All messages"><InboxOutlined /></Tooltip>, value: 'all' },
                   { label: <Tooltip title="Unread messages"><MailOutlined /></Tooltip>, value: 'unread' },
                 ]}
-                onChange={(value) => setFilter(value as 'all' | 'unread')}
+                onChange={(value) => {
+                  setSelected(null)
+                  setReplyTo(null)
+                  setFilter(value as 'all' | 'unread')
+                }}
               />
               <Space>
                 <Tooltip title="Mark all read">
@@ -265,12 +271,12 @@ export default function InboxDrawer({ onOpenResource }: InboxDrawerProps) {
                     icon={<CheckCircleOutlined />}
                     onClick={async () => {
                       await markAllInboxMessagesRead()
-                      await Promise.all([loadMessages(), loadUnreadCount()])
+                      await Promise.all([refreshMessages(), loadUnreadCount()])
                     }}
                   />
                 </Tooltip>
                 <Tooltip title="Refresh messages">
-                  <Button icon={<ReloadOutlined />} onClick={() => Promise.all([loadMessages(), loadUnreadCount()])} />
+                  <Button icon={<ReloadOutlined />} onClick={() => Promise.all([refreshMessages(), loadUnreadCount()])} />
                 </Tooltip>
               </Space>
             </Space>
@@ -280,78 +286,88 @@ export default function InboxDrawer({ onOpenResource }: InboxDrawerProps) {
           </div>
         </div>
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
-          {loading ? (
+          {loadingInitial ? (
             <Spin style={{ margin: 24 }} />
           ) : rows.length ? (
-            <List
-              dataSource={rows}
-              renderItem={(row) => (
-                <List.Item
-                  onClick={() => openMessage(row)}
-                  style={{
-                    cursor: 'pointer',
-                    display: 'block',
-                    padding: 16,
-                    boxSizing: 'border-box',
-                    minWidth: 0,
-                    overflow: 'hidden',
-                    borderInlineStart: selected?.id === row.id ? '3px solid #1677ff' : '3px solid transparent',
-                    background: row.is_read ? 'transparent' : 'rgba(22, 119, 255, 0.08)',
-                  }}
-                >
-                  <List.Item.Meta
-                    avatar={(
-                      <Badge dot={!row.is_read}>
-                        <UserAvatar username={senderLabel(row)} avatarUrl={row.sender_avatar_url} />
-                      </Badge>
-                    )}
-                    title={(
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                        <Space size={8} wrap>
-                          <Tag {...comfortableTagProps} color={row.kind === 'system' ? 'purple' : 'blue'} style={{ marginInlineEnd: 0 }}>
-                            {row.kind}
-                          </Tag>
-                          <Typography.Text strong={!row.is_read}>{senderLabel(row)}</Typography.Text>
-                          <ReplyContext row={row} />
-                        </Space>
-                        <Tooltip title={new Date(row.created_at).toLocaleString()}>
-                          <Typography.Text type="secondary" style={{ ...typography.compact, ...tabularNumbersStyle, whiteSpace: 'nowrap' }}>
-                            {timeLabel(row.created_at)}
-                          </Typography.Text>
-                        </Tooltip>
-                      </div>
-                    )}
-                    description={(
-                      <div style={{ display: 'grid', gap: 8 }}>
-                        {selected?.id === row.id && selected ? (
-                          <MessageBody row={selected} onOpenResource={onOpenResource} />
-                        ) : (
-                          <>
-                            <Typography.Text ellipsis style={{ color: 'rgba(255,255,255,0.65)' }}>
-                              {messagePreview(row)}
-                            </Typography.Text>
-                            <RecordLink message={row} onOpenResource={onOpenResource} />
-                          </>
-                        )}
-                      </div>
-                    )}
-                  />
-                  {selected?.id === row.id && selected && (
-                    <div
-                      style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, paddingLeft: 40 }}
-                      onClick={(event) => event.stopPropagation()}
-                    >
-                      {canReply(selected) && (
-                        <Button type="link" size="small" style={{ padding: 0 }} onClick={() => setReplyTo(selected)}>
-                          Reply
-                        </Button>
+            <>
+              {loadError && <Alert type="error" title={loadError} showIcon style={{ margin: 12 }} />}
+              <List
+                dataSource={rows}
+                loadMore={hasMore ? (
+                  <div style={{paddingInline: 16}}>
+                    <FeedLoadMore loading={loadingMore} onClick={loadMore} />
+                  </div>
+                ) : null}
+                renderItem={(row) => (
+                  <List.Item
+                    onClick={() => openMessage(row)}
+                    style={{
+                      cursor: 'pointer',
+                      display: 'block',
+                      padding: 16,
+                      boxSizing: 'border-box',
+                      minWidth: 0,
+                      overflow: 'hidden',
+                      borderInlineStart: selected?.id === row.id ? '3px solid #1677ff' : '3px solid transparent',
+                      background: row.is_read ? 'transparent' : 'rgba(22, 119, 255, 0.08)',
+                    }}
+                  >
+                    <List.Item.Meta
+                      avatar={(
+                        <Badge dot={!row.is_read}>
+                          <UserAvatar username={senderLabel(row)} avatarUrl={row.sender_avatar_url} />
+                        </Badge>
                       )}
-                      {selected.can_delete && <DeleteMessageAction onDelete={() => deleteMessage(selected)} />}
-                    </div>
+                      title={(
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                          <Space size={8} wrap>
+                            <Tag {...comfortableTagProps} color={row.kind === 'system' ? 'purple' : 'blue'} style={{ marginInlineEnd: 0 }}>
+                              {row.kind}
+                            </Tag>
+                            <Typography.Text strong={!row.is_read}>{senderLabel(row)}</Typography.Text>
+                            <ReplyContext row={row} />
+                          </Space>
+                          <Tooltip title={new Date(row.created_at).toLocaleString()}>
+                            <Typography.Text type="secondary" style={{ ...typography.compact, ...tabularNumbersStyle, whiteSpace: 'nowrap' }}>
+                              {timeLabel(row.created_at)}
+                            </Typography.Text>
+                          </Tooltip>
+                        </div>
+                      )}
+                      description={(
+                        <div style={{ display: 'grid', gap: 8 }}>
+                          {selected?.id === row.id && selected ? (
+                            <MessageBody row={selected} onOpenResource={onOpenResource} />
+                          ) : (
+                            <>
+                              <Typography.Text ellipsis style={{ color: 'rgba(255,255,255,0.65)' }}>
+                                {messagePreview(row)}
+                              </Typography.Text>
+                              <RecordLink message={row} onOpenResource={onOpenResource} />
+                            </>
+                          )}
+                        </div>
+                      )}
+                    />
+                    {selected?.id === row.id && selected && (
+                      <div
+                        style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, paddingLeft: 40 }}
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        {canReply(selected) && (
+                          <Button type="link" size="small" style={{ padding: 0 }} onClick={() => setReplyTo(selected)}>
+                            Reply
+                          </Button>
+                        )}
+                        {selected.can_delete && <DeleteMessageAction onDelete={() => deleteMessage(selected)} />}
+                      </div>
+                    )}
+                  </List.Item>
                   )}
-                </List.Item>
-              )}
-            />
+              />
+            </>
+          ) : loadError ? (
+            <Alert type="error" title={loadError} showIcon style={{ margin: 24 }} />
           ) : (
             <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No messages" style={{ marginTop: 48 }} />
           )}

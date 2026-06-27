@@ -1,5 +1,6 @@
 import type {Attachment} from './attachments'
 import client from './client'
+import {type CursorPage, normalizeCursorPage} from './cursor'
 
 export interface MentionedUser {
   id: number
@@ -34,27 +35,34 @@ export interface RecordComment {
   can_delete: boolean
 }
 
-const commentRequests = new Map<string, Promise<RecordComment[]>>()
+const commentRequests = new Map<string, Promise<CursorPage<RecordComment>>>()
 let mentionUsersCache: MentionUser[] | null = null
 let mentionUsersRequest: Promise<MentionUser[]> | null = null
 
-function commentsRequestKey(contentType: string, objectId: string) {
-  return `${contentType}:${objectId}`
+function commentsRequestKey(contentType: string, objectId: string, cursor?: string | null, pageSize?: number) {
+  return `${contentType}:${objectId}:${cursor || ''}:${pageSize || ''}`
 }
 
 export async function fetchComments(
   contentType: string,
   objectId: string,
-  options: { force?: boolean } = {},
-): Promise<RecordComment[]> {
-  const key = commentsRequestKey(contentType, objectId)
+  options: { force?: boolean; cursor?: string | null; pageSize?: number } = {},
+): Promise<CursorPage<RecordComment>> {
+  const key = commentsRequestKey(contentType, objectId, options.cursor, options.pageSize)
   if (!options.force) {
     const existingRequest = commentRequests.get(key)
     if (existingRequest) return existingRequest
   }
 
-  const request = client.get('/comments/', { params: { content_type: contentType, object_id: objectId } })
-    .then(({ data }) => data.results || data)
+  const request = client.get('/comments/', {
+    params: {
+      content_type: contentType,
+      object_id: objectId,
+      cursor: options.cursor || undefined,
+      page_size: options.pageSize,
+    },
+  })
+    .then(({ data }) => normalizeCursorPage<RecordComment>(data))
     .finally(() => {
       if (commentRequests.get(key) === request) {
         commentRequests.delete(key)

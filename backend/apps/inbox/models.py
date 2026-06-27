@@ -54,6 +54,9 @@ class InboxMessage(models.Model):
     class Meta:
         db_table = "inbox_messages"
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["-created_at", "-id"], name="inbox_message_time_idx"),
+        ]
 
     def __str__(self):
         sender = self.sender or "system"
@@ -80,6 +83,7 @@ class InboxMessageRecipient(models.Model):
         indexes = [
             models.Index(fields=["user", "read_at"]),
             models.Index(fields=["user", "created_at"]),
+            models.Index(fields=["user", "read_at", "message"], name="inbox_rec_user_read_msg_idx"),
         ]
         ordering = ["-created_at"]
 

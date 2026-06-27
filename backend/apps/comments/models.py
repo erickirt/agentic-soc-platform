@@ -28,6 +28,9 @@ class Comment(models.Model):
     class Meta:
         db_table = "comments"
         ordering = ["created_at"]
+        indexes = [
+            models.Index(fields=["content_type", "object_id", "-created_at", "-id"], name="comment_obj_time_idx"),
+        ]
 
     def __str__(self):
         return f"Comment by {self.author or 'deleted user'} on {self.content_type}"

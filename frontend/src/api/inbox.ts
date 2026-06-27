@@ -1,5 +1,6 @@
 import type {Attachment} from './attachments'
 import client from './client'
+import {type CursorPage, normalizeCursorPage} from './cursor'
 import type {MentionedUser} from './comments'
 
 export type InboxMessageKind = 'system' | 'user'
@@ -30,15 +31,15 @@ export interface InboxMessage {
   can_delete: boolean
 }
 
-function rows<T>(data: T[] | { results: T[] }) {
-  return Array.isArray(data) ? data : data.results
-}
-
-export async function fetchInboxMessages(options: { unread?: boolean } = {}): Promise<InboxMessage[]> {
+export async function fetchInboxMessages(options: { unread?: boolean; cursor?: string | null; pageSize?: number } = {}): Promise<CursorPage<InboxMessage>> {
   const { data } = await client.get('/inbox/messages/', {
-    params: options.unread ? { unread: true } : undefined,
+    params: {
+      unread: options.unread ? true : undefined,
+      cursor: options.cursor || undefined,
+      page_size: options.pageSize,
+    },
   })
-  return rows<InboxMessage>(data)
+  return normalizeCursorPage<InboxMessage>(data)
 }
 
 export async function fetchInboxUnreadCount(): Promise<number> {

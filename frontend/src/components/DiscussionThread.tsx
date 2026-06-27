@@ -1,9 +1,11 @@
-import {useCallback, useEffect, useMemo, useState} from 'react'
+import {useCallback, useMemo, useState} from 'react'
 import {Alert, Button, Input, List, message, Popconfirm, Space, Tooltip} from 'antd'
-import {MessageOutlined, SearchOutlined} from '@ant-design/icons'
+import {MessageOutlined, ReloadOutlined, SearchOutlined} from '@ant-design/icons'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import {createComment, deleteComment, fetchComments, type RecordComment} from '../api/comments'
+import useCursorFeed from '../hooks/useCursorFeed'
+import FeedLoadMore from './FeedLoadMore'
 import MessageAttachments from './MessageAttachments'
 import MessageComposer from './MessageComposer'
 import UserAvatar from './UserAvatar'
@@ -115,37 +117,28 @@ function CommentItem({
 }
 
 export default function DiscussionThread({ contentType, objectId }: DiscussionThreadProps) {
-  const [comments, setComments] = useState<RecordComment[]>([])
   const [search, setSearch] = useState('')
   const [replyTo, setReplyTo] = useState<RecordComment | null>(null)
   const [hoveredCommentId, setHoveredCommentId] = useState<number | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
-  const [listLoading, setListLoading] = useState(true)
-  const [loadError, setLoadError] = useState('')
 
-  const loadComments = useCallback(async (force = false) => {
-    setLoadError('')
-    const rows = await fetchComments(contentType, objectId, { force })
-    setComments(rows)
+  const fetchCommentPage = useCallback((cursor?: string | null) => {
+    return fetchComments(contentType, objectId, { cursor, pageSize: 20 })
   }, [contentType, objectId])
 
-  useEffect(() => {
-    let active = true
-
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setListLoading(true)
-    loadComments()
-      .catch(() => {
-        if (active) setLoadError('Failed to load comments')
-      })
-      .finally(() => {
-        if (active) setListLoading(false)
-      })
-
-    return () => {
-      active = false
-    }
-  }, [loadComments])
+  const {
+    items: comments,
+    loadingInitial,
+    loadingMore,
+    hasMore,
+    error: loadError,
+    refresh: refreshComments,
+    loadMore,
+  } = useCursorFeed({
+    fetchPage: fetchCommentPage,
+    getItemKey: (comment) => comment.id,
+    errorMessage: 'Failed to load comments',
+  })
 
   const filteredComments = useMemo(() => {
     if (!search.trim()) return comments
@@ -165,7 +158,7 @@ export default function DiscussionThread({ contentType, objectId }: DiscussionTh
         attachment_ids: input.attachments.map((attachment) => attachment.id),
       })
       setReplyTo(null)
-      await loadComments(true)
+      await refreshComments()
       message.success('Comment added')
     } catch {
       message.error('Failed to add comment')
@@ -179,7 +172,7 @@ export default function DiscussionThread({ contentType, objectId }: DiscussionTh
     try {
       await deleteComment(comment.id)
       setReplyTo(null)
-      await loadComments(true)
+      await refreshComments()
       message.success('Comment deleted')
     } catch {
       message.error('Failed to delete comment')
@@ -190,19 +183,22 @@ export default function DiscussionThread({ contentType, objectId }: DiscussionTh
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '0 4px 24px' }}>
-      <Input
-        prefix={<SearchOutlined />}
-        placeholder="Search comments"
-        value={search}
-        onChange={(event) => setSearch(event.target.value)}
-        style={{ marginBottom: 12 }}
-        allowClear
-      />
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        <Input
+          prefix={<SearchOutlined />}
+          placeholder="Search comments"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          allowClear
+        />
+        <Button icon={<ReloadOutlined />} loading={loadingInitial} onClick={refreshComments} style={{ width: 32, flex: '0 0 32px' }} />
+      </div>
       <div style={{ flex: 1, overflow: 'auto' }}>
-        {loadError && <Alert type="error" message={loadError} showIcon style={{ marginBottom: 12 }} />}
+        {loadError && <Alert type="error" title={loadError} showIcon style={{ marginBottom: 12 }} />}
         <List
-          loading={listLoading}
+          loading={loadingInitial}
           dataSource={filteredComments}
+          loadMore={hasMore ? <FeedLoadMore label="Load more comments" loading={loadingMore} onClick={loadMore} /> : null}
           locale={{ emptyText: 'No comments yet' }}
           renderItem={(comment) => (
             <CommentItem

@@ -6,6 +6,7 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
 from apps.accounts.permissions import is_business_writer
+from apps.common.cursor_pagination import cursor_response_payload, paginate_created_at_cursor
 from .models import InboxMessage, InboxMessageRecipient
 from .serializers import (
     InboxMessageCreateSerializer,
@@ -55,6 +56,11 @@ class InboxMessageViewSet(viewsets.ModelViewSet):
         message = serializer.save()
         output = InboxMessageSerializer(message, context=self.get_serializer_context())
         return Response(output.data, status=status.HTTP_201_CREATED)
+        return Response(output.data, status=status.HTTP_201_CREATED)
+    def list(self, request, *args, **kwargs):
+        page = paginate_created_at_cursor(self.get_queryset(), request)
+        serializer = self.get_serializer(page.results, many=True)
+        return Response(cursor_response_payload(page, serializer.data))
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()

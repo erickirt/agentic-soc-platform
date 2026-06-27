@@ -1,11 +1,14 @@
-import {useEffect, useMemo, useRef, useState} from 'react'
+import {useCallback, useEffect, useMemo, useState} from 'react'
 import type {GetProps} from 'antd'
 import {Alert, Button, DatePicker, Empty, Select, Space, Spin, Tag, Timeline} from 'antd'
-import {FilterOutlined, RightOutlined} from '@ant-design/icons'
+import {FilterOutlined, ReloadOutlined, RightOutlined} from '@ant-design/icons'
 import client from '../api/client'
+import {normalizeCursorPage} from '../api/cursor'
 import {getResourceConfig} from '../config/resources'
+import useCursorFeed from '../hooks/useCursorFeed'
 import {comfortableTagProps} from '../utils/tagStyles'
 import {tabularNumbersStyle, typography} from '../utils/typography'
+import FeedLoadMore from './FeedLoadMore'
 
 const { RangePicker } = DatePicker
 const actionColor: Record<string, string> = { create: 'green', update: 'blue', delete: 'red', linked: 'cyan', unlinked: 'orange', deleted: 'red' }
@@ -175,18 +178,12 @@ function RelationEvent({ log, onOpenResource }: { log: AuditLog; onOpenResource?
 }
 
 export default function AuditTimeline({ contentType, objectId, onOpenResource }: AuditTimelineProps) {
-  const [logs, setLogs] = useState<AuditLog[]>([])
-  const [loading, setLoading] = useState(false)
-  const [loadError, setLoadError] = useState('')
   const [actionFilter, setActionFilter] = useState<string | null>(null)
   const [actorFilter, setActorFilter] = useState<string | null>(null)
   const [fieldFilter, setFieldFilter] = useState<string | null>(null)
   const [createdRange, setCreatedRange] = useState<RangePickerValue>(null)
   const [filtersExpanded, setFiltersExpanded] = useState(false)
   const [userOptions, setUserOptions] = useState<FilterOption[]>([])
-  const [actorOptionsFromLogs, setActorOptionsFromLogs] = useState<FilterOption[]>([])
-  const [fieldOptions, setFieldOptions] = useState<FilterOption[]>([])
-  const requestIdRef = useRef(0)
   const hasActiveFilters = Boolean(actionFilter || actorFilter || fieldFilter || createdRange?.[0] || createdRange?.[1])
 
   const fieldLabelMap = useMemo(() => {
@@ -204,10 +201,6 @@ export default function AuditTimeline({ contentType, objectId, onOpenResource }:
     (field: string) => fieldLabelMap.get(field) || field
   ), [fieldLabelMap])
 
-  const actorOptions = useMemo(() => (
-    mergeOptions([{ label: 'system', value: 'system' }, ...actorOptionsFromLogs], userOptions)
-  ), [actorOptionsFromLogs, userOptions])
-
   useEffect(() => {
     let mounted = true
     client.get<FilterOption[]>('/auth/user-options/')
@@ -222,56 +215,57 @@ export default function AuditTimeline({ contentType, objectId, onOpenResource }:
     }
   }, [])
 
-  useEffect(() => {
-    const requestId = requestIdRef.current + 1
-    requestIdRef.current = requestId
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLoading(true)
-    setLoadError('')
-
-    const params: Record<string, string> = { content_type: contentType, object_id: objectId }
+  const fetchAuditPage = useCallback(async (cursor?: string | null) => {
+    const params: Record<string, string | number | undefined> = {
+      content_type: contentType,
+      object_id: objectId,
+      cursor: cursor || undefined,
+      page_size: 20,
+    }
     if (actionFilter) params.action = actionFilter
     if (actorFilter) params.actor = actorFilter
     if (fieldFilter) params.field = fieldFilter
     if (createdRange?.[0]) params.created_after = createdRange[0].toISOString()
     if (createdRange?.[1]) params.created_before = createdRange[1].toISOString()
 
-    client.get('/audit-logs/', { params })
-      .then(({ data }) => {
-        if (requestId !== requestIdRef.current) return
-        const nextLogs = data.results || data
-        setLogs(nextLogs)
-        setFieldOptions((previous) => mergeOptions(previous, logFieldOptions(nextLogs, fieldLabel)))
-        setActorOptionsFromLogs((previous) => mergeOptions(previous, logActorOptions(nextLogs)))
-      })
-      .catch(() => {
-        if (requestId !== requestIdRef.current) return
-        setLogs([])
-        setLoadError('Failed to load audit log')
-      })
-      .finally(() => {
-        if (requestId === requestIdRef.current) {
-          setLoading(false)
-        }
-      })
+    const { data } = await client.get('/audit-logs/', { params })
+    return normalizeCursorPage<AuditLog>(data)
+  }, [actionFilter, actorFilter, contentType, createdRange, fieldFilter, objectId])
 
-    return () => {
-      if (requestId === requestIdRef.current) {
-        requestIdRef.current += 1
-      }
-    }
-  }, [actionFilter, actorFilter, contentType, createdRange, fieldFilter, fieldLabel, objectId])
+  const {
+    items: logs,
+    loadingInitial,
+    loadingMore,
+    hasMore,
+    error: loadError,
+    refresh: refreshLogs,
+    loadMore,
+  } = useCursorFeed({
+    fetchPage: fetchAuditPage,
+    getItemKey: (log) => log.id,
+    errorMessage: 'Failed to load audit log',
+  })
+
+  const fieldOptions = useMemo(() => (
+    mergeOptions([], logFieldOptions(logs, fieldLabel))
+  ), [fieldLabel, logs])
+
+  const actorOptions = useMemo(() => (
+    mergeOptions([{ label: 'system', value: 'system' }, ...logActorOptions(logs)], userOptions)
+  ), [logs, userOptions])
 
   const filterBar = (
     <div style={{ width: '100%', marginBottom: 12 }}>
-      <Button
-        type={hasActiveFilters ? 'primary' : 'default'}
-        icon={<FilterOutlined />}
-        onClick={() => setFiltersExpanded((previous) => !previous)}
-        style={{ marginBottom: filtersExpanded ? 8 : 0 }}
-      >
-        Filters
-      </Button>
+      <Space style={{ marginBottom: filtersExpanded ? 8 : 0 }}>
+        <Button
+          type={hasActiveFilters ? 'primary' : 'default'}
+          icon={<FilterOutlined />}
+          onClick={() => setFiltersExpanded((previous) => !previous)}
+        >
+          Filters
+        </Button>
+        <Button icon={<ReloadOutlined />} loading={loadingInitial} onClick={refreshLogs} />
+      </Space>
       {filtersExpanded && (
         <div style={{ display: 'grid', gap: 8 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 8 }}>
@@ -317,23 +311,27 @@ export default function AuditTimeline({ contentType, objectId, onOpenResource }:
   )
 
   let content = (
-    <Timeline items={logs.map((log) => ({
-      color: actionColor[log.action] || 'gray',
-      children: (
-        <div>
-          <Space size={8} wrap>
-            <Tag {...comfortableTagProps} color={actionColor[log.action]} style={{ marginInlineEnd: 0 }}>{log.action}</Tag>
-            <span>{log.actor_name || log.actor || 'system'}</span>
-            <span style={{ ...typography.compact, ...tabularNumbersStyle, color: '#999' }}>{new Date(log.created_at).toLocaleString()}</span>
-          </Space>
-          {relationActions.has(log.action) ? <RelationEvent log={log} onOpenResource={onOpenResource} /> : formatChanges(log.display_changes || log.changes, log.action, fieldLabel)}
-        </div>
-      ),
-    }))} />
+    <>
+      {loadError && logs.length > 0 && <Alert type="error" title={loadError} showIcon style={{ marginBottom: 12 }} />}
+      <Timeline items={logs.map((log) => ({
+        color: actionColor[log.action] || 'gray',
+        children: (
+          <div>
+            <Space size={8} wrap>
+              <Tag {...comfortableTagProps} color={actionColor[log.action]} style={{ marginInlineEnd: 0 }}>{log.action}</Tag>
+              <span>{log.actor_name || log.actor || 'system'}</span>
+              <span style={{ ...typography.compact, ...tabularNumbersStyle, color: '#999' }}>{new Date(log.created_at).toLocaleString()}</span>
+            </Space>
+            {relationActions.has(log.action) ? <RelationEvent log={log} onOpenResource={onOpenResource} /> : formatChanges(log.display_changes || log.changes, log.action, fieldLabel)}
+          </div>
+        ),
+      }))} />
+      {hasMore && <FeedLoadMore loading={loadingMore} onClick={loadMore} />}
+    </>
   )
 
-  if (loading) content = <Spin style={{ margin: 16 }} />
-  else if (loadError) content = <Alert type="error" title={loadError} showIcon style={{ margin: '0 4px' }} />
+  if (loadingInitial) content = <Spin style={{ margin: 16 }} />
+  else if (loadError && !logs.length) content = <Alert type="error" title={loadError} showIcon style={{ margin: '0 4px' }} />
   else if (!logs.length) content = <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No audit log" />
 
   return (
