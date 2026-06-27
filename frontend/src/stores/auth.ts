@@ -11,6 +11,8 @@ export interface AuthUser {
   auth_type: 'local' | 'ldap'
   is_active: boolean
   role: 'admin' | 'user' | 'viewer'
+  notify_on_playbook_completion: boolean
+  notify_on_case_assignment: boolean
   has_avatar: boolean
   avatar_url: string
 }

@@ -34,7 +34,7 @@ export function login(username: string, password: string, authType: AuthType) {
   return client.post<LoginResponse>('/auth/login/', { username, password, auth_type: authType })
 }
 export function getMe() { return client.get<AuthUser>('/auth/me/') }
-export function updateProfile(values: Partial<Pick<AuthUser, 'email' | 'first_name' | 'last_name' | 'mobile_phone'>>) {
+export function updateProfile(values: Partial<Pick<AuthUser, 'email' | 'first_name' | 'last_name' | 'mobile_phone' | 'notify_on_playbook_completion' | 'notify_on_case_assignment'>>) {
   return client.patch<AuthUser>('/auth/profile/', values)
 }
 export function changePassword(oldPassword: string, newPassword: string) {

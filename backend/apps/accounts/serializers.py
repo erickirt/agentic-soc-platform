@@ -40,6 +40,8 @@ class UserSerializer(serializers.ModelSerializer):
             "auth_type",
             "role",
             "is_active",
+            "notify_on_playbook_completion",
+            "notify_on_case_assignment",
             "has_avatar",
             "avatar_url",
             "date_joined",
@@ -68,7 +70,14 @@ class UserSerializer(serializers.ModelSerializer):
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ("email", "first_name", "last_name", "mobile_phone")
+        fields = (
+            "email",
+            "first_name",
+            "last_name",
+            "mobile_phone",
+            "notify_on_playbook_completion",
+            "notify_on_case_assignment",
+        )
 
 
 class UserCreateSerializer(serializers.ModelSerializer):

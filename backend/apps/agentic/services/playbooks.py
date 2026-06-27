@@ -6,6 +6,7 @@ from django.db import transaction
 
 from apps.agentic.runtime.base import BasePlaybook
 from apps.agentic.runtime.loader import discover_script_class, iter_overlaid_python_scripts
+from apps.inbox.notifications import notify_playbook_completion
 from apps.playbooks.models import Playbook, PlaybookJobStatus
 
 
@@ -135,6 +136,7 @@ def mark_playbook_success(playbook, remark):
     locked.job_status = PlaybookJobStatus.SUCCESS
     locked.remark = remark
     locked.save(update_fields=["job_status", "remark", "updated_at"])
+    notify_playbook_completion(locked)
     return locked
 
 
@@ -146,4 +148,5 @@ def mark_playbook_failed(playbook, error):
     locked.job_status = PlaybookJobStatus.FAILED
     locked.remark = f"{type(error).__name__}: {error}"
     locked.save(update_fields=["job_status", "remark", "updated_at"])
+    notify_playbook_completion(locked)
     return locked

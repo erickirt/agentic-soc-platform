@@ -1,6 +1,6 @@
 import {useEffect, useState} from 'react'
-import {Button, Col, DatePicker, Form, Input, message, Modal, Popconfirm, Row, Space, Table, Tabs, Tag, Typography} from 'antd'
-import {ApiOutlined, CopyOutlined, DeleteOutlined, KeyOutlined, LockOutlined, ReloadOutlined, UserOutlined} from '@ant-design/icons'
+import {Button, Col, DatePicker, Form, Input, message, Modal, Popconfirm, Row, Space, Switch, Table, Tabs, Tag, Typography} from 'antd'
+import {ApiOutlined, CopyOutlined, DeleteOutlined, KeyOutlined, LockOutlined, ReloadOutlined, SettingOutlined, UserOutlined} from '@ant-design/icons'
 import type {ColumnsType} from 'antd/es/table'
 import type {Dayjs} from 'dayjs'
 import client from '../api/client'
@@ -38,9 +38,11 @@ export default function PersonalCenterModal({ open, onClose }: PersonalCenterMod
   const user = useAuthStore((state) => state.user)
   const setAuth = useAuthStore((state) => state.setAuth)
   const [profileForm] = Form.useForm()
+  const [settingsForm] = Form.useForm()
   const [passwordForm] = Form.useForm()
   const [apiKeyForm] = Form.useForm()
   const [savingProfile, setSavingProfile] = useState(false)
+  const [savingSettings, setSavingSettings] = useState(false)
   const [changingPassword, setChangingPassword] = useState(false)
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
   const [apiKeysLoading, setApiKeysLoading] = useState(false)
@@ -49,7 +51,11 @@ export default function PersonalCenterModal({ open, onClose }: PersonalCenterMod
   useEffect(() => {
     if (!open || !user) return
     profileForm.setFieldsValue(user)
-  }, [open, profileForm, user])
+    settingsForm.setFieldsValue({
+      notify_on_playbook_completion: user.notify_on_playbook_completion ?? true,
+      notify_on_case_assignment: user.notify_on_case_assignment ?? true,
+    })
+  }, [open, profileForm, settingsForm, user])
 
   const loadApiKeys = async () => {
     setApiKeysLoading(true)
@@ -81,6 +87,22 @@ export default function PersonalCenterModal({ open, onClose }: PersonalCenterMod
       if (response.response?.data) message.error(JSON.stringify(response.response.data))
     } finally {
       setSavingProfile(false)
+    }
+  }
+
+  const saveSettings = async () => {
+    if (!token) return
+    setSavingSettings(true)
+    try {
+      const values = await settingsForm.validateFields()
+      const { data } = await updateProfile(values)
+      setAuth(token, data)
+      message.success('Settings updated')
+    } catch (error: unknown) {
+      const response = error as { response?: { data?: unknown } }
+      if (response.response?.data) message.error(JSON.stringify(response.response.data))
+    } finally {
+      setSavingSettings(false)
     }
   }
 
@@ -208,6 +230,34 @@ export default function PersonalCenterModal({ open, onClose }: PersonalCenterMod
             </Row>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <Button type="primary" loading={savingProfile} onClick={saveProfile}>Save</Button>
+            </div>
+          </Form>
+        </Space>
+      ),
+    },
+    {
+      key: 'settings',
+      label: <span><SettingOutlined /> Settings</span>,
+      children: (
+        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          <Typography.Title level={5} style={{ margin: 0 }}>Notification Preferences</Typography.Title>
+          <Form form={settingsForm} layout="vertical">
+            <Form.Item
+              name="notify_on_playbook_completion"
+              label="Notify me when my Playbook runs finish"
+              valuePropName="checked"
+            >
+              <Switch />
+            </Form.Item>
+            <Form.Item
+              name="notify_on_case_assignment"
+              label="Notify me when a Case is assigned to me"
+              valuePropName="checked"
+            >
+              <Switch />
+            </Form.Item>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <Button type="primary" loading={savingSettings} onClick={saveSettings}>Save</Button>
             </div>
           </Form>
         </Space>

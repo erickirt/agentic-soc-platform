@@ -23,6 +23,8 @@ class User(AbstractUser):
     )
     mobile_phone = models.CharField(max_length=20, blank=True, default="")
     auth_type = models.CharField(max_length=20, choices=AuthType.choices, default=AuthType.LOCAL)
+    notify_on_playbook_completion = models.BooleanField(default=True)
+    notify_on_case_assignment = models.BooleanField(default=True)
 
     class Meta:
         db_table = "users"

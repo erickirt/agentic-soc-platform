@@ -3,6 +3,7 @@ from rest_framework import serializers
 
 from apps.alerts.serializers import AlertSerializer
 from apps.enrichments.models import Enrichment
+from apps.inbox.notifications import notify_case_assignment
 from .models import Case, CaseStatus
 
 
@@ -55,6 +56,7 @@ class CaseSerializer(serializers.ModelSerializer):
         return self._duration_seconds(obj.acknowledged_time, obj.closed_time)
 
     def update(self, instance, validated_data):
+        previous_assignee_id = instance.assignee_id
         previous_status = instance.status or ""
         next_status = validated_data.get("status", previous_status) or ""
         status_changed = next_status != previous_status
@@ -77,7 +79,11 @@ class CaseSerializer(serializers.ModelSerializer):
         ):
             validated_data["closed_time"] = now
 
-        return super().update(instance, validated_data)
+        updated = super().update(instance, validated_data)
+        request = self.context.get("request")
+        actor = getattr(request, "user", None) if request else None
+        notify_case_assignment(updated, previous_assignee_id=previous_assignee_id, actor=actor)
+        return updated
 
     class Meta:
         model = Case
