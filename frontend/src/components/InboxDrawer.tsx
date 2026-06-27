@@ -80,7 +80,7 @@ function resourceName(resourceKey: string) {
 function RecordLink({ message: row, onOpenResource }: { message: InboxMessage; onOpenResource?: (resourceKey: string, rowId: string | number) => void }) {
   if (!row.resource_key || !row.object_id) return null
   const canOpen = Boolean(onOpenResource)
-  const label = row.resource_label || row.object_id || 'related record'
+  const label = row.resource_label || 'related record'
   return (
     <div style={{ ...typography.compact, marginTop: 6, color: 'rgba(255,255,255,0.68)', minWidth: 0 }}>
       <span>{resourceName(row.resource_key)}: </span>
