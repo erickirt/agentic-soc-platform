@@ -101,7 +101,7 @@ jobs:
           cp .env.example .env
           docker compose --env-file .env.example config --quiet
       - name: Build package
-        run: ./deploy/package-asp-compose.sh --version 0.0.0-ci --output-dir dist-ci
+        run: bash ./deploy/package-asp-compose.sh --version 0.0.0-ci --output-dir dist-ci
       - name: Validate package contents
         run: |
           archive_path="dist-ci/asp-compose-0.0.0-ci.tar.gz"

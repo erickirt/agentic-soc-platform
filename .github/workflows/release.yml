@@ -75,7 +75,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build Compose package
         run: |
-          ./deploy/package-asp-compose.sh \
+          bash ./deploy/package-asp-compose.sh \
             --version "${{ needs.prepare.outputs.version }}" \
             --output-dir dist \
             --backend-image "${{ needs.prepare.outputs.backend_image }}" \
