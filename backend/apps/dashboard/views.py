@@ -1,0 +1,443 @@
+import re
+from collections import Counter
+from datetime import timedelta
+
+from django.db.models import Count, DateTimeField, Min, Q
+from django.db.models.functions import Coalesce, TruncDay, TruncHour
+from django.utils import timezone
+from rest_framework import permissions, status
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from apps.alerts.models import Alert, AlertStatus, AlertTactic
+from apps.artifacts.models import Artifact
+from apps.cases.models import Case, CaseStatus
+from apps.enrichments.models import Enrichment
+from apps.knowledge.models import Knowledge, KnowledgeSource
+from apps.playbooks.models import Playbook, PlaybookJobStatus
+
+
+WINDOW_DELTAS = {
+    "24h": timedelta(hours=24),
+    "7d": timedelta(days=7),
+    "30d": timedelta(days=30),
+}
+
+OPEN_CASE_STATUSES = (CaseStatus.NEW, CaseStatus.IN_PROGRESS, CaseStatus.ON_HOLD)
+ACTIVE_ALERT_STATUSES = (AlertStatus.NEW, AlertStatus.IN_PROGRESS)
+ACTIVE_PLAYBOOK_STATUSES = (PlaybookJobStatus.RUNNING, PlaybookJobStatus.FAILED)
+IMPORTANT_LEVELS = ("Critical", "High")
+
+SEVERITY_ORDER = ("Critical", "High", "Medium", "Low", "Informational", "Info", "Unknown")
+CASE_STATUS_ORDER = ("New", "In Progress", "On Hold", "Resolved", "Closed")
+PLAYBOOK_STATUS_ORDER = ("Success", "Failed", "Pending", "Running")
+SEVERITY_WEIGHTS = {
+    "Critical": 10,
+    "High": 6,
+    "Medium": 3,
+    "Low": 1,
+    "Informational": 0.5,
+    "Info": 0.5,
+}
+KEYWORD_STOP_WORDS = {
+    "and",
+    "for",
+    "from",
+    "the",
+    "with",
+    "after",
+    "before",
+    "followed",
+    "indicators",
+    "pattern",
+    "alert",
+    "case",
+    "mock",
+    "unknown",
+}
+
+
+def iso_datetime(value):
+    return value.isoformat() if value else None
+
+
+def percentage(numerator, denominator):
+    if denominator == 0:
+        return None
+    return round((numerator / denominator) * 100, 1)
+
+
+def severity_weight(value):
+    return SEVERITY_WEIGHTS.get(value or "", 0)
+
+
+def non_negative_duration_seconds(start, end):
+    if not start or not end:
+        return None
+    seconds = int((end - start).total_seconds())
+    return seconds if seconds >= 0 else None
+
+
+def mean_duration(values):
+    valid_values = [value for value in values if value is not None]
+    if not valid_values:
+        return {"seconds": None, "sample_count": 0}
+    return {
+        "seconds": round(sum(valid_values) / len(valid_values)),
+        "sample_count": len(valid_values),
+    }
+
+
+def alert_event_queryset(start):
+    return Alert.objects.annotate(
+        event_time=Coalesce(
+            "last_seen_time",
+            "first_seen_time",
+            "created_at",
+            output_field=DateTimeField(),
+        )
+    ).filter(event_time__gte=start)
+
+
+def case_workload_queryset(start):
+    return Case.objects.filter(
+        Q(status__in=OPEN_CASE_STATUSES)
+        | Q(created_at__gte=start)
+        | Q(updated_at__gte=start)
+        | Q(acknowledged_time__gte=start)
+        | Q(closed_time__gte=start)
+    ).distinct()
+
+
+def ordered_distribution(queryset, field, labels):
+    rows = queryset.order_by().values(field).annotate(value=Count("id"))
+    counts = {
+        row[field] or "Unknown": row["value"]
+        for row in rows
+    }
+    return [{"label": label, "value": counts.get(label, 0)} for label in labels]
+
+
+def top_distribution(queryset, field, limit=8):
+    return [
+        {"label": row[field], "value": row["value"]}
+        for row in queryset.exclude(**{field: ""})
+        .values(field)
+        .annotate(value=Count("id"))
+        .order_by("-value", field)[:limit]
+    ]
+
+
+def add_keyword(counter, value, weight=1, split=False):
+    if value in (None, ""):
+        return
+    if isinstance(value, (list, tuple, set)):
+        for item in value:
+            add_keyword(counter, item, weight=weight, split=split)
+        return
+
+    text = re.sub(r"\s+", " ", str(value).strip())
+    if not text:
+        return
+
+    if split:
+        for token in re.findall(r"[A-Za-z][A-Za-z0-9+._-]{2,}", text):
+            normalized = token.strip("._-").lower()
+            if len(normalized) >= 3 and normalized not in KEYWORD_STOP_WORDS:
+                counter[normalized] += weight
+        return
+
+    normalized = text.lower()
+    if len(normalized) >= 3 and normalized not in KEYWORD_STOP_WORDS:
+        counter[text] += weight
+
+
+def build_threat_keywords(window_cases, window_alerts):
+    counter = Counter()
+
+    for alert in window_alerts.values(
+        "title",
+        "severity",
+        "labels",
+        "tactic",
+        "technique",
+        "product_category",
+        "product_name",
+    ):
+        weight = max(1, int(severity_weight(alert["severity"]) or 1))
+        add_keyword(counter, alert["title"], weight=1, split=True)
+        add_keyword(counter, alert["labels"], weight=weight)
+        add_keyword(counter, alert["tactic"], weight=weight)
+        add_keyword(counter, alert["technique"], weight=weight)
+        add_keyword(counter, alert["product_category"], weight=max(1, weight // 2))
+        add_keyword(counter, alert["product_name"], weight=1)
+
+    for case in window_cases.values("title", "severity", "category", "tags"):
+        weight = max(1, int(severity_weight(case["severity"]) or 1))
+        add_keyword(counter, case["title"], weight=1, split=True)
+        add_keyword(counter, case["category"], weight=max(1, weight // 2))
+        add_keyword(counter, case["tags"], weight=weight)
+
+    return [
+        {"text": text, "value": value}
+        for text, value in counter.most_common(36)
+    ]
+
+
+def build_mitre_severity_heatmap(window_alerts):
+    tactics = [tactic.value for tactic in AlertTactic]
+    severity_labels = ("Critical", "High", "Medium", "Low", "Informational", "Unknown")
+
+    rows = window_alerts.filter(tactic__in=tactics).order_by().values(
+        "tactic",
+        "severity",
+    ).annotate(value=Count("id"))
+    counts = {
+        (row["tactic"], row["severity"] or "Unknown"): row["value"]
+        for row in rows
+    }
+
+    return [
+        {
+            "tactic": tactic,
+            "severity": severity,
+            "value": counts.get((tactic, severity), 0),
+        }
+        for severity in severity_labels
+        for tactic in tactics
+    ]
+
+
+def build_alert_trend(window, start, generated_at):
+    trunc = TruncHour if window == "24h" else TruncDay
+    event_queryset = alert_event_queryset(start)
+    rows = event_queryset.annotate(
+        bucket=trunc("event_time")
+    ).values("bucket").annotate(value=Count("id")).order_by("bucket")
+
+    if window == "24h":
+        bucket_count = 24
+        step = timedelta(hours=1)
+        first_bucket = generated_at.replace(minute=0, second=0, microsecond=0) - step * (bucket_count - 1)
+        label_format = "%H:%M"
+    else:
+        bucket_count = 7 if window == "7d" else 30
+        step = timedelta(days=1)
+        first_bucket = generated_at.replace(hour=0, minute=0, second=0, microsecond=0) - step * (bucket_count - 1)
+        label_format = "%m-%d"
+
+    counts = {row["bucket"].strftime(label_format): row["value"] for row in rows}
+    trend = []
+    for index in range(bucket_count):
+        bucket = first_bucket + step * index
+        label = bucket.strftime(label_format)
+        trend.append({
+            "time": iso_datetime(bucket),
+            "label": label,
+            "value": counts.get(label, 0),
+        })
+    return trend
+
+
+def build_mean_times(start):
+    mttd_values = []
+    cases_for_detection = Case.objects.filter(created_at__gte=start).annotate(
+        first_alert_seen_time=Min("alerts__first_seen_time")
+    ).values("created_at", "first_alert_seen_time")
+    for case in cases_for_detection:
+        mttd_values.append(non_negative_duration_seconds(case["first_alert_seen_time"], case["created_at"]))
+
+    mtta_values = []
+    cases_for_acknowledgement = Case.objects.filter(
+        acknowledged_time__gte=start,
+        acknowledged_time__isnull=False,
+    ).values("created_at", "acknowledged_time")
+    for case in cases_for_acknowledgement:
+        mtta_values.append(non_negative_duration_seconds(case["created_at"], case["acknowledged_time"]))
+
+    mttr_values = []
+    cases_for_resolution = Case.objects.filter(
+        closed_time__gte=start,
+        closed_time__isnull=False,
+    ).values("acknowledged_time", "closed_time")
+    for case in cases_for_resolution:
+        mttr_values.append(non_negative_duration_seconds(case["acknowledged_time"], case["closed_time"]))
+
+    return {
+        "mttd": mean_duration(mttd_values),
+        "mtta": mean_duration(mtta_values),
+        "mttr": mean_duration(mttr_values),
+    }
+
+
+def build_active_risk_index(window_cases, window_alerts, window_playbooks):
+    case_score = sum(
+        severity_weight(severity) * 2
+        for severity in window_cases.filter(status__in=OPEN_CASE_STATUSES).values_list("severity", flat=True)
+    )
+    alert_score = sum(
+        severity_weight(severity)
+        for severity in window_alerts.filter(status__in=ACTIVE_ALERT_STATUSES).values_list("severity", flat=True)
+    )
+    playbook_score = (
+        window_playbooks.filter(job_status=PlaybookJobStatus.FAILED).count() * 4
+        + window_playbooks.filter(job_status=PlaybookJobStatus.RUNNING).count()
+    )
+    return min(100, round(case_score + alert_score + playbook_score))
+
+
+def build_top_risk_artifacts(window_alerts):
+    artifact_scores = {}
+    alerts = window_alerts.prefetch_related("artifacts")
+    for alert in alerts:
+        weight = severity_weight(alert.severity)
+        for artifact in alert.artifacts.all():
+            key = str(artifact.id)
+            entry = artifact_scores.setdefault(key, {
+                "id": key,
+                "name": artifact.name,
+                "type": artifact.type,
+                "role": artifact.role,
+                "value": artifact.value,
+                "risk_score": 0,
+                "alert_count": 0,
+            })
+            entry["risk_score"] += weight
+            entry["alert_count"] += 1
+
+    ranked = sorted(
+        artifact_scores.values(),
+        key=lambda item: (item["risk_score"], item["alert_count"], item["value"]),
+        reverse=True,
+    )
+    return [
+        {
+            **item,
+            "risk_score": round(item["risk_score"], 1),
+        }
+        for item in ranked[:8]
+    ]
+
+
+def build_recent_highlights(window_cases, window_alerts):
+    highlights = []
+    for case in window_cases.filter(
+        Q(severity__in=IMPORTANT_LEVELS) | Q(priority__in=IMPORTANT_LEVELS)
+    ).order_by("-created_at")[:8]:
+        highlights.append({
+            "id": str(case.id),
+            "kind": "case",
+            "readable_id": case.case_id,
+            "title": case.title,
+            "severity": case.severity,
+            "status": case.status,
+            "timestamp": case.created_at,
+            "subtitle": case.category or "Case",
+        })
+
+    for alert in window_alerts.filter(
+        Q(severity__in=IMPORTANT_LEVELS) | Q(risk_level__in=IMPORTANT_LEVELS)
+    ).order_by("-event_time")[:8]:
+        highlights.append({
+            "id": str(alert.id),
+            "kind": "alert",
+            "readable_id": alert.alert_id,
+            "title": alert.title,
+            "severity": alert.severity,
+            "status": alert.status,
+            "timestamp": alert.event_time,
+            "subtitle": alert.tactic or alert.product_category or alert.product_name or "Alert",
+        })
+
+    highlights.sort(key=lambda item: item["timestamp"], reverse=True)
+    return [
+        {
+            **item,
+            "timestamp": iso_datetime(item["timestamp"]),
+        }
+        for item in highlights[:8]
+    ]
+
+
+def build_dashboard_overview(window):
+    generated_at = timezone.now()
+    start = generated_at - WINDOW_DELTAS[window]
+
+    window_cases = Case.objects.filter(created_at__gte=start)
+    workload_cases = case_workload_queryset(start)
+    open_cases = Case.objects.filter(status__in=OPEN_CASE_STATUSES)
+    window_alerts = alert_event_queryset(start)
+    window_playbooks = Playbook.objects.filter(created_at__gte=start)
+
+    playbook_status_counts = {
+        row["job_status"] or "Unknown": row["value"]
+        for row in window_playbooks.values("job_status").annotate(value=Count("id"))
+    }
+    successful_playbooks = playbook_status_counts.get(PlaybookJobStatus.SUCCESS, 0)
+    failed_playbooks = playbook_status_counts.get(PlaybookJobStatus.FAILED, 0)
+    completed_playbooks = successful_playbooks + failed_playbooks
+
+    total_cases = window_cases.count()
+    cases_with_enrichments = window_cases.filter(enrichments__isnull=False).distinct().count()
+    cases_with_playbooks = window_cases.filter(playbooks__isnull=False).distinct().count()
+
+    summary = {
+        "active_risk_index": build_active_risk_index(open_cases, window_alerts, window_playbooks),
+        "total_cases": total_cases,
+        "total_alerts": window_alerts.count(),
+        "total_artifacts": Artifact.objects.filter(alerts__in=window_alerts).distinct().count(),
+        "total_enrichments": Enrichment.objects.filter(created_at__gte=start).count(),
+        "total_knowledge": Knowledge.objects.filter(created_at__gte=start).count(),
+        "open_cases": open_cases.count(),
+        "open_critical_cases": open_cases.filter(severity="Critical").count(),
+        "critical_high_alerts": window_alerts.filter(severity__in=IMPORTANT_LEVELS).count(),
+        "running_playbooks": playbook_status_counts.get(PlaybookJobStatus.RUNNING, 0),
+        "failed_playbooks": failed_playbooks,
+        "automation_success_rate": percentage(successful_playbooks, completed_playbooks),
+    }
+
+    coverage = {
+        "enrichment_coverage": percentage(cases_with_enrichments, total_cases),
+        "playbook_coverage": percentage(cases_with_playbooks, total_cases),
+        "knowledge_records": Knowledge.objects.filter(created_at__gte=start, source=KnowledgeSource.CASE).count(),
+        "artifact_records": summary["total_artifacts"],
+        "enrichment_records": summary["total_enrichments"],
+    }
+
+    automation = [
+        {"label": label, "value": playbook_status_counts.get(label, 0)}
+        for label in PLAYBOOK_STATUS_ORDER
+    ]
+
+    return {
+        "window": window,
+        "window_start": iso_datetime(start),
+        "generated_at": iso_datetime(generated_at),
+        "summary": summary,
+        "mean_times": build_mean_times(start),
+        "alert_trend": build_alert_trend(window, start, generated_at),
+        "severity_distribution": ordered_distribution(window_alerts, "severity", SEVERITY_ORDER),
+        "case_status_mix": ordered_distribution(workload_cases, "status", CASE_STATUS_ORDER),
+        "product_category_distribution": top_distribution(window_alerts, "product_category"),
+        "mitre_tactics": top_distribution(window_alerts, "tactic"),
+        "mitre_severity_heatmap": build_mitre_severity_heatmap(window_alerts),
+        "threat_keywords": build_threat_keywords(workload_cases, window_alerts),
+        "automation": automation,
+        "coverage": coverage,
+        "top_risk_artifacts": build_top_risk_artifacts(window_alerts),
+        "recent_highlights": build_recent_highlights(workload_cases, window_alerts),
+    }
+
+
+class DashboardOverviewView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        window = request.query_params.get("window", "7d")
+        if window not in WINDOW_DELTAS:
+            return Response(
+                {"window": [f"Unsupported window. Use one of: {', '.join(WINDOW_DELTAS)}."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(build_dashboard_overview(window))

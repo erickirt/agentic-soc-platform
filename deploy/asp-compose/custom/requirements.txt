@@ -1,0 +1,3 @@
+# Add Python packages required by custom Module or Playbook scripts.
+# Example:
+# requests==2.32.5

@@ -1,0 +1,142 @@
+x-asp-backend: &asp-backend
+  image: ${ASP_BACKEND_IMAGE}
+  env_file:
+    - .env
+  environment:
+    ASP_CUSTOM_DIR: /app/custom
+    PYTHONPATH: /opt/asp/custom-packages:/app/custom
+  volumes:
+    - ./custom:/app/custom
+    - ./scripts:/opt/asp/scripts:ro
+    - ./logs:/app/log
+    - custom-python-packages:/opt/asp/custom-packages
+    - static-files:/app/staticfiles
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis-stack:
+      condition: service_healthy
+    rustfs:
+      condition: service_started
+
+services:
+  asp-frontend:
+    image: ${ASP_FRONTEND_IMAGE}
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${ASP_BIND:-0.0.0.0}:${ASP_HTTPS_PORT:-443}:443"
+    volumes:
+      - static-files:/usr/share/nginx/backend-static:ro
+      - ./certs:/etc/nginx/certs
+    depends_on:
+      asp-web:
+        condition: service_healthy
+      asp-asgi:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-check-certificate -qO- https://localhost/ >/dev/null"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  asp-web:
+    <<: *asp-backend
+    restart: unless-stopped
+    command: ["gunicorn", "asp.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/api/health/ >/dev/null"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  asp-asgi:
+    <<: *asp-backend
+    restart: unless-stopped
+    command: ["uvicorn", "asp.asgi:application", "--host", "0.0.0.0", "--port", "8001"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8001/api/health/ >/dev/null"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  asp-worker-module:
+    <<: *asp-backend
+    restart: unless-stopped
+    command: ["python", "manage.py", "run_agentic_module_worker"]
+
+  asp-worker-case-analysis:
+    <<: *asp-backend
+    restart: unless-stopped
+    command: ["python", "manage.py", "run_agentic_case_analysis_worker"]
+
+  asp-worker-playbook:
+    <<: *asp-backend
+    restart: unless-stopped
+    command: ["python", "manage.py", "run_agentic_playbook_worker"]
+
+  asp-worker-elk-action:
+    <<: *asp-backend
+    restart: unless-stopped
+    command: ["python", "manage.py", "run_elk_action_worker"]
+
+  asp-migrate:
+    <<: *asp-backend
+    restart: "no"
+    entrypoint: ["/opt/asp/scripts/container-init.sh"]
+
+  asp-custom-deps:
+    <<: *asp-backend
+    restart: "no"
+    entrypoint: ["/opt/asp/scripts/install-custom-deps.sh"]
+    depends_on: []
+
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis-stack:
+    image: redis/redis-stack:latest
+    restart: unless-stopped
+    ports:
+      - "${ASP_MANAGEMENT_BIND:-0.0.0.0}:${ASP_REDIS_UI_PORT:-8001}:8001"
+    environment:
+      REDIS_ARGS: --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD} ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  rustfs:
+    image: rustfs/rustfs:latest
+    restart: unless-stopped
+    ports:
+      - "${ASP_MANAGEMENT_BIND:-0.0.0.0}:${ASP_RUSTFS_CONSOLE_PORT:-9001}:9001"
+    environment:
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY}
+      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY}
+    volumes:
+      - rustfs-data:/data
+
+volumes:
+  postgres-data:
+  redis-data:
+  rustfs-data:
+  custom-python-packages:
+  static-files:

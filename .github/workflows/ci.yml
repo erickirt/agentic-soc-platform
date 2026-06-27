@@ -1,0 +1,112 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: asp
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d asp"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DJANGO_SECRET_KEY: ci-secret-key
+      DJANGO_ALLOWED_HOSTS: "*"
+      POSTGRES_DB: asp
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_PORT: "5432"
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: "6379"
+      REDIS_DB: "1"
+      RUSTFS_ENDPOINT_URL: http://127.0.0.1:9000
+      RUSTFS_ACCESS_KEY: asp
+      RUSTFS_SECRET_KEY: ci-rustfs-secret
+      RUSTFS_BUCKET: asp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - run: uv run python manage.py check
+      - run: uv run python manage.py test
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec eslint .
+      - run: pnpm exec tsc -b
+      - run: pnpm build
+
+  compose-package:
+    name: Compose package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Render Compose config
+        working-directory: deploy/asp-compose
+        run: docker compose --env-file .env.example config --quiet
+      - name: Build package
+        run: ./deploy/package-asp-compose.sh --version 0.0.0-ci --output-dir dist-ci
+      - name: Validate package contents
+        run: |
+          archive_path="dist-ci/asp-compose-0.0.0-ci.tar.gz"
+          test -f "$archive_path"
+          rm -rf dist-ci/unpacked
+          mkdir -p dist-ci/unpacked
+          tar -xzf "$archive_path" -C dist-ci/unpacked
+          if find dist-ci/unpacked -type f | grep -E 'custom/(modules|playbooks)/.+\.py$|custom/data/(modules|siem|playbooks)/.+\.(json|ya?ml|md)$'; then
+            echo "Release custom template contains development samples." >&2
+            exit 1
+          fi

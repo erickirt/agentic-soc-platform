@@ -1,0 +1,306 @@
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/JetBrainsMono/JetBrainsMono-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/JetBrainsMono/JetBrainsMono-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/JetBrainsMono/JetBrainsMono-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  font-size: 14px;
+  line-height: 1.5715;
+  font-variant-numeric: tabular-nums;
+  background: #141414;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+.ant-input:-webkit-autofill,
+.ant-input:-webkit-autofill:hover,
+.ant-input:-webkit-autofill:focus,
+.ant-input:-webkit-autofill:active,
+.ant-input-affix-wrapper input:-webkit-autofill,
+.ant-input-affix-wrapper input:-webkit-autofill:hover,
+.ant-input-affix-wrapper input:-webkit-autofill:focus,
+.ant-input-affix-wrapper input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #141414 inset !important;
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.85) !important;
+  caret-color: rgba(255, 255, 255, 0.85);
+  transition: background-color 9999s ease-out, color 9999s ease-out;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-button {
+  display: none;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-track-piece,
+*::-webkit-scrollbar-track-piece:start,
+*::-webkit-scrollbar-track-piece:end {
+  background: transparent;
+  border: 0;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.28);
+  background-clip: content-box;
+  border: 2px solid transparent;
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.42);
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.ant-table .ant-table-body,
+.ant-table .ant-table-content {
+  scrollbar-width: none;
+}
+
+.ant-table .ant-table-body::-webkit-scrollbar,
+.ant-table .ant-table-content::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.ant-table .ant-table-body::-webkit-scrollbar-track,
+.ant-table .ant-table-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ant-table .ant-table-body::-webkit-scrollbar-thumb,
+.ant-table .ant-table-content::-webkit-scrollbar-thumb {
+  background: transparent;
+  border: 0;
+}
+
+.ant-table .ant-table-body::-webkit-scrollbar-thumb:hover,
+.ant-table .ant-table-content::-webkit-scrollbar-thumb:hover {
+  background: transparent;
+}
+
+
+
+
+.avatar-upload-trigger {
+  position: relative;
+  display: inline-flex;
+  cursor: pointer;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.avatar-upload-trigger-disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.avatar-upload-mask {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 20px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.avatar-upload-trigger:hover .avatar-upload-mask {
+  opacity: 1;
+}
+
+.personal-modal-tabs {
+  margin-top: -12px;
+}
+
+.personal-modal-tabs > .ant-tabs-nav {
+  padding-right: 40px;
+}
+
+.record-detail-modal {
+  max-width: none;
+  padding-bottom: 0;
+}
+
+.message-attachment-card-remove {
+  opacity: 0;
+}
+
+.message-attachment-card:hover .message-attachment-card-remove {
+  opacity: 1;
+}
+
+.system-settings-tabs,
+.system-settings-tabs .ant-tabs-content-holder,
+.system-settings-tabs .ant-tabs-content,
+.system-settings-tabs .ant-tabs-tabpane {
+  min-height: 0;
+  height: 100%;
+}
+
+.system-settings-tabs {
+  display: flex;
+  flex-direction: column;
+}
+
+.table-row-actions .ant-btn .anticon {
+  font-size: 16px;
+}
+
+.system-settings-tabs .ant-tabs-content-holder {
+  flex: 1;
+  overflow: hidden;
+}
+
+.asp-markdown-preview .w-md-editor-preview,
+.asp-markdown-preview .wmde-markdown,
+.asp-markdown-preview .wmde-markdown-var {
+  background: transparent !important;
+}
+
+.asp-markdown-preview .w-md-editor {
+  background: transparent !important;
+}
+
+.asp-markdown-preview .w-md-editor-content,
+.asp-markdown-preview .w-md-editor-area {
+  background: transparent !important;
+}
+
+.asp-markdown-preview .w-md-editor-preview,
+.asp-markdown-preview .wmde-markdown,
+.asp-markdown-preview .wmde-markdown-var {
+  background: transparent !important;
+}
+
+.asp-markdown-preview .wmde-markdown,
+.asp-markdown-preview .w-md-editor-preview .wmde-markdown {
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.asp-markdown-preview .wmde-markdown h1,
+.asp-markdown-preview .w-md-editor-preview .wmde-markdown h1 {
+  margin: 0.45em 0 0.35em;
+  padding-bottom: 0;
+  font-size: 18px;
+  line-height: 1.35;
+}
+
+.asp-markdown-preview .wmde-markdown h2,
+.asp-markdown-preview .w-md-editor-preview .wmde-markdown h2 {
+  margin: 0.45em 0 0.35em;
+  padding-bottom: 0;
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+.asp-markdown-preview .wmde-markdown h3,
+.asp-markdown-preview .w-md-editor-preview .wmde-markdown h3 {
+  margin: 0.4em 0 0.3em;
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.asp-markdown-preview .wmde-markdown h4,
+.asp-markdown-preview .wmde-markdown h5,
+.asp-markdown-preview .wmde-markdown h6,
+.asp-markdown-preview .w-md-editor-preview .wmde-markdown h4,
+.asp-markdown-preview .w-md-editor-preview .wmde-markdown h5,
+.asp-markdown-preview .w-md-editor-preview .wmde-markdown h6 {
+  margin: 0.35em 0 0.25em;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.asp-markdown-preview .wmde-markdown p,
+.asp-markdown-preview .wmde-markdown blockquote,
+.asp-markdown-preview .wmde-markdown ul,
+.asp-markdown-preview .wmde-markdown ol,
+.asp-markdown-preview .wmde-markdown dl,
+.asp-markdown-preview .wmde-markdown table,
+.asp-markdown-preview .wmde-markdown pre,
+.asp-markdown-preview .w-md-editor-preview .wmde-markdown p,
+.asp-markdown-preview .w-md-editor-preview .wmde-markdown blockquote,
+.asp-markdown-preview .w-md-editor-preview .wmde-markdown ul,
+.asp-markdown-preview .w-md-editor-preview .wmde-markdown ol,
+.asp-markdown-preview .w-md-editor-preview .wmde-markdown dl,
+.asp-markdown-preview .w-md-editor-preview .wmde-markdown table,
+.asp-markdown-preview .w-md-editor-preview .wmde-markdown pre {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+.asp-markdown-preview .wmde-markdown ul,
+.asp-markdown-preview .wmde-markdown ol,
+.asp-markdown-preview .w-md-editor-preview .wmde-markdown ul,
+.asp-markdown-preview .w-md-editor-preview .wmde-markdown ol {
+  padding-left: 1.4em;
+}
+
+.asp-markdown-preview .wmde-markdown blockquote,
+.asp-markdown-preview .w-md-editor-preview .wmde-markdown blockquote {
+  padding: 0 0 0 10px;
+}
+
+.asp-markdown-preview .wmde-markdown pre,
+.asp-markdown-preview .w-md-editor-preview .wmde-markdown pre {
+  padding: 10px;
+  font-size: 13px;
+}
+
+.asp-markdown-preview .wmde-markdown code,
+.asp-markdown-preview .w-md-editor-preview .wmde-markdown code {
+  font-size: 13px;
+}
+
+.asp-markdown-preview .wmde-markdown table th,
+.asp-markdown-preview .wmde-markdown table td,
+.asp-markdown-preview .w-md-editor-preview .wmde-markdown table th,
+.asp-markdown-preview .w-md-editor-preview .wmde-markdown table td {
+  padding: 4px 8px;
+}
+
+.asp-markdown-preview .wmde-markdown img,
+.asp-markdown-preview .w-md-editor-preview .wmde-markdown img {
+  max-width: 100%;
+  max-height: 360px;
+  object-fit: contain;
+}
