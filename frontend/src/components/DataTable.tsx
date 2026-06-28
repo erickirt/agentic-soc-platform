@@ -24,6 +24,7 @@ interface DataTableProps<RecordType extends Record<string, unknown> = Record<str
   searchPlaceholder?: string
   actions?: React.ReactNode
   rowActions?: (record: RecordType, defaults: { deleteAction: React.ReactNode }) => React.ReactNode
+  rowSelectionDisabled?: (record: RecordType) => boolean
   actionColumnWidth?: number
   dense?: boolean
   fillParent?: boolean
@@ -242,6 +243,7 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
   searchPlaceholder = 'Search...',
   actions,
   rowActions,
+  rowSelectionDisabled,
   actionColumnWidth = 96,
   dense = true,
   fillParent = false,
@@ -757,6 +759,7 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
         rowSelection={{
           selectedRowKeys,
           fixed: true,
+          getCheckboxProps: rowSelectionDisabled ? (record) => ({ disabled: rowSelectionDisabled(record) }) : undefined,
           onChange: (nextKeys, nextRows) => {
             setSelectedRowKeys(nextKeys)
             setSelectedRows(nextRows)
