@@ -8,7 +8,6 @@ from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.response import Response
 
 from apps.accounts.permissions import IsAdmin
-from apps.agentic.services.custom import refresh_custom_definitions
 from apps.audit.models import AuditLog
 from apps.common.advanced_filters import AdvancedFilterBackend
 from .models import (
@@ -389,20 +388,3 @@ class RuntimeConfigView(views.APIView):
         transaction.on_commit(lambda: invalidate("runtime"))
         return Response(RuntimeConfigSerializer(instance).data)
 
-
-class RuntimeCustomDefinitionsRefreshView(views.APIView):
-    permission_classes = [permissions.IsAuthenticated, IsAdmin]
-
-    def post(self, request):
-        result = refresh_custom_definitions()
-        instance = RuntimeConfig.get_current()
-        _write_audit(
-            instance,
-            "refresh",
-            request.user,
-            metadata={
-                "success": result["success"],
-                "counts": result["counts"],
-            },
-        )
-        return Response(result, status=status.HTTP_200_OK)

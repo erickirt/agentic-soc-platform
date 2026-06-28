@@ -1,12 +1,18 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
+from .custom_views import (
+    CustomDefinitionsModuleView,
+    CustomDefinitionsPlaybookView,
+    CustomDefinitionsSiemView,
+    CustomModuleStreamMessageView,
+    CustomModuleStreamMessagesView,
+)
 from .views import (
     LLMProviderConfigViewSet,
     LdapConfigView,
     LdapTestView,
     RuntimeConfigView,
-    RuntimeCustomDefinitionsRefreshView,
     SiemElkConfigView,
     SiemElkTestView,
     SiemSplunkConfigView,
@@ -29,6 +35,10 @@ urlpatterns = [
     path("settings/ldap/", LdapConfigView.as_view(), name="ldap-config"),
     path("settings/ldap/test/", LdapTestView.as_view(), name="ldap-test"),
     path("settings/runtime/", RuntimeConfigView.as_view(), name="runtime-config"),
-    path("settings/runtime/custom-definitions/refresh/", RuntimeCustomDefinitionsRefreshView.as_view(), name="runtime-custom-definitions-refresh"),
+    path("custom/modules/", CustomDefinitionsModuleView.as_view(), name="custom-definitions-modules"),
+    path("custom/modules/stream/messages/", CustomModuleStreamMessagesView.as_view(), name="custom-module-stream-messages"),
+    path("custom/modules/stream/message/", CustomModuleStreamMessageView.as_view(), name="custom-module-stream-message"),
+    path("custom/playbooks/", CustomDefinitionsPlaybookView.as_view(), name="custom-definitions-playbooks"),
+    path("custom/siem/", CustomDefinitionsSiemView.as_view(), name="custom-definitions-siem"),
     path("settings/", include(router.urls)),
 ]

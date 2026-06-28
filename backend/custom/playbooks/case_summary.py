@@ -13,7 +13,6 @@ class Playbook(BasePlaybook):
     DESC = "Generate a concise analyst-facing summary for the linked Case."
     TAGS = ["Custom", "LLM", "Case"]
     PROMPT_SLUG = "case_summary"
-    REQUIRED_PROMPTS = ["System"]
 
     def run(self):
         if self.case is None:
