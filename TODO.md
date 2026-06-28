@@ -1,7 +1,5 @@
 # SMALL
 
-alert 在message的link不是alert_id 而是id
-
 case 取audit log时过滤掉ai相关字段
 
 Expires At 应该placeholder应该加入为空时不过期
