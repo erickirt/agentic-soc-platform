@@ -2,6 +2,7 @@
 
 - 除非用户明确说明,否则不允许运行superpower相关skill
 - 如 superpower:writing-plan skill禁用,则根据spec直接进行代码实现,除非用户明确要求,实现feature过程中不要生成测试代码
+- TODO.md文件是用户手动编辑的,commit时不用处理也不用额外说明.
 
 ### 后端规则
 

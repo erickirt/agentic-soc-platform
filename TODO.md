@@ -1,15 +1,5 @@
 # SMALL
 
-case 取audit log时过滤掉ai相关字段
-
-Expires At 应该placeholder应该加入为空时不过期
-
-admin不允许删除自己的账户
-
-缺少覆盖规则：环境变量 AGENTIC_PROMPT_LANGUAGE 可以覆盖数据库中的 Prompt Language；WEBHOOK_REDIS_STREAM_MAXLEN 可以覆盖数据库中的 Stream Maxlen
-
-agentic_runtime 改为 runtime
-
 # Big
 
 当前module和playbook的状态
