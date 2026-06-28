@@ -1,10 +1,9 @@
-from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
 from django.utils import timezone
 
-from apps.agentic.analysis.knowledge import KnowledgeContext, build_knowledge_context
+from apps.agentic.analysis.knowledge import build_knowledge_context
 from apps.agentic.analysis.profiles import AI_PROFILE_VERSION, serialize_case_for_investigation
 from apps.agentic.analysis.prompts import INVESTIGATION_SYSTEM_PROMPT, invoke_structured_llm
 from apps.agentic.analysis.schemas import AnalysisRecord, InvestigationReport
@@ -42,28 +41,22 @@ def _source_identity(source):
 
 @dataclass(frozen=True)
 class CaseAnalysisRunner:
-    serialize_case: Callable[[Any], dict] = serialize_case_for_investigation
-    build_knowledge_context: Callable[[dict], KnowledgeContext] = build_knowledge_context
-    generate_report: Callable[[dict], InvestigationReport] = generate_investigation_report
-    save_record: Callable[..., Any] = save_case_analysis_record
-    now: Callable[[], Any] = timezone.now
-
     def run(self, request: CaseAnalysisRequest):
-        case_payload = self.serialize_case(request.case)
-        knowledge_context = self.build_knowledge_context(case_payload)
+        case_payload = serialize_case_for_investigation(request.case)
+        knowledge_context = build_knowledge_context(case_payload)
         analysis_input = self._build_analysis_input(
             case_payload=case_payload,
             knowledge_context=knowledge_context,
             user_input=request.user_input,
         )
 
-        report = self.generate_report(analysis_input)
+        report = generate_investigation_report(analysis_input)
         record = self._build_analysis_record(
             request=request,
             knowledge_context=knowledge_context,
             report=report,
         )
-        self.save_record(case=request.case, record=record)
+        save_case_analysis_record(case=request.case, record=record)
         return AnalysisResult(report=report, analysis_record=record.model_dump())
 
     def _build_analysis_input(self, *, case_payload, knowledge_context, user_input):
@@ -82,7 +75,7 @@ class CaseAnalysisRunner:
             source_type=source_type,
             source_id=source_id,
             profile_version=AI_PROFILE_VERSION,
-            generated_at=self.now().isoformat(),
+            generated_at=timezone.now().isoformat(),
             knowledge_keywords=knowledge_context.keywords,
             knowledge_records=knowledge_context.records,
             report=report,

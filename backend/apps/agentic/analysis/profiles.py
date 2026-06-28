@@ -12,6 +12,14 @@ AI_PROFILE_INVESTIGATION = "investigation"
 AI_PROFILE_MCP = "mcp"
 AI_PROFILE_VERSION = "2026-06-20"
 AUDIT_LOG_LIMIT = 100
+CASE_AI_AUDIT_FIELDS = {
+    "severity_ai",
+    "confidence_ai",
+    "impact_ai",
+    "priority_ai",
+    "verdict_ai",
+    "investigation_report_ai_json",
+}
 
 AI_FIELD_PROFILES = {
     "cases.Case": {
@@ -295,11 +303,31 @@ def _serialize_audit_logs(obj, profile):
     return [_serialize_audit_log(log) for log in _audit_logs_for(obj)]
 
 
+def _serialize_case_audit_log(log):
+    data = _serialize_audit_log(log)
+    data["changes"] = {
+        field_name: change
+        for field_name, change in data["changes"].items()
+        if field_name not in CASE_AI_AUDIT_FIELDS
+    }
+    return data
+
+
+def _serialize_case_audit_logs(obj, profile):
+    audit_logs = []
+    for log in _audit_logs_for(obj):
+        serialized_log = _serialize_case_audit_log(log)
+        if log.action == "update" and not serialized_log["changes"] and not serialized_log["metadata"]:
+            continue
+        audit_logs.append(serialized_log)
+    return audit_logs
+
+
 AI_RELATION_FIELD_SERIALIZERS = {
     ("cases.Case", "alerts"): _serialize_case_alerts,
     ("cases.Case", "enrichments"): _serialize_enrichments,
     ("cases.Case", "comments"): _serialize_comments,
-    ("cases.Case", "audit_logs"): _serialize_audit_logs,
+    ("cases.Case", "audit_logs"): _serialize_case_audit_logs,
     ("alerts.Alert", "artifacts"): _serialize_artifacts,
     ("alerts.Alert", "enrichments"): _serialize_enrichments,
     ("artifacts.Artifact", "enrichments"): _serialize_enrichments,
