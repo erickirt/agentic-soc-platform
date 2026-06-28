@@ -144,6 +144,7 @@ export default function KnowledgeCreateModal({ open, onCancel, onCreated }: Know
                 showTime
                 allowClear
                 variant="underlined"
+                placeholder="Leave empty to never expire"
                 style={fieldControlStyle}
               />
             </Form.Item>

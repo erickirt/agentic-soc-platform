@@ -314,7 +314,7 @@ export default function PersonalCenterModal({ open, onClose }: PersonalCenterMod
       <Modal title="Create API Key" open={apiKeyModalOpen} onOk={createApiKey} onCancel={() => setApiKeyModalOpen(false)} destroyOnClose>
         <Form form={apiKeyForm} layout="vertical">
           <Form.Item name="name" label="Name" rules={[{ required: true }]}><Input /></Form.Item>
-          <Form.Item name="expires_at" label="Expires At"><DatePicker showTime style={{ width: '100%' }} /></Form.Item>
+          <Form.Item name="expires_at" label="Expires At"><DatePicker showTime placeholder="Leave empty to never expire" style={{ width: '100%' }} /></Form.Item>
         </Form>
       </Modal>
     </>
