@@ -1,9 +1,9 @@
 from rest_framework import serializers
 
 from .models import (
-    AgenticRuntimeConfig,
     LdapConfig,
     LLMProviderConfig,
+    RuntimeConfig,
     SiemElkConfig,
     SiemSplunkConfig,
     ThreatIntelAlienVaultOTXConfig,
@@ -345,9 +345,9 @@ class LdapConfigSerializer(serializers.ModelSerializer):
         return data
 
 
-class AgenticRuntimeConfigSerializer(serializers.ModelSerializer):
+class RuntimeConfigSerializer(serializers.ModelSerializer):
     class Meta:
-        model = AgenticRuntimeConfig
+        model = RuntimeConfig
         fields = (
             "prompt_language",
             "stream_maxlen",

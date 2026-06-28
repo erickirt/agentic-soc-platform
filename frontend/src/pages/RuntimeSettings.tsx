@@ -3,7 +3,7 @@ import {Alert, Button, Card, Col, Divider, Form, InputNumber, List, message, Row
 import {QuestionCircleOutlined} from '@ant-design/icons'
 import client from '../api/client'
 
-interface AgenticRuntimeConfig {
+interface RuntimeConfig {
   prompt_language: 'en' | 'zh'
   stream_maxlen: number
   updated_at?: string
@@ -46,7 +46,7 @@ interface CustomDefinitionRefreshResult {
   prompts: CustomDefinitionSection
 }
 
-function initialValues(): AgenticRuntimeConfig {
+function initialValues(): RuntimeConfig {
   return {
     prompt_language: 'en',
     stream_maxlen: 10000,
@@ -115,8 +115,8 @@ function CustomDefinitionSectionView({ title, section }: { title: string; sectio
   )
 }
 
-export default function AgenticRuntimeSettings() {
-  const [form] = Form.useForm<AgenticRuntimeConfig>()
+export default function RuntimeSettings() {
+  const [form] = Form.useForm<RuntimeConfig>()
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [refreshingDefinitions, setRefreshingDefinitions] = useState(false)
@@ -125,7 +125,7 @@ export default function AgenticRuntimeSettings() {
   const loadConfig = useCallback(async () => {
     setLoading(true)
     try {
-      const { data } = await client.get<AgenticRuntimeConfig>('/settings/agentic-runtime/')
+      const { data } = await client.get<RuntimeConfig>('/settings/runtime/')
       form.setFieldsValue({ ...initialValues(), ...data })
     } catch (error: unknown) {
       message.error(apiErrorMessage(error, 'Failed to load Runtime configuration'))
@@ -143,7 +143,7 @@ export default function AgenticRuntimeSettings() {
     setSaving(true)
     try {
       const values = await form.validateFields()
-      const { data } = await client.patch<AgenticRuntimeConfig>('/settings/agentic-runtime/', values)
+      const { data } = await client.patch<RuntimeConfig>('/settings/runtime/', values)
       form.setFieldsValue({ ...initialValues(), ...data })
       message.success('Runtime configuration saved')
     } catch (error: unknown) {
@@ -156,7 +156,7 @@ export default function AgenticRuntimeSettings() {
   const refreshDefinitions = async () => {
     setRefreshingDefinitions(true)
     try {
-      const { data } = await client.post<CustomDefinitionRefreshResult>('/settings/agentic-runtime/custom-definitions/refresh/')
+      const { data } = await client.post<CustomDefinitionRefreshResult>('/settings/runtime/custom-definitions/refresh/')
       setDefinitionResult(data)
       if (data.success) {
         message.success('Custom definitions refreshed')

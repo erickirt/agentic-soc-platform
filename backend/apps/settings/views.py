@@ -12,9 +12,9 @@ from apps.agentic.services.custom import refresh_custom_definitions
 from apps.audit.models import AuditLog
 from apps.common.advanced_filters import AdvancedFilterBackend
 from .models import (
-    AgenticRuntimeConfig,
     LdapConfig,
     LLMProviderConfig,
+    RuntimeConfig,
     SiemElkConfig,
     SiemSplunkConfig,
     ThreatIntelAlienVaultOTXConfig,
@@ -22,10 +22,10 @@ from .models import (
 from .runtime_config import invalidate
 from .serializers import (
     LLMProviderConfigSerializer,
-    AgenticRuntimeConfigSerializer,
     LdapConfigSerializer,
     SiemElkConfigSerializer,
     SiemSplunkConfigSerializer,
+    RuntimeConfigSerializer,
     ThreatIntelAlienVaultOTXConfigSerializer,
 )
 from .services import test_alienvault_otx_config, test_elk_config, test_llm_provider, test_splunk_config
@@ -52,7 +52,7 @@ LDAP_AUDIT_FIELDS = (
     "user_search_base_dn",
     "user_login_attr",
 )
-AGENTIC_RUNTIME_AUDIT_FIELDS = (
+RUNTIME_AUDIT_FIELDS = (
     "prompt_language",
     "stream_maxlen",
 )
@@ -369,33 +369,33 @@ class LdapTestView(views.APIView):
         return Response(result, status=status.HTTP_200_OK)
 
 
-class AgenticRuntimeConfigView(views.APIView):
+class RuntimeConfigView(views.APIView):
     permission_classes = [permissions.IsAuthenticated, IsAdmin]
 
     def get(self, request):
-        instance = AgenticRuntimeConfig.get_current()
-        return Response(AgenticRuntimeConfigSerializer(instance).data)
+        instance = RuntimeConfig.get_current()
+        return Response(RuntimeConfigSerializer(instance).data)
 
     @transaction.atomic
     def patch(self, request):
-        instance = AgenticRuntimeConfig.get_current()
-        before = _snapshot(instance, AGENTIC_RUNTIME_AUDIT_FIELDS)
-        serializer = AgenticRuntimeConfigSerializer(instance, data=request.data, partial=True)
+        instance = RuntimeConfig.get_current()
+        before = _snapshot(instance, RUNTIME_AUDIT_FIELDS)
+        serializer = RuntimeConfigSerializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         instance = serializer.save()
-        changes = _audit_changes(before, _snapshot(instance, AGENTIC_RUNTIME_AUDIT_FIELDS), set())
+        changes = _audit_changes(before, _snapshot(instance, RUNTIME_AUDIT_FIELDS), set())
         if changes:
             _write_audit(instance, "update", request.user, changes=changes)
-        transaction.on_commit(lambda: invalidate("agentic_runtime"))
-        return Response(AgenticRuntimeConfigSerializer(instance).data)
+        transaction.on_commit(lambda: invalidate("runtime"))
+        return Response(RuntimeConfigSerializer(instance).data)
 
 
-class AgenticRuntimeCustomDefinitionsRefreshView(views.APIView):
+class RuntimeCustomDefinitionsRefreshView(views.APIView):
     permission_classes = [permissions.IsAuthenticated, IsAdmin]
 
     def post(self, request):
         result = refresh_custom_definitions()
-        instance = AgenticRuntimeConfig.get_current()
+        instance = RuntimeConfig.get_current()
         _write_audit(
             instance,
             "refresh",

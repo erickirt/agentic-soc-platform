@@ -81,10 +81,10 @@ def get_ldap_config():
 
 
 @lru_cache(maxsize=1)
-def get_agentic_runtime_config():
-    from .models import AgenticRuntimeConfig
+def get_runtime_config():
+    from .models import RuntimeConfig
 
-    config = AgenticRuntimeConfig.get_current()
+    config = RuntimeConfig.get_current()
     return {
         "prompt_language": config.prompt_language,
         "stream_maxlen": config.stream_maxlen,
@@ -97,7 +97,7 @@ def get_prompt_language():
     override = getattr(settings, "AGENTIC_PROMPT_LANGUAGE", None)
     if override:
         return str(override).strip().lower()
-    return get_agentic_runtime_config()["prompt_language"]
+    return get_runtime_config()["prompt_language"]
 
 
 def get_stream_maxlen():
@@ -107,7 +107,7 @@ def get_stream_maxlen():
     if override is not None:
         return int(override)
     try:
-        return get_agentic_runtime_config()["stream_maxlen"]
+        return get_runtime_config()["stream_maxlen"]
     except Exception as exc:
         if exc.__class__.__name__ == "DatabaseOperationForbidden":
             return 10000
@@ -125,5 +125,5 @@ def invalidate(group=None):
         get_elk_config.cache_clear()
     if group in {None, "ldap"}:
         get_ldap_config.cache_clear()
-    if group in {None, "agentic_runtime"}:
-        get_agentic_runtime_config.cache_clear()
+    if group in {None, "runtime"}:
+        get_runtime_config.cache_clear()

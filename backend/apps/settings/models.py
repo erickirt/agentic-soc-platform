@@ -118,7 +118,7 @@ class LdapConfig(models.Model):
         return instance
 
 
-class AgenticRuntimeConfig(models.Model):
+class RuntimeConfig(models.Model):
     singleton_id = models.PositiveSmallIntegerField(default=1, unique=True, editable=False)
     prompt_language = models.CharField(max_length=10, default="en")
     stream_maxlen = models.PositiveIntegerField(default=10000)
@@ -126,10 +126,10 @@ class AgenticRuntimeConfig(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = "setting_agentic_runtime_config"
+        db_table = "setting_runtime_config"
 
     def __str__(self):
-        return "Agentic Runtime"
+        return "Runtime"
 
     @classmethod
     def get_current(cls):

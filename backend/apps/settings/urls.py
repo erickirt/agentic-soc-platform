@@ -3,10 +3,10 @@ from rest_framework.routers import DefaultRouter
 
 from .views import (
     LLMProviderConfigViewSet,
-    AgenticRuntimeConfigView,
-    AgenticRuntimeCustomDefinitionsRefreshView,
     LdapConfigView,
     LdapTestView,
+    RuntimeConfigView,
+    RuntimeCustomDefinitionsRefreshView,
     SiemElkConfigView,
     SiemElkTestView,
     SiemSplunkConfigView,
@@ -28,7 +28,7 @@ urlpatterns = [
     path("settings/siem/elk/test/", SiemElkTestView.as_view(), name="siem-elk-test"),
     path("settings/ldap/", LdapConfigView.as_view(), name="ldap-config"),
     path("settings/ldap/test/", LdapTestView.as_view(), name="ldap-test"),
-    path("settings/agentic-runtime/", AgenticRuntimeConfigView.as_view(), name="agentic-runtime-config"),
-    path("settings/agentic-runtime/custom-definitions/refresh/", AgenticRuntimeCustomDefinitionsRefreshView.as_view(), name="agentic-runtime-custom-definitions-refresh"),
+    path("settings/runtime/", RuntimeConfigView.as_view(), name="runtime-config"),
+    path("settings/runtime/custom-definitions/refresh/", RuntimeCustomDefinitionsRefreshView.as_view(), name="runtime-custom-definitions-refresh"),
     path("settings/", include(router.urls)),
 ]

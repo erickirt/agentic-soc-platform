@@ -1,8 +1,8 @@
 import {Tabs} from 'antd'
 import {Bot, DatabaseZap, Network, Radar, SlidersHorizontal, UsersRound} from 'lucide-react'
-import AgenticRuntimeSettings from './AgenticRuntimeSettings'
 import LDAPSettings from './LDAPSettings'
 import LLMProviderSettings from './LLMProviderSettings'
+import RuntimeSettings from './RuntimeSettings'
 import SIEMSettings from './SIEMSettings'
 import ThreatIntelligenceSettings from './ThreatIntelligenceSettings'
 import UserManagement from './UserManagement'
@@ -40,9 +40,9 @@ export default function SystemSettings() {
             children: <LDAPSettings />,
           },
           {
-            key: 'agentic-runtime',
+            key: 'runtime',
             label: <IconTabLabel icon={SlidersHorizontal}>Runtime</IconTabLabel>,
-            children: <AgenticRuntimeSettings />,
+            children: <RuntimeSettings />,
           },
         ]}
         style={{ flex: 1, minHeight: 0 }}
