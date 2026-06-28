@@ -1,5 +1,7 @@
 # ASP Docker Compose Deployment
 
+Chinese version: [README.zh.md](README.zh.md)
+
 This package deploys ASP on a single host with Docker Compose.
 
 ## First deployment
@@ -104,10 +106,72 @@ logs/elk-action-worker.log
 
 Container stdout and stderr are still available through `docker compose logs`.
 
+## Operations
+
+Check service status and run deployment diagnostics:
+
+```bash
+docker compose ps
+./scripts/doctor.sh
+```
+
+Restart all services:
+
+```bash
+docker compose restart
+```
+
+Restart only the Web/API entrypoints:
+
+```bash
+docker compose restart asp-frontend asp-web asp-asgi
+```
+
+Restart only background workers:
+
+```bash
+docker compose restart asp-worker-module asp-worker-case-analysis asp-worker-playbook asp-worker-elk-action
+```
+
+After changing `.env`, `compose.yaml`, or port mappings, run:
+
+```bash
+docker compose up -d
+```
+
+Stop containers while keeping Docker volumes:
+
+```bash
+docker compose stop
+```
+
+Do not run `docker compose down -v` in production unless you explicitly want to delete PostgreSQL, Redis, and RustFS Docker volumes.
+
 ## Upgrade
 
-Back up PostgreSQL, RustFS data, `.env`, and `custom/`, then replace this package or update image tags and run:
+Before upgrading, back up at least `.env`, `custom/`, `certs/`, and PostgreSQL data:
+
+```bash
+mkdir -p backups
+set -a
+. ./.env
+set +a
+
+tar -czf "backups/asp-config-$(date +%Y%m%d%H%M%S).tar.gz" .env custom certs
+docker compose exec -T postgres pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" > "backups/postgres-$(date +%Y%m%d%H%M%S).sql"
+```
+
+Replace `compose.yaml`, `scripts/`, and `.env.example` from the new release package, then update the image tags in your existing `.env`:
+
+```text
+ASP_BACKEND_IMAGE=ghcr.io/funnywolf/agentic-soc-platform/asp-backend:<version>
+ASP_FRONTEND_IMAGE=ghcr.io/funnywolf/agentic-soc-platform/asp-frontend:<version>
+```
+
+Run the upgrade:
 
 ```bash
 ./scripts/upgrade.sh
 ```
+
+`upgrade.sh` pulls images, runs database migrations, starts services, and executes `./scripts/doctor.sh`.
