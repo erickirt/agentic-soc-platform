@@ -2,7 +2,7 @@ from pathlib import Path
 
 from django.conf import settings
 
-from apps.agentic.runtime.module_engine import scan_module_definitions
+from apps.agentic.runtime.module import scan_module_definitions
 from apps.agentic.services.playbooks import scan_playbook_definitions
 from integrations.siem.registry import reload_registry, scan_registry_configs
 

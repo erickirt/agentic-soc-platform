@@ -8,7 +8,7 @@ from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.response import Response
 
 from apps.accounts.permissions import IsAdmin
-from apps.agentic.services.custom_scripts import refresh_custom_definitions
+from apps.agentic.services.custom import refresh_custom_definitions
 from apps.audit.models import AuditLog
 from apps.common.advanced_filters import AdvancedFilterBackend
 from .models import (
@@ -29,7 +29,6 @@ from .serializers import (
     ThreatIntelAlienVaultOTXConfigSerializer,
 )
 from .services import test_alienvault_otx_config, test_elk_config, test_llm_provider, test_splunk_config
-
 
 LLM_AUDIT_FIELDS = ("name", "base_url", "model", "proxy", "tags", "enabled", "priority", "api_key")
 OTX_AUDIT_FIELDS = ("enabled", "api_key", "base_url", "proxy", "timeout_seconds")
