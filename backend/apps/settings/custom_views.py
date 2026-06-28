@@ -1,3 +1,5 @@
+import logging
+
 import redis
 from django.contrib.contenttypes.models import ContentType
 from rest_framework import permissions, status, views
@@ -15,6 +17,9 @@ from apps.agentic.services.custom import (
 )
 from apps.audit.models import AuditLog
 from .models import RuntimeConfig
+
+
+logger = logging.getLogger(__name__)
 
 
 def _audit_refresh(section, request, result):
@@ -85,6 +90,11 @@ def _stream_limit(request):
         return None, Response({"limit": ["Limit must be an integer."]}, status=status.HTTP_400_BAD_REQUEST)
 
 
+def _redis_unavailable_response(action):
+    logger.exception("Failed to %s", action)
+    return Response({"detail": "Runtime stream service is unavailable."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+
 class CustomModuleStreamMessagesView(views.APIView):
     permission_classes = [permissions.IsAuthenticated, IsAdmin]
 
@@ -97,8 +107,8 @@ class CustomModuleStreamMessagesView(views.APIView):
             return error
         try:
             result = read_module_stream_recent(stream_name, limit)
-        except redis.RedisError as exc:
-            return Response({"detail": f"{type(exc).__name__}: {exc}"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        except redis.RedisError:
+            return _redis_unavailable_response("read module stream messages")
         return Response(result, status=status.HTTP_200_OK)
 
 
@@ -114,6 +124,6 @@ class CustomModuleStreamMessageView(views.APIView):
             return Response({"message_id": ["This query parameter is required."]}, status=status.HTTP_400_BAD_REQUEST)
         try:
             result = read_module_stream_message(stream_name, message_id)
-        except redis.RedisError as exc:
-            return Response({"detail": f"{type(exc).__name__}: {exc}"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        except redis.RedisError:
+            return _redis_unavailable_response("read module stream message")
         return Response(result, status=status.HTTP_200_OK)
