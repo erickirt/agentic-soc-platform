@@ -15,5 +15,6 @@ urlpatterns = [
     path("api/", include("apps.attachments.urls")),
     path("api/", include("apps.audit.urls")),
     path("api/", include("apps.inbox.urls")),
+    path("api/", include("apps.preferences.urls")),
     path("api/", include("apps.webhook.urls")),
 ]

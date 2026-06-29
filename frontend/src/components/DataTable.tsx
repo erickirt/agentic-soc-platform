@@ -7,6 +7,7 @@ import {arrayMove, SortableContext, useSortable, verticalListSortingStrategy} fr
 import {CSS} from '@dnd-kit/utilities'
 import type {ColumnsType, TableProps} from 'antd/es/table'
 import client from '../api/client'
+import {fetchTablePreference, updateTablePreference, type ColumnSettings as SavedColumnSettings} from '../api/preferences'
 import type {AdvancedFilterCondition, AdvancedFilterFieldConfig, OpenResourceOptions, ResourceColumn, ResourceFilterConfig, ResourceMetadata, TableFilterState} from '../types/records'
 import TableFilterModal, {TABLE_FILTER_MODAL_WIDTH} from './TableFilterModal'
 
@@ -38,10 +39,6 @@ const MIN_TABLE_BODY_HEIGHT = 160
 const DEFAULT_COLUMN_WIDTH = 160
 const ROW_SELECTION_COLUMN_WIDTH = 48
 const tableDataRequests = new Map<string, Promise<unknown>>()
-
-function storageKey(tableKey: string, suffix: string) {
-  return `asp:${tableKey}:${suffix}`
-}
 
 function tableRequestKey(endpoint: string, params: Record<string, string | number | boolean | undefined>) {
   const query = Object.entries(params)
@@ -79,11 +76,6 @@ function fetchTableData(endpoint: string, params: Record<string, string | number
 
   tableDataRequests.set(key, request)
   return request
-}
-
-function readNumber(key: string, fallback: number) {
-  const value = Number(localStorage.getItem(key))
-  return PAGE_SIZE_OPTIONS.includes(value) ? value : fallback
 }
 
 function emptyFilterState(): TableFilterState {
@@ -126,43 +118,7 @@ function normalizeColumnOrder(order: string[] | undefined, columns: Record<strin
   return [...validOrder, ...keys.filter((key) => !validOrder.includes(key))]
 }
 
-function saveColumnSettings(tableKey: string, visible: Set<string>, order: string[]) {
-  localStorage.setItem(storageKey(tableKey, 'columnSettings'), JSON.stringify({
-    visible: [...visible],
-    order,
-  }))
-}
-
-function readColumnSettings(tableKey: string, columns: Record<string, unknown>[]): ColumnSettings {
-  const lockedKeys = columns
-    .filter(isLockedColumn)
-    .map((column) => String(column.key))
-  const savedSettings = localStorage.getItem(storageKey(tableKey, 'columnSettings'))
-  if (savedSettings) {
-    try {
-      const parsed = JSON.parse(savedSettings) as { visible?: string[]; order?: string[] }
-      const keys = columns.map((column) => String(column.key))
-      return {
-        visible: new Set([...(parsed.visible || []).filter((key) => keys.includes(key)), ...lockedKeys]),
-        order: normalizeColumnOrder(parsed.order, columns),
-      }
-    } catch {
-      localStorage.removeItem(storageKey(tableKey, 'columnSettings'))
-    }
-  }
-
-  const saved = localStorage.getItem(storageKey(tableKey, 'columns'))
-  if (saved) {
-    try {
-      const keys = columns.map((column) => String(column.key))
-      return {
-        visible: new Set([...(JSON.parse(saved) as string[]).filter((key) => keys.includes(key)), ...lockedKeys]),
-        order: normalizeColumnOrder(undefined, columns),
-      }
-    } catch {
-      localStorage.removeItem(storageKey(tableKey, 'columns'))
-    }
-  }
+function defaultColumnSettings(columns: Record<string, unknown>[]): ColumnSettings {
   return {
     visible: new Set(
       columns
@@ -171,6 +127,20 @@ function readColumnSettings(tableKey: string, columns: Record<string, unknown>[]
     ),
     order: normalizeColumnOrder(undefined, columns),
   }
+}
+
+function resolveColumnSettings(savedSettings: SavedColumnSettings | null | undefined, columns: Record<string, unknown>[]): ColumnSettings {
+  const lockedKeys = columns
+    .filter(isLockedColumn)
+    .map((column) => String(column.key))
+  if (savedSettings) {
+    const keys = columns.map((column) => String(column.key))
+    return {
+      visible: new Set([...(savedSettings.visible || []).filter((key) => keys.includes(key)), ...lockedKeys]),
+      order: normalizeColumnOrder(savedSettings.order, columns),
+    }
+  }
+  return defaultColumnSettings(columns)
 }
 
 function SortableColumnSetting({
@@ -259,15 +229,12 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
     })),
     [columns],
   )
-  const initialColumnSettings = useMemo(
-    () => readColumnSettings(resolvedTableKey, normalizedColumns),
-    [resolvedTableKey, normalizedColumns],
-  )
+  const initialColumnSettings = useMemo(() => defaultColumnSettings(normalizedColumns), [normalizedColumns])
   const [data, setData] = useState<RecordType[]>([])
   const [loading, setLoading] = useState(false)
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(() => readNumber(storageKey(resolvedTableKey, 'pageSize'), 20))
+  const [pageSize, setPageSize] = useState(20)
   const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
   const [ordering, setOrdering] = useState('')
@@ -281,6 +248,7 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
   const [columnOrder, setColumnOrder] = useState(initialColumnSettings.order)
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([])
   const [selectedRows, setSelectedRows] = useState<RecordType[]>([])
+  const [loadedPreferenceKey, setLoadedPreferenceKey] = useState<string | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const toolbarRef = useRef<HTMLDivElement>(null)
   const filterButtonRef = useRef<HTMLButtonElement>(null)
@@ -289,6 +257,11 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
   const [tableBodyHeight, setTableBodyHeight] = useState(520)
   const baseParamsKey = useMemo(() => stableParamsKey(baseParams), [baseParams])
   const stableBaseParams = useMemo(() => paramsFromKey(baseParamsKey), [baseParamsKey])
+  const preferenceScopeKey = useMemo(
+    () => `${resolvedTableKey}:${normalizedColumns.map((column) => String(column.key)).join('|')}`,
+    [normalizedColumns, resolvedTableKey],
+  )
+  const preferencesLoaded = loadedPreferenceKey === preferenceScopeKey
 
   useEffect(() => {
     mountedRef.current = true
@@ -299,10 +272,31 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
   }, [])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setVisibleColumns(initialColumnSettings.visible)
-    setColumnOrder(initialColumnSettings.order)
-  }, [initialColumnSettings])
+    let active = true
+    fetchTablePreference(resolvedTableKey)
+      .then((preference) => {
+        if (!active) return
+        const nextColumnSettings = resolveColumnSettings(preference.column_settings, normalizedColumns)
+        setVisibleColumns(nextColumnSettings.visible)
+        setColumnOrder(nextColumnSettings.order)
+        setPageSize(preference.page_size && PAGE_SIZE_OPTIONS.includes(preference.page_size) ? preference.page_size : 20)
+        setPage(1)
+        setLoadedPreferenceKey(preferenceScopeKey)
+      })
+      .catch(() => {
+        if (!active) return
+        setVisibleColumns(initialColumnSettings.visible)
+        setColumnOrder(initialColumnSettings.order)
+        setPageSize(20)
+        setPage(1)
+        setLoadedPreferenceKey(preferenceScopeKey)
+        message.error('Failed to load table preferences')
+      })
+
+    return () => {
+      active = false
+    }
+  }, [initialColumnSettings, normalizedColumns, preferenceScopeKey, resolvedTableKey])
 
   const fetchData = useCallback(async () => {
     const requestId = requestIdRef.current + 1
@@ -339,9 +333,10 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
   }, [endpoint, filterState, ordering, page, pageSize, search, stableBaseParams])
 
   useEffect(() => {
+    if (!preferencesLoaded) return
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData()
-  }, [fetchData, refreshToken])
+  }, [fetchData, preferencesLoaded, refreshToken])
 
   useEffect(() => {
     if (!filters?.some((filter) => filter.valueType === 'user')) return
@@ -536,7 +531,9 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
     if (next.has(key)) next.delete(key)
     else next.add(key)
     setVisibleColumns(next)
-    saveColumnSettings(resolvedTableKey, next, columnOrder)
+    updateTablePreference(resolvedTableKey, {
+      column_settings: { visible: [...next], order: columnOrder },
+    }).catch(() => message.error('Failed to save table preferences'))
   }
 
   const sensors = useSensors(useSensor(PointerSensor, {
@@ -550,7 +547,9 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
     if (oldIndex === -1 || newIndex === -1) return
     const next = arrayMove(columnOrder, oldIndex, newIndex)
     setColumnOrder(next)
-    saveColumnSettings(resolvedTableKey, visibleColumns, next)
+    updateTablePreference(resolvedTableKey, {
+      column_settings: { visible: [...visibleColumns], order: next },
+    }).catch(() => message.error('Failed to save table preferences'))
   }
 
   const columnSettingsContent = (
@@ -585,7 +584,8 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
   const handlePageChange = (nextPage: number, nextPageSize: number) => {
     setPage(nextPage)
     setPageSize(nextPageSize)
-    localStorage.setItem(storageKey(resolvedTableKey, 'pageSize'), String(nextPageSize))
+    updateTablePreference(resolvedTableKey, { page_size: nextPageSize })
+      .catch(() => message.error('Failed to save table preferences'))
   }
   const hasActiveConditions = Boolean(
     search ||

@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "apps.attachments",
     "apps.audit",
     "apps.inbox",
+    "apps.preferences",
     "apps.realtime",
     "apps.webhook",
     "apps.mcp",
