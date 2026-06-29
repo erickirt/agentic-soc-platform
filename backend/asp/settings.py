@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "django_filters",
     "storages",
+    "channels",
     # Local apps
     "apps.common",
     "apps.dashboard",
@@ -45,6 +46,7 @@ INSTALLED_APPS = [
     "apps.attachments",
     "apps.audit",
     "apps.inbox",
+    "apps.realtime",
     "apps.webhook",
     "apps.mcp",
     "apps.agentic",
@@ -80,6 +82,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "asp.wsgi.application"
+ASGI_APPLICATION = "asp.asgi.application"
 
 DATABASES = {
     "default": {
@@ -98,6 +101,7 @@ REDIS_DB = os.environ.get("REDIS_DB", "1")
 REDIS_PASSWORD = os.environ.get("REDIS_PASSWORD", "")
 REDIS_AUTH = f":{quote(REDIS_PASSWORD, safe='')}@" if REDIS_PASSWORD else ""
 REDIS_URL = f"redis://{REDIS_AUTH}{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}"
+CHANNEL_REDIS_SOCKET_TIMEOUT = int(os.environ.get("CHANNEL_REDIS_SOCKET_TIMEOUT", "10"))
 
 CACHES = {
     "default": {
@@ -107,6 +111,18 @@ CACHES = {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         },
     }
+}
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [{
+                "address": REDIS_URL,
+                "socket_timeout": CHANNEL_REDIS_SOCKET_TIMEOUT,
+            }],
+        },
+    },
 }
 
 AUTH_USER_MODEL = "accounts.User"

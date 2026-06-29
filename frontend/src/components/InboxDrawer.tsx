@@ -21,14 +21,13 @@ import MessageAttachments from './MessageAttachments'
 import MessageComposer from './MessageComposer'
 import UserAvatar from './UserAvatar'
 import {tabularNumbersStyle, typography} from '../utils/typography'
+import {useRealtime} from '../realtimeContext'
 
 dayjs.extend(relativeTime)
 
 interface InboxDrawerProps {
   onOpenResource?: (resourceKey: string, rowId: string | number) => void
 }
-
-const INBOX_UNREAD_POLL_INTERVAL_MS = 60000
 
 function senderLabel(row: InboxMessage) {
   if (row.kind === 'system') return 'System'
@@ -138,6 +137,7 @@ export default function InboxDrawer({ onOpenResource }: InboxDrawerProps) {
   const [replyTo, setReplyTo] = useState<InboxMessage | null>(null)
   const [unreadCount, setUnreadCount] = useState(0)
   const [refreshingCount, setRefreshingCount] = useState(false)
+  const {reconnectToken, subscribe} = useRealtime()
 
   const fetchInboxPage = useCallback((cursor?: string | null) => (
     fetchInboxMessages({ unread: filter === 'unread', cursor, pageSize: 20 })
@@ -173,9 +173,58 @@ export default function InboxDrawer({ onOpenResource }: InboxDrawerProps) {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadUnreadCount()
-    const timer = window.setInterval(loadUnreadCount, INBOX_UNREAD_POLL_INTERVAL_MS)
-    return () => window.clearInterval(timer)
-  }, [loadUnreadCount])
+  }, [loadUnreadCount, reconnectToken])
+
+  useEffect(() => {
+    return subscribe((event) => {
+      if (event.type === 'inbox.unread_count_changed') {
+        setUnreadCount(event.payload.count)
+        return
+      }
+      if (event.type === 'inbox.message_created') {
+        const nextMessage = event.payload.message
+        if (filter === 'unread' && nextMessage.is_read) return
+        setRows((current) => {
+          if (current.some((item) => item.id === nextMessage.id)) {
+            return current.map((item) => item.id === nextMessage.id ? nextMessage : item)
+          }
+          return [nextMessage, ...current]
+        })
+        return
+      }
+      if (event.type === 'inbox.message_deleted') {
+        const deletedId = event.payload.message_id
+        setRows((current) => current.filter((item) => item.id !== deletedId))
+        setSelected((current) => current?.id === deletedId ? null : current)
+        setReplyTo((current) => current?.id === deletedId ? null : current)
+        return
+      }
+      if (event.type === 'inbox.message_read') {
+        const {message_id: messageId, read_at: readAt} = event.payload
+        setRows((current) => {
+          const updated = current.map((item) => item.id === messageId ? {...item, is_read: true, read_at: readAt} : item)
+          return filter === 'unread' ? updated.filter((item) => item.id !== messageId) : updated
+        })
+        setSelected((current) => current?.id === messageId ? {...current, is_read: true, read_at: readAt} : current)
+        return
+      }
+      if (event.type === 'inbox.all_read') {
+        const {read_at: readAt} = event.payload
+        if (filter === 'unread') {
+          setRows([])
+        } else {
+          setRows((current) => current.map((item) => ({...item, is_read: true, read_at: readAt})))
+        }
+        setSelected((current) => current ? {...current, is_read: true, read_at: readAt} : current)
+      }
+    })
+  }, [filter, setRows, subscribe])
+
+  useEffect(() => {
+    if (!open || reconnectToken === 0) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    refreshMessages()
+  }, [open, reconnectToken, refreshMessages])
 
   const canReply = (row: InboxMessage) => {
     return Boolean(row.kind === 'user' && row.sender && row.sender !== currentUser?.id)
@@ -200,7 +249,8 @@ export default function InboxDrawer({ onOpenResource }: InboxDrawerProps) {
         setSelected(null)
       }
       if (replyTo?.id === row.id) setReplyTo(null)
-      await Promise.all([refreshMessages(), loadUnreadCount()])
+      setRows((current) => current.filter((item) => item.id !== row.id))
+      await loadUnreadCount()
     } catch {
       message.error('Failed to delete message')
     }
@@ -208,13 +258,15 @@ export default function InboxDrawer({ onOpenResource }: InboxDrawerProps) {
 
   const submitMessage = async (input: { body: string; mentionedIds: number[]; attachments: { id: number }[] }) => {
     if (replyTo) {
-      await replyInboxMessage(replyTo.id, {
+      const sentMessage = await replyInboxMessage(replyTo.id, {
         body: input.body,
         attachments: input.attachments.map((attachment) => attachment.id),
       })
       setReplyTo(null)
+      if (filter === 'all') {
+        setRows((current) => current.some((item) => item.id === sentMessage.id) ? current : [sentMessage, ...current])
+      }
       message.success('Reply sent')
-      await Promise.all([refreshMessages(), loadUnreadCount()])
       return
     }
 
@@ -222,13 +274,15 @@ export default function InboxDrawer({ onOpenResource }: InboxDrawerProps) {
       message.warning('Mention at least one user to send a message')
       return
     }
-    await createInboxMessage({
+    const sentMessage = await createInboxMessage({
       body: input.body,
       recipients: input.mentionedIds,
       attachments: input.attachments.map((attachment) => attachment.id),
     })
+    if (filter === 'all') {
+      setRows((current) => current.some((item) => item.id === sentMessage.id) ? current : [sentMessage, ...current])
+    }
     message.success('Message sent')
-    await Promise.all([refreshMessages(), loadUnreadCount()])
   }
 
   return (
@@ -271,7 +325,13 @@ export default function InboxDrawer({ onOpenResource }: InboxDrawerProps) {
                     icon={<CheckCircleOutlined />}
                     onClick={async () => {
                       await markAllInboxMessagesRead()
-                      await Promise.all([refreshMessages(), loadUnreadCount()])
+                      setUnreadCount(0)
+                      if (filter === 'unread') {
+                        setRows([])
+                      } else {
+                        const readAt = new Date().toISOString()
+                        setRows((current) => current.map((item) => ({...item, is_read: true, read_at: readAt})))
+                      }
                     }}
                   />
                 </Tooltip>

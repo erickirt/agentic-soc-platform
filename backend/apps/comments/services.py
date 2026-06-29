@@ -58,5 +58,12 @@ def create_record_comment(
                 object_id=comment.object_id,
                 metadata={"source": "comment", "comment_id": comment.id},
             )
+        transaction.on_commit(lambda comment_id=comment.id: _broadcast_comment_created(comment_id))
 
     return comment
+
+
+def _broadcast_comment_created(comment_id):
+    from apps.realtime.events import broadcast_comment_created
+
+    broadcast_comment_created(comment_id)

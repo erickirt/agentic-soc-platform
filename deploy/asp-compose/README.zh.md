@@ -127,6 +127,8 @@ docker compose restart
 docker compose restart asp-frontend asp-web asp-asgi
 ```
 
+反向代理需要将 `/ws/` 转发到 ASGI 服务。
+
 只重启后台 Worker：
 
 ```bash

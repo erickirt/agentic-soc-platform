@@ -188,7 +188,14 @@ def create_inbox_message(
         ])
         if attachment_ids:
             message.attachments.set(Attachment.objects.filter(id__in=attachment_ids))
+        transaction.on_commit(lambda message_id=message.id: _broadcast_inbox_message_created(message_id))
     return message
+
+
+def _broadcast_inbox_message_created(message_id):
+    from apps.realtime.events import broadcast_inbox_message_created
+
+    broadcast_inbox_message_created(message_id)
 
 
 def send_system_message(

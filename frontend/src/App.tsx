@@ -16,6 +16,7 @@ import {useAuthStore} from './stores/auth'
 import {hasPermission, type PermissionKey} from './utils/permissions'
 import {getMe} from './api/auth'
 import {buildLoginRedirectPath} from './utils/authRedirect'
+import {RealtimeProvider} from './realtime'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const location = useLocation()
@@ -31,7 +32,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }, [setAuth, token, user?.role])
 
   if (!token) return <Navigate to={buildLoginRedirectPath(`${location.pathname}${location.search}${location.hash}`)} replace />
-  return <>{children}</>
+  return <RealtimeProvider>{children}</RealtimeProvider>
 }
 
 function PermissionRoute({ permission, children }: { permission: PermissionKey; children: React.ReactNode }) {

@@ -127,6 +127,8 @@ Restart only the Web/API entrypoints:
 docker compose restart asp-frontend asp-web asp-asgi
 ```
 
+The reverse proxy must forward `/ws/` to the ASGI service.
+
 Restart only background workers:
 
 ```bash

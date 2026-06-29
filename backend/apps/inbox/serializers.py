@@ -237,8 +237,20 @@ class InboxReplySerializer(serializers.Serializer):
 
 
 def mark_message_read(message, user):
-    InboxMessageRecipient.objects.filter(
+    read_at = timezone.now()
+    updated = InboxMessageRecipient.objects.filter(
         message=message,
         user=user,
         read_at__isnull=True,
-    ).update(read_at=timezone.now())
+    ).update(read_at=read_at)
+    if updated:
+        from django.db import transaction
+        from apps.realtime.events import broadcast_inbox_message_read
+
+        transaction.on_commit(
+            lambda message_id=message.id, user_id=user.id, timestamp=read_at: broadcast_inbox_message_read(
+                message_id,
+                user_id,
+                timestamp,
+            )
+        )
