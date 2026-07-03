@@ -39,7 +39,7 @@ body:
         - New users
         - Operators
         - Developers
-        - Plugin / MCP users
+        - CLI / Plugin users
         - Other
   - type: textarea
     id: additional-context

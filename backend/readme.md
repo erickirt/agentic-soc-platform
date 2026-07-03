@@ -44,7 +44,7 @@ If you do not know the admin username:
 
 ## Production processes
 
-Use Nginx as the external entry point. Route normal Django HTTP/API/Admin traffic to Gunicorn and ASGI-only paths such as `/api/mcp` to Uvicorn.
+Use Nginx as the external entry point. Route normal Django HTTP/API/Admin traffic to Gunicorn and websocket traffic under `/ws/` to Uvicorn.
 
 ```powershell
 gunicorn asp.wsgi:application --bind 127.0.0.1:8000 --workers 2 --threads 4 --access-logfile - --error-logfile -

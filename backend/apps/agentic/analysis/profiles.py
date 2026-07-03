@@ -9,7 +9,7 @@ from apps.enrichments.models import Enrichment
 
 AI_SCHEMA_KEY = "ai"
 AI_PROFILE_INVESTIGATION = "investigation"
-AI_PROFILE_MCP = "mcp"
+AI_PROFILE_AGENT = "agent"
 AI_PROFILE_VERSION = "2026-06-20"
 AUDIT_LOG_LIMIT = 100
 CASE_AI_AUDIT_FIELDS = {
@@ -45,7 +45,7 @@ AI_FIELD_PROFILES = {
             "comments",
             "audit_logs",
         ],
-        AI_PROFILE_MCP: [
+        AI_PROFILE_AGENT: [
             "id",
             "case_id",
             "created_at",
@@ -101,7 +101,7 @@ AI_FIELD_PROFILES = {
             "artifacts",
             "enrichments",
         ],
-        AI_PROFILE_MCP: [
+        AI_PROFILE_AGENT: [
             "id",
             "alert_id",
             "created_at",
@@ -155,7 +155,7 @@ AI_FIELD_PROFILES = {
             "value",
             "enrichments",
         ],
-        AI_PROFILE_MCP: [
+        AI_PROFILE_AGENT: [
             "id",
             "artifact_id",
             "created_at",
@@ -177,7 +177,7 @@ AI_FIELD_PROFILES = {
             "value",
             "desc",
         ],
-        AI_PROFILE_MCP: [
+        AI_PROFILE_AGENT: [
             "id",
             "enrichment_id",
             "created_at",
@@ -190,7 +190,7 @@ AI_FIELD_PROFILES = {
         ],
     },
     "knowledge.Knowledge": {
-        AI_PROFILE_MCP: [
+        AI_PROFILE_AGENT: [
             "id",
             "knowledge_id",
             "created_at",

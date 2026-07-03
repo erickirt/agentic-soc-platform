@@ -18,7 +18,7 @@ asp doctor
 asp case list
 ```
 
-For automation and agent skills, prefer stable JSON output:
+For automation and skills, prefer stable JSON output:
 
 ```powershell
 asp case list --output json

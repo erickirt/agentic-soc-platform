@@ -37,7 +37,7 @@ body:
       options:
         - Frontend
         - Backend
-        - MCP / Plugin
+        - CLI / Plugin
         - Playbook / Automation
         - Documentation
         - Deployment

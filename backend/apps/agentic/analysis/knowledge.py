@@ -5,7 +5,7 @@ from django.db.models import Q
 from django.utils import timezone
 from pydantic import BaseModel, Field
 
-from apps.agentic.analysis.profiles import AI_PROFILE_MCP, serialize_for_ai, serialize_case_for_investigation
+from apps.agentic.analysis.profiles import AI_PROFILE_AGENT, serialize_for_ai, serialize_case_for_investigation
 from apps.agentic.analysis.prompts import INVESTIGATION_KNOWLEDGE_KEYWORD_PROMPT, invoke_structured_llm, KNOWLEDGE_EXTRACTION_PROMPT
 from apps.agentic.analysis.schemas import KnowledgeSearchKeywords
 from apps.knowledge.models import Knowledge, KnowledgeSource
@@ -94,7 +94,7 @@ def search_knowledge_records(keywords, limit=MAX_KNOWLEDGE_RECORDS):
 
     valid_time_query = Q(expires_at__isnull=True) | Q(expires_at__gte=timezone.now())
     queryset = Knowledge.objects.filter(valid_time_query).filter(keyword_query).order_by("-created_at")[:limit]
-    return [serialize_for_ai(record, AI_PROFILE_MCP) for record in queryset]
+    return [serialize_for_ai(record, AI_PROFILE_AGENT) for record in queryset]
 
 
 def build_knowledge_context(case_payload):
