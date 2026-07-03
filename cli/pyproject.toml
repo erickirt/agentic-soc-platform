@@ -2,7 +2,25 @@
 name = "asp-cli"
 version = "0.1.0"
 description = "Command line client for Agentic SOC Platform"
+readme = "README.md"
 requires-python = ">=3.11"
+license = "MIT"
+authors = [
+    { name = "Agentic SOC Platform contributors" },
+]
+keywords = ["agentic-soc", "soc", "security", "cli"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+]
 dependencies = [
     "httpx>=0.28.1",
     "jmespath>=1.0.1",
@@ -10,6 +28,11 @@ dependencies = [
     "rich>=14.2.0",
     "typer>=0.20.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/FunnyWolf/agentic-soc-platform"
+Repository = "https://github.com/FunnyWolf/agentic-soc-platform"
+Issues = "https://github.com/FunnyWolf/agentic-soc-platform/issues"
 
 [project.scripts]
 asp = "asp_cli.main:run"
