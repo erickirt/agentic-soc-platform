@@ -1,0 +1,25 @@
+# ASP CLI
+
+Command line client for Agentic SOC Platform.
+
+`asp-cli` provides the `asp` command for SOC analysts and automation agents to authenticate with an ASP server, inspect cases and alerts, add comments, upload files, run playbooks, and query investigation integrations.
+
+## Install
+
+```powershell
+pipx install asp-cli
+```
+
+## Quick start
+
+```powershell
+asp auth login --api-url https://asp.example.com --api-key asp_xxx
+asp doctor
+asp case list
+```
+
+For automation and agent skills, prefer stable JSON output:
+
+```powershell
+asp case list --output json
+```

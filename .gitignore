@@ -29,9 +29,12 @@ node_modules/
 
 # Local git worktrees
 .worktrees/
+/asf-doc/
+/asp-marketplace/
 
 # OS
 .DS_Store
 Thumbs.db
 
 .claude/*
+.asp/
