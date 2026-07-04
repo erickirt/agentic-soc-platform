@@ -33,6 +33,21 @@ def get_otx_config():
 
 
 @lru_cache(maxsize=1)
+def get_opencti_config():
+    from .models import ThreatIntelOpenCTIConfig
+
+    config = ThreatIntelOpenCTIConfig.get_current()
+    return {
+        "enabled": config.enabled,
+        "url": config.url.rstrip("/"),
+        "token": config.token,
+        "ssl_verify": config.ssl_verify,
+        "proxy": config.proxy,
+        "timeout_seconds": config.timeout_seconds,
+    }
+
+
+@lru_cache(maxsize=1)
 def get_splunk_config():
     from .models import SiemSplunkConfig
 
@@ -109,6 +124,8 @@ def invalidate(group=None):
         get_llm_configs.cache_clear()
     if group in {None, "threat_intel", "otx"}:
         get_otx_config.cache_clear()
+    if group in {None, "threat_intel", "opencti"}:
+        get_opencti_config.cache_clear()
     if group in {None, "siem", "splunk"}:
         get_splunk_config.cache_clear()
     if group in {None, "siem", "elk"}:

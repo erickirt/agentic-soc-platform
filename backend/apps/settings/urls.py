@@ -19,6 +19,8 @@ from .views import (
     SiemSplunkTestView,
     ThreatIntelAlienVaultOTXConfigView,
     ThreatIntelAlienVaultOTXTestView,
+    ThreatIntelOpenCTIConfigView,
+    ThreatIntelOpenCTITestView,
 )
 
 
@@ -28,6 +30,8 @@ router.register("llm-providers", LLMProviderConfigViewSet, basename="llm-provide
 urlpatterns = [
     path("settings/threat-intel/otx/", ThreatIntelAlienVaultOTXConfigView.as_view(), name="threat-intel-otx-config"),
     path("settings/threat-intel/otx/test/", ThreatIntelAlienVaultOTXTestView.as_view(), name="threat-intel-otx-test"),
+    path("settings/threat-intel/opencti/", ThreatIntelOpenCTIConfigView.as_view(), name="threat-intel-opencti-config"),
+    path("settings/threat-intel/opencti/test/", ThreatIntelOpenCTITestView.as_view(), name="threat-intel-opencti-test"),
     path("settings/siem/splunk/", SiemSplunkConfigView.as_view(), name="siem-splunk-config"),
     path("settings/siem/splunk/test/", SiemSplunkTestView.as_view(), name="siem-splunk-test"),
     path("settings/siem/elk/", SiemElkConfigView.as_view(), name="siem-elk-config"),

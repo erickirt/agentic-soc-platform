@@ -1,4 +1,5 @@
 import httpx
+from pycti import OpenCTIApiClient
 
 
 def _chat_completions_url(base_url):
@@ -88,11 +89,11 @@ def test_alienvault_otx_config(config):
     }
     try:
         with httpx.Client(**client_kwargs) as client:
-            response = client.get(f"{base_url}/indicators/IPv4/8.8.8.8/general", headers=headers)
+            response = client.get(f"{base_url}/user/me", headers=headers)
         if response.is_success:
             return {
                 "success": True,
-                "detail": "AlienVault OTX responded successfully.",
+                "detail": "AlienVault OTX authentication succeeded.",
                 "response_preview": response.text[:500],
             }
         return {
@@ -104,6 +105,69 @@ def test_alienvault_otx_config(config):
         return {
             "success": False,
             "detail": _redact(exc, [api_key]),
+            "response_preview": "",
+        }
+
+
+def test_opencti_config(config):
+    token = (config.get("token") or "").strip()
+    url = (config.get("url") or "").strip().rstrip("/")
+    proxy = (config.get("proxy") or "").strip()
+    timeout = int(float(config.get("timeout_seconds") or 30))
+    ssl_verify = bool(config.get("ssl_verify"))
+
+    if not url:
+        return {
+            "success": False,
+            "detail": "OpenCTI URL is not configured.",
+            "response_preview": "",
+        }
+    if not token:
+        return {
+            "success": False,
+            "detail": "OpenCTI API token is not configured.",
+            "response_preview": "",
+        }
+
+    proxies = {"http": proxy, "https": proxy} if proxy else None
+    try:
+        client = OpenCTIApiClient(
+            url,
+            token,
+            log_level="error",
+            ssl_verify=ssl_verify,
+            proxies=proxies,
+            perform_health_check=True,
+            requests_timeout=timeout,
+            provider="AspOpenCTITest/1.0",
+        )
+        indicators = client.indicator.list(first=1)
+        observables = client.stix_cyber_observable.list(first=1)
+        preview = {
+            "indicator_sample_count": len(indicators or []),
+            "observable_sample_count": len(observables or []),
+        }
+        if indicators:
+            preview["indicator_sample"] = {
+                "id": indicators[0].get("id"),
+                "name": indicators[0].get("name"),
+                "entity_type": indicators[0].get("entity_type"),
+            }
+        if observables:
+            preview["observable_sample"] = {
+                "id": observables[0].get("id"),
+                "value": observables[0].get("observable_value") or observables[0].get("value"),
+                "entity_type": observables[0].get("entity_type"),
+            }
+        return {
+            "success": True,
+            "detail": "OpenCTI responded successfully.",
+            "response_preview": str(preview)[:500],
+        }
+    except Exception as exc:
+        return {
+            "success": False,
+            "detail": _redact(exc, [token]),
             "response_preview": "",
         }
 

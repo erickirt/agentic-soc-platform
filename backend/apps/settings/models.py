@@ -46,6 +46,29 @@ class ThreatIntelAlienVaultOTXConfig(models.Model):
         return instance
 
 
+class ThreatIntelOpenCTIConfig(models.Model):
+    singleton_id = models.PositiveSmallIntegerField(default=1, unique=True, editable=False)
+    enabled = models.BooleanField(default=False)
+    url = models.URLField(max_length=500, default="http://localhost:8080")
+    token = models.TextField(blank=True, default="")
+    ssl_verify = models.BooleanField(default=False)
+    proxy = models.CharField(max_length=500, blank=True, default="")
+    timeout_seconds = models.FloatField(default=30)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "setting_ti_opencti_config"
+
+    def __str__(self):
+        return "OpenCTI"
+
+    @classmethod
+    def get_current(cls):
+        instance, _ = cls.objects.get_or_create(singleton_id=1)
+        return instance
+
+
 class SiemSplunkConfig(models.Model):
     singleton_id = models.PositiveSmallIntegerField(default=1, unique=True, editable=False)
     host = models.CharField(max_length=255, blank=True, default="")

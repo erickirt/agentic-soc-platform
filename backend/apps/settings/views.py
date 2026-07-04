@@ -17,6 +17,7 @@ from .models import (
     SiemElkConfig,
     SiemSplunkConfig,
     ThreatIntelAlienVaultOTXConfig,
+    ThreatIntelOpenCTIConfig,
 )
 from .runtime_config import invalidate
 from .serializers import (
@@ -26,11 +27,13 @@ from .serializers import (
     SiemSplunkConfigSerializer,
     RuntimeConfigSerializer,
     ThreatIntelAlienVaultOTXConfigSerializer,
+    ThreatIntelOpenCTIConfigSerializer,
 )
-from .services import test_alienvault_otx_config, test_elk_config, test_llm_provider, test_splunk_config
+from .services import test_alienvault_otx_config, test_elk_config, test_llm_provider, test_opencti_config, test_splunk_config
 
 LLM_AUDIT_FIELDS = ("name", "base_url", "model", "proxy", "tags", "enabled", "priority", "api_key")
 OTX_AUDIT_FIELDS = ("enabled", "api_key", "base_url", "proxy", "timeout_seconds")
+OPENCTI_AUDIT_FIELDS = ("enabled", "url", "token", "ssl_verify", "proxy", "timeout_seconds")
 SPLUNK_AUDIT_FIELDS = ("host", "port", "username", "password", "scheme", "verify")
 ELK_AUDIT_FIELDS = (
     "host",
@@ -186,6 +189,12 @@ def _otx_config_from_instance(instance, values):
     return config
 
 
+def _opencti_config_from_instance(instance, values):
+    config = _snapshot(instance, OPENCTI_AUDIT_FIELDS)
+    config.update(values)
+    return config
+
+
 def _invalidate_siem(group):
     invalidate(group)
     from integrations.siem.clients import reset_clients
@@ -230,6 +239,47 @@ class ThreatIntelAlienVaultOTXTestView(views.APIView):
         serializer = ThreatIntelAlienVaultOTXConfigSerializer(instance, data=request.data or {}, partial=True)
         serializer.is_valid(raise_exception=True)
         result = test_alienvault_otx_config(_otx_config_from_instance(instance, serializer.validated_data))
+        _write_audit(instance, "test", request.user, metadata={"success": result["success"]})
+        return Response(result, status=status.HTTP_200_OK)
+
+
+class ThreatIntelOpenCTIConfigView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    def get_serializer_context(self):
+        return {
+            "reveal_secrets": self.request.query_params.get("reveal_secrets") in {"1", "true", "yes"},
+        }
+
+    def get(self, request):
+        instance = ThreatIntelOpenCTIConfig.get_current()
+        if self.get_serializer_context().get("reveal_secrets"):
+            _write_audit(instance, "reveal", request.user, metadata={"fields": ["token"]})
+        serializer = ThreatIntelOpenCTIConfigSerializer(instance, context=self.get_serializer_context())
+        return Response(serializer.data)
+
+    @transaction.atomic
+    def patch(self, request):
+        instance = ThreatIntelOpenCTIConfig.get_current()
+        before = _snapshot(instance, OPENCTI_AUDIT_FIELDS)
+        serializer = ThreatIntelOpenCTIConfigSerializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+        changes = _audit_changes(before, _snapshot(instance, OPENCTI_AUDIT_FIELDS), {"token"})
+        if changes:
+            _write_audit(instance, "update", request.user, changes=changes)
+        transaction.on_commit(lambda: invalidate("opencti"))
+        return Response(ThreatIntelOpenCTIConfigSerializer(instance).data)
+
+
+class ThreatIntelOpenCTITestView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    def post(self, request):
+        instance = ThreatIntelOpenCTIConfig.get_current()
+        serializer = ThreatIntelOpenCTIConfigSerializer(instance, data=request.data or {}, partial=True)
+        serializer.is_valid(raise_exception=True)
+        result = test_opencti_config(_opencti_config_from_instance(instance, serializer.validated_data))
         _write_audit(instance, "test", request.user, metadata={"success": result["success"]})
         return Response(result, status=status.HTTP_200_OK)
 
@@ -387,4 +437,3 @@ class RuntimeConfigView(views.APIView):
             _write_audit(instance, "update", request.user, changes=changes)
         transaction.on_commit(lambda: invalidate("runtime"))
         return Response(RuntimeConfigSerializer(instance).data)
-

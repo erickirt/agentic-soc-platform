@@ -7,6 +7,7 @@ from .models import (
     SiemElkConfig,
     SiemSplunkConfig,
     ThreatIntelAlienVaultOTXConfig,
+    ThreatIntelOpenCTIConfig,
 )
 
 
@@ -121,6 +122,58 @@ class ThreatIntelAlienVaultOTXConfigSerializer(serializers.ModelSerializer):
         data = super().to_representation(instance)
         if not self.context.get("reveal_secrets"):
             data["api_key"] = ""
+        return data
+
+
+class ThreatIntelOpenCTIConfigSerializer(serializers.ModelSerializer):
+    token_configured = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ThreatIntelOpenCTIConfig
+        fields = (
+            "enabled",
+            "url",
+            "token",
+            "token_configured",
+            "ssl_verify",
+            "proxy",
+            "timeout_seconds",
+            "updated_at",
+        )
+        read_only_fields = ("token_configured", "updated_at")
+        extra_kwargs = {
+            "url": {"required": True, "allow_blank": False},
+            "token": {"required": True, "allow_blank": False, "trim_whitespace": False},
+            "proxy": {"required": False, "allow_blank": True},
+        }
+
+    def get_token_configured(self, obj):
+        return bool(obj.token)
+
+    def validate_proxy(self, value):
+        proxy = (value or "").strip()
+        if proxy and not proxy.startswith(("http://", "https://", "socks4://", "socks5://")):
+            raise serializers.ValidationError("Proxy must start with http://, https://, socks4://, or socks5://.")
+        return proxy
+
+    def validate_timeout_seconds(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Timeout must be greater than 0.")
+        return value
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        token = attrs.get("token")
+        if token is None and self.instance is not None:
+            token = self.instance.token
+        if not str(token or "").strip():
+            raise serializers.ValidationError({"token": "API token is required."})
+        return attrs
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if not self.context.get("reveal_secrets"):
+            data["token"] = ""
         return data
 
 
