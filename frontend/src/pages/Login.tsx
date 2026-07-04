@@ -1,6 +1,7 @@
 import {useState} from 'react'
 import {useNavigate, useSearchParams} from 'react-router-dom'
-import {BorderBeam, Button, Card, Form, Input, message, Segmented} from 'antd'
+import {BorderBeam, Button, Card, Form, Input, Segmented} from 'antd'
+import {message} from '../utils/appMessage'
 import {LockOutlined, UserOutlined} from '@ant-design/icons'
 import type {AuthType} from '../api/auth'
 import {login} from '../api/auth'

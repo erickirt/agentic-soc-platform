@@ -1,5 +1,6 @@
 import {useEffect, useState} from 'react'
-import {Button, Col, DatePicker, Form, Input, message, Modal, Popconfirm, Row, Space, Switch, Table, Tabs, Tag, Typography} from 'antd'
+import {Button, Col, DatePicker, Form, Input, Modal, Popconfirm, Row, Space, Switch, Table, Tabs, Tag, Typography} from 'antd'
+import {message} from '../utils/appMessage'
 import {ApiOutlined, CopyOutlined, DeleteOutlined, KeyOutlined, LockOutlined, ReloadOutlined, SettingOutlined, UserOutlined} from '@ant-design/icons'
 import type {ColumnsType} from 'antd/es/table'
 import type {Dayjs} from 'dayjs'

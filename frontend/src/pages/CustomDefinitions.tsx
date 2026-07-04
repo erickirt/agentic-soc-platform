@@ -1,5 +1,6 @@
 import {useCallback, useEffect, useMemo, useState} from 'react'
-import {Alert, Button, Descriptions, Drawer, Empty, Flex, Input, InputNumber, List, message, Select, Space, Table, Tabs, Tag, Typography} from 'antd'
+import {Alert, Button, Descriptions, Drawer, Empty, Flex, Input, InputNumber, List, Select, Space, Table, Tabs, Tag, Typography} from 'antd'
+import {message} from '../utils/appMessage'
 import {ReloadOutlined} from '@ant-design/icons'
 import type {ColumnsType} from 'antd/es/table'
 import {Boxes, BrainCircuit, DatabaseZap} from 'lucide-react'

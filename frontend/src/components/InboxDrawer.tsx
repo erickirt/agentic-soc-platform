@@ -1,5 +1,6 @@
 import {useCallback, useEffect, useState} from 'react'
-import {Alert, Badge, Button, Drawer, Empty, List, message, Popconfirm, Segmented, Space, Spin, Tag, Tooltip, Typography} from 'antd'
+import {Alert, Badge, Button, Drawer, Empty, List, Popconfirm, Segmented, Space, Spin, Tag, Tooltip, Typography} from 'antd'
+import {message} from '../utils/appMessage'
 import {CheckCircleOutlined, CloseOutlined, InboxOutlined, MailOutlined, MessageOutlined, ReloadOutlined} from '@ant-design/icons'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -222,7 +223,6 @@ export default function InboxDrawer({ onOpenResource }: InboxDrawerProps) {
 
   useEffect(() => {
     if (!open || reconnectToken === 0) return
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshMessages()
   }, [open, reconnectToken, refreshMessages])
 
@@ -379,7 +379,7 @@ export default function InboxDrawer({ onOpenResource }: InboxDrawerProps) {
                         </Badge>
                       )}
                       title={(
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 4 }}>
                           <Space size={8} wrap>
                             <Tag {...comfortableTagProps} color={row.kind === 'system' ? 'purple' : 'blue'} style={{ marginInlineEnd: 0 }}>
                               {row.kind}
@@ -423,7 +423,7 @@ export default function InboxDrawer({ onOpenResource }: InboxDrawerProps) {
                       </div>
                     )}
                   </List.Item>
-                  )}
+                )}
               />
             </>
           ) : loadError ? (

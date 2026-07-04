@@ -1,5 +1,6 @@
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
-import {Button, Divider, Empty, message, Modal, Spin, theme, Tooltip} from 'antd'
+import {Button, Divider, Empty, Modal, Spin, theme, Tooltip} from 'antd'
+import {message} from '../utils/appMessage'
 import {CloseOutlined, FileTextOutlined, HistoryOutlined, MenuFoldOutlined, MenuUnfoldOutlined, MessageOutlined, ReloadOutlined, ShareAltOutlined} from '@ant-design/icons'
 import client from '../api/client'
 import type {FieldEditingController, OpenResourceOptions, ResourceConfig} from '../types/records'

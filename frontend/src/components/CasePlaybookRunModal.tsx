@@ -1,5 +1,6 @@
 import {type CSSProperties, useCallback, useEffect, useMemo, useRef, useState} from 'react'
-import {Alert, Button, Empty, Input, message, Modal, Space, Table, Tag, theme, Tooltip, Typography} from 'antd'
+import {Alert, Button, Empty, Input, Modal, Space, Table, Tag, theme, Tooltip, Typography} from 'antd'
+import {message} from '../utils/appMessage'
 import {ReloadOutlined, SearchOutlined, ThunderboltOutlined} from '@ant-design/icons'
 import type {ColumnsType} from 'antd/es/table'
 import client from '../api/client'

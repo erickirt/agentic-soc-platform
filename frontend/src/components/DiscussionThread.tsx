@@ -1,5 +1,6 @@
 import {useCallback, useEffect, useMemo, useState} from 'react'
-import {Alert, Button, Input, List, message, Popconfirm, Space, Tooltip} from 'antd'
+import {Alert, Button, Input, List, Popconfirm, Space, Tooltip} from 'antd'
+import {message} from '../utils/appMessage'
 import {MessageOutlined, ReloadOutlined, SearchOutlined} from '@ant-design/icons'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -170,7 +171,6 @@ export default function DiscussionThread({ contentType, objectId }: DiscussionTh
 
   useEffect(() => {
     if (reconnectToken === 0) return
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshComments()
   }, [reconnectToken, refreshComments])
 

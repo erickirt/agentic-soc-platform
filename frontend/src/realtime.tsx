@@ -7,6 +7,20 @@ function websocketUrl(token: string) {
   return `${protocol}//${window.location.host}/ws/events/?token=${encodeURIComponent(token)}`
 }
 
+function closeSocket(socket: WebSocket) {
+  if (socket.readyState === WebSocket.CONNECTING) {
+    socket.onopen = () => socket.close()
+    socket.onmessage = null
+    socket.onerror = null
+    socket.onclose = null
+    return
+  }
+
+  if (socket.readyState === WebSocket.OPEN) {
+    socket.close()
+  }
+}
+
 export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((state) => state.token)
   const [status, setStatus] = useState<RealtimeStatus>('disconnected')
@@ -32,8 +46,9 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!token) {
       shouldReconnectRef.current = false
-      socketRef.current?.close()
+      const socket = socketRef.current
       socketRef.current = null
+      if (socket) closeSocket(socket)
       return
     }
 
@@ -53,6 +68,10 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       socketRef.current = socket
 
       socket.onopen = () => {
+        if (socketRef.current !== socket) {
+          socket.close()
+          return
+        }
         reconnectAttemptRef.current = 0
         setStatus('connected')
         setReconnectToken((current) => current + 1)
@@ -62,6 +81,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       }
 
       socket.onmessage = (event) => {
+        if (socketRef.current !== socket) return
         let data: unknown
         try {
           data = JSON.parse(event.data)
@@ -75,9 +95,8 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       }
 
       socket.onclose = () => {
-        if (socketRef.current === socket) {
-          socketRef.current = null
-        }
+        if (socketRef.current !== socket) return
+        socketRef.current = null
         setStatus('disconnected')
         if (!shouldReconnectRef.current) return
         const attempt = reconnectAttemptRef.current + 1
@@ -87,17 +106,19 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       }
 
       socket.onerror = () => {
-        socket.close()
+        if (socketRef.current !== socket) return
+        if (socket.readyState === WebSocket.OPEN) socket.close()
       }
     }
 
-    connect()
+    reconnectTimerRef.current = window.setTimeout(connect, 0)
 
     return () => {
       shouldReconnectRef.current = false
       clearReconnectTimer()
-      socketRef.current?.close()
+      const socket = socketRef.current
       socketRef.current = null
+      if (socket) closeSocket(socket)
     }
   }, [sendCommentSubscription, token])
 

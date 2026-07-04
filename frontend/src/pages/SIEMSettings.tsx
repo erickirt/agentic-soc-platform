@@ -1,5 +1,6 @@
 import {useCallback, useEffect, useState} from 'react'
-import {Button, Card, Col, Form, Input, InputNumber, message, Row, Select, Space, Switch, Tabs} from 'antd'
+import {Button, Card, Col, Form, Input, InputNumber, Row, Select, Space, Switch, Tabs} from 'antd'
+import {message} from '../utils/appMessage'
 import {Layers, Search} from 'lucide-react'
 import client from '../api/client'
 import IconTabLabel from '../components/IconTabLabel'

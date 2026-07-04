@@ -1,6 +1,7 @@
 import {useState} from 'react'
 import type {SelectProps} from 'antd'
-import {DatePicker, Form, Input, message, Modal, Select, Tag, theme, Typography} from 'antd'
+import {DatePicker, Form, Input, Modal, Select, Tag, theme, Typography} from 'antd'
+import {message} from '../utils/appMessage'
 import {BookOutlined} from '@ant-design/icons'
 import type {Dayjs} from 'dayjs'
 import client from '../api/client'

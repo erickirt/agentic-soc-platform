@@ -1,5 +1,6 @@
 import {useEffect, useMemo, useState} from 'react'
-import {Button, Input, message, Modal, Popconfirm, Space, Tooltip} from 'antd'
+import {Button, Input, Modal, Popconfirm, Space, Tooltip} from 'antd'
+import {message} from '../utils/appMessage'
 import {CheckCircleOutlined, DeleteOutlined, KeyOutlined, PlusOutlined, StopOutlined} from '@ant-design/icons'
 import client from '../api/client'
 import DataTable from '../components/DataTable'

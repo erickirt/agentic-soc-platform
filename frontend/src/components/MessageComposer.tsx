@@ -1,6 +1,7 @@
 import {useMemo, useState} from 'react'
 import type {UploadProps} from 'antd'
-import {Alert, Button, Mentions, message, Tooltip, Upload} from 'antd'
+import {Alert, Button, Mentions, Tooltip, Upload} from 'antd'
+import {message} from '../utils/appMessage'
 import {PaperClipOutlined, SendOutlined} from '@ant-design/icons'
 import {type Attachment, uploadAttachment} from '../api/attachments'
 import {fetchMentionUsers, type MentionUser} from '../api/comments'

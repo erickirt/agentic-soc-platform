@@ -1,5 +1,6 @@
 import {useCallback, useEffect, useState} from 'react'
-import {Button, Card, Form, Input, InputNumber, message, Space, Switch, Tabs} from 'antd'
+import {Button, Card, Form, Input, InputNumber, Space, Switch, Tabs} from 'antd'
+import {message} from '../utils/appMessage'
 import {ChartNetwork, SatelliteDish} from 'lucide-react'
 import client from '../api/client'
 

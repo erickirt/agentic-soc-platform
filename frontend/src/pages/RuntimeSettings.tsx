@@ -1,5 +1,6 @@
 import {useCallback, useEffect, useState} from 'react'
-import {Button, Card, Col, Divider, Form, InputNumber, message, Row, Select, Space, Tooltip, Typography} from 'antd'
+import {Button, Card, Col, Divider, Form, InputNumber, Row, Select, Space, Tooltip, Typography} from 'antd'
+import {message} from '../utils/appMessage'
 import {QuestionCircleOutlined} from '@ant-design/icons'
 import client from '../api/client'
 

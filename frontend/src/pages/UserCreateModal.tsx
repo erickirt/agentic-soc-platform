@@ -1,4 +1,5 @@
-import {Col, Divider, Form, Input, message, Modal, Row, Select, Typography} from 'antd'
+import {Col, Divider, Form, Input, Modal, Row, Select, Typography} from 'antd'
+import {message} from '../utils/appMessage'
 import client from '../api/client'
 import type {AuthType, UserMutationResponse} from '../api/auth'
 

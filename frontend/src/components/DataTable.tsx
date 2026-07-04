@@ -1,6 +1,7 @@
 import type {Key} from 'react'
 import {useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react'
-import {Button, Checkbox, Divider, Input, message, Pagination, Popconfirm, Popover, Select, Space, Table, Tooltip} from 'antd'
+import {Button, Checkbox, Divider, Input, Pagination, Popconfirm, Popover, Select, Space, Table, Tooltip} from 'antd'
+import {message} from '../utils/appMessage'
 import {ClearOutlined, CloseOutlined, DeleteOutlined, FilterOutlined, HolderOutlined, PushpinFilled, PushpinOutlined, ReloadOutlined, SettingOutlined} from '@ant-design/icons'
 import {closestCenter, DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors} from '@dnd-kit/core'
 import {arrayMove, SortableContext, useSortable, verticalListSortingStrategy} from '@dnd-kit/sortable'
