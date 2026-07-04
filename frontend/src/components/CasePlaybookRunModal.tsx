@@ -235,7 +235,7 @@ function CasePlaybookRunModal({ open, caseId, onClose, onSubmitted }: CasePlaybo
             <Alert
               type="error"
               showIcon
-              message={loadError}
+              title={loadError}
               style={{ marginBottom: 12 }}
               action={<Button size="small" icon={<ReloadOutlined />} onClick={loadDefinitions}>Retry</Button>}
             />

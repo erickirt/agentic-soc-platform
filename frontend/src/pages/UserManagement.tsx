@@ -154,8 +154,8 @@ export default function UserManagement() {
         onClose={() => setSelectedUserId(null)}
         onSaved={refresh}
       />
-      <Modal title="Copy User Login Message" open={credentials !== null} onCancel={() => setCredentials(null)} footer={null} destroyOnClose>
-        <Space direction="vertical" style={{ width: '100%' }}>
+      <Modal title="Copy User Login Message" open={credentials !== null} onCancel={() => setCredentials(null)} footer={null} destroyOnHidden>
+        <Space vertical style={{ width: '100%' }}>
           <Input.TextArea value={messageText} rows={5} readOnly />
           <Button
             type="primary"

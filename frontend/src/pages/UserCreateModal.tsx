@@ -34,7 +34,7 @@ export default function UserCreateModal({ open, onClose, onCreated }: UserCreate
   }
 
   return (
-    <Modal title="Create User" open={open} onOk={onOk} onCancel={onClose} okText="Create" width={720} destroyOnClose>
+    <Modal title="Create User" open={open} onOk={onOk} onCancel={onClose} okText="Create" width={720} destroyOnHidden>
       <Form form={form} layout="vertical" initialValues={{ auth_type: 'local', role: 'user' }} style={{ paddingTop: 8 }}>
         <Form.Item name="username" label="Username" rules={[{ required: true }]}><Input /></Form.Item>
         <Row gutter={16}>

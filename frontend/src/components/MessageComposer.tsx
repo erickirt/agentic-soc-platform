@@ -111,7 +111,7 @@ export default function MessageComposer({
         })
       }}
     >
-      {mentionUsersError && <Alert type="warning" message={mentionUsersError} showIcon />}
+      {mentionUsersError && <Alert type="warning" title={mentionUsersError} showIcon />}
       <div
         style={{
           position: 'relative',

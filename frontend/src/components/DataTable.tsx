@@ -850,7 +850,7 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
           {actions}
           {selectedRowKeys.length > 0 && (
             <>
-              <Divider type="vertical" style={{ alignSelf: 'center' }} />
+              <Divider vertical style={{ alignSelf: 'center' }} />
               <Tooltip title="Clear selection">
                 <Button icon={<CloseOutlined />} onClick={clearSelection} />
               </Tooltip>

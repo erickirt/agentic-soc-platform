@@ -244,7 +244,7 @@ export default function LLMProviderSettings() {
         open={modalOpen}
         onCancel={closeModal}
         width={760}
-        destroyOnClose
+        destroyOnHidden
         footer={(
           <Space>
             <Button onClick={testFormProvider} loading={testingForm}>Test</Button>

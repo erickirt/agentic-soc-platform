@@ -88,7 +88,7 @@ export default function UserDetailModal({ userId, open, onClose, onSaved }: User
         body: { background: token.colorBgContainer },
         footer: { background: token.colorBgContainer },
       }}
-      destroyOnClose
+      destroyOnHidden
     >
       <Form form={form} layout="vertical" disabled={loading} style={{ paddingTop: 8 }}>
         <Row gutter={16}>

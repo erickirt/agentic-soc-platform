@@ -395,10 +395,9 @@ export function InlineUserEditor({ value, disabled, options = [], allowClear = t
 
   return (
     <Select
-      showSearch
+      showSearch={{ optionFilterProp: 'label' }}
       allowClear={allowClear}
       variant="borderless"
-      optionFilterProp="label"
       value={typeof value === 'string' ? value : null}
       disabled={disabled}
       options={options}

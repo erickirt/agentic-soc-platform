@@ -396,8 +396,8 @@ export default function TableFilterModal({
   }
 
   const currentFilterPanel = (
-    <Space direction="vertical" size={18} style={{ width: '100%', height: '100%' }}>
-      <Space direction="vertical" style={{ width: '100%' }} size={16}>
+    <Space vertical size={18} style={{ width: '100%', height: '100%' }}>
+      <Space vertical style={{ width: '100%' }} size={16}>
         {draftAdvanced.map((condition, index) => {
           const selectedField = fields.find((field) => field.key === condition.field) || fields[0]
           if (!selectedField) return null
@@ -472,7 +472,7 @@ export default function TableFilterModal({
   const savedPanel = savedFiltersLoading ? (
     <Empty description="Loading saved filters..." />
   ) : savedFilters.length ? (
-    <Space direction="vertical" size={8} style={{ width: '100%' }}>
+    <Space vertical size={8} style={{ width: '100%' }}>
       {savedFilters.map((item) => (
         <div
           key={item.id}
