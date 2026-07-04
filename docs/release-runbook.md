@@ -6,38 +6,38 @@ This runbook is the reusable checklist for preparing and publishing ASP releases
 
 Before changing files or creating a tag, collect these decisions:
 
-| Item                         | Required | Notes                                                                                                                                                   |
-|------------------------------|----------|---------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Version                      | Yes      | Example: `0.4.0`. The release workflow expects a pushed tag named `v<version>`, such as `v0.4.0`. The CLI PyPI package version must use the same version without `v`. |
-| Release title                | Yes      | Example: `I always have a choice`.                                                                                                                      |
-| Release scope                | Yes      | Choose whether to only prepare release files, or also push commits and create the release tag.                                                          |
-| Base version/tag             | Usually  | Default to the latest release tag, but confirm if the release should use another base.                                                                  |
-| Release notes source         | Yes      | Usually derive from commits since the previous release; the user may also provide curated highlights.                                                   |
-| Developer notes raw material | Usually | Ask the user for background, opinions, tradeoffs, complaints, lessons learned, or loose thoughts. The input can be fragmented; organize it into a coherent developer note. |
-| Documentation language scope | Yes | Default: update Chinese release notes first, then mirror to English. |
-| Images or attachments        | Optional | If release notes need images, use simple names like `img.png`, `img_1.png`, and avoid extra placeholder descriptions unless requested.                  |
-| Validation level             | Yes      | Confirm whether to run only targeted release checks or broader backend/frontend CI checks. Do not run VitePress docs build unless explicitly requested. |
-| Publish permission           | Yes      | Confirm before pushing commits, pushing tags, or triggering GitHub Actions release workflows.                                                           |
+| Item                         | Required          | Notes                                                                                                                                                                        |
+|------------------------------|-------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Version                      | Yes               | Example: `0.4.0`. The release workflow expects a pushed tag named `v<version>`, such as `v0.4.0`. The CLI PyPI package version must use the same version without `v`.        |
+| Release title                | Yes               | Example: `I always have a choice`.                                                                                                                                           |
+| Release scope                | Yes               | Choose whether to only prepare release files, or also push commits and create the release tag.                                                                               |
+| Base version/tag             | Usually           | Default to the latest release tag, but confirm if the release should use another base.                                                                                       |
+| Release notes source         | Yes               | Usually derive from commits since the previous release; the user may also provide curated highlights.                                                                        |
+| Developer notes raw material | Usually           | Ask the user for background, opinions, tradeoffs, complaints, lessons learned, or loose thoughts. The input can be fragmented; organize it into a coherent developer note.   |
+| Documentation language scope | Yes               | Default: update Chinese release notes first, then mirror to English.                                                                                                         |
+| Images or attachments        | Optional          | If release notes need images, use simple names like `img.png`, `img_1.png`, and avoid extra placeholder descriptions unless requested.                                       |
+| Validation level             | Yes               | Confirm whether to run only targeted release checks or broader backend/frontend CI checks. Do not run VitePress docs build unless explicitly requested.                      |
+| Publish permission           | Yes               | Confirm before pushing commits, pushing tags, or triggering GitHub Actions release workflows.                                                                                |
 | PyPI publishing readiness    | First CLI release | Confirm PyPI Trusted Publishing or pending publisher is configured for `asp-cli`. No PyPI token should be committed or stored in GitHub Secrets for the normal release path. |
 
 ## Release files and systems
 
 Check these areas for every release:
 
-| Area                        | Path                                                                           | Purpose                                                                                     |
-|-----------------------------|--------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------|
+| Area                        | Path                                                                           | Purpose                                                                                                                            |
+|-----------------------------|--------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------|
 | Release workflow            | `.github/workflows/release.yml`                                                | Creates the GitHub Release on `v*` tags, resolves release docs URL, builds compose package, and publishes the CLI package to PyPI. |
-| Docker image workflow       | `.github/workflows/docker.yml`                                                 | Builds and pushes backend/frontend GHCR images.                                             |
-| CI workflow                 | `.github/workflows/ci.yml`                                                     | Defines backend, frontend, and compose package validation.                                  |
-| Release docs mapping        | `deploy/release-docs.json`                                                     | Maps version numbers such as `0.4.0` to public release doc slugs.                           |
-| Compose packaging           | `deploy/package-asp-compose.sh`                                                | Builds `asp-compose-<version>.tar.gz`.                                                      |
-| Compose template            | `deploy/asp-compose/`                                                          | Files included in the downloadable release package.                                         |
-| CLI package metadata        | `cli/pyproject.toml`                                                           | Defines the `asp-cli` PyPI package metadata and release version.                            |
-| CLI release docs            | `cli/README.md`                                                               | Documents PyPI publishing through GitHub Actions and manual fallback.                       |
-| Chinese release notes       | `asf-doc/docs/zh/release/<slug>/index.md`                                      | Primary release notes source. Draft Chinese first.                                          |
-| English release notes       | `asf-doc/docs/en/release/<slug>/index.md`                                      | English mirror of the Chinese release notes.                                                |
-| Docs navigation             | `asf-doc/docs/.vitepress/config/zh.ts`, `asf-doc/docs/.vitepress/config/en.ts` | Adds or updates the changelog nav item.                                                     |
-| Main docs submodule pointer | `asf-doc` entry in main repo                                                   | Must be committed in the main repo after committing inside `asf-doc`.                       |
+| Docker image workflow       | `.github/workflows/docker.yml`                                                 | Builds and pushes backend/frontend GHCR images.                                                                                    |
+| CI workflow                 | `.github/workflows/ci.yml`                                                     | Defines backend, frontend, and compose package validation.                                                                         |
+| Release docs mapping        | `deploy/release-docs.json`                                                     | Maps version numbers such as `0.4.0` to public release doc slugs.                                                                  |
+| Compose packaging           | `deploy/package-asp-compose.sh`                                                | Builds `asp-compose-<version>.tar.gz`.                                                                                             |
+| Compose template            | `deploy/asp-compose/`                                                          | Files included in the downloadable release package.                                                                                |
+| CLI package metadata        | `cli/pyproject.toml`                                                           | Defines the `asp-cli` PyPI package metadata and release version.                                                                   |
+| CLI release docs            | `cli/README.md`                                                                | Documents PyPI publishing through GitHub Actions and manual fallback.                                                              |
+| Chinese release notes       | `asf-doc/docs/zh/release/<slug>/index.md`                                      | Primary release notes source. Draft Chinese first.                                                                                 |
+| English release notes       | `asf-doc/docs/en/release/<slug>/index.md`                                      | English mirror of the Chinese release notes.                                                                                       |
+| Docs navigation             | `asf-doc/docs/.vitepress/config/zh.ts`, `asf-doc/docs/.vitepress/config/en.ts` | Adds or updates the changelog nav item.                                                                                            |
+| Main docs submodule pointer | `asf-doc` entry in main repo                                                   | Must be committed in the main repo after committing inside `asf-doc`.                                                              |
 
 ## Naming conventions
 
@@ -70,7 +70,8 @@ Check these areas for every release:
 
 3. **Prepare release notes**
     - Generate candidate highlights from commits between the previous release tag and the planned release commit.
-    - Ask the user for raw material for **Developer Notes**. This section is not just a change summary; it can include background, motivation, opinions, lessons learned, tradeoffs, and complaints.
+    - Ask the user for raw material for **Developer Notes**. This section is not just a change summary; it can include background, motivation, opinions, lessons learned, tradeoffs,
+      and complaints.
     - Treat the user's Developer Notes input as source material even when it is scattered or informal. Preserve the intent, but rewrite it into a coherent developer voice.
     - Write Chinese release notes first under `asf-doc/docs/zh/release/<slug>/index.md`.
     - Create the matching English page under `asf-doc/docs/en/release/<slug>/index.md`.
@@ -148,7 +149,8 @@ Use this default structure unless the user requests another format:
 
 ### Developer Notes writing rules
 
-Developer Notes are usually provided by the user. They may be fragmented, informal, or spoken in the order the user remembers things. Convert that material into a readable developer note:
+Developer Notes are usually provided by the user. They may be fragmented, informal, or spoken in the order the user remembers things. Convert that material into a readable
+developer note:
 
 - Preserve the user's intent, stance, and tone.
 - Write from a developer/product-builder perspective, not like marketing copy.
@@ -235,7 +237,8 @@ rm -rf cli/dist
 - Prefer rerunning failed workflow jobs for transient infrastructure failures.
 - If the pushed tag points to the wrong commit or release inputs are wrong, stop and ask before deleting or recreating the remote tag.
 - If GitHub Release creation succeeds but release notes are wrong, update docs and then update the GitHub Release body through a follow-up change.
-- If `publish-cli` fails because PyPI Trusted Publishing is not configured, configure the trusted or pending publisher for project `asp-cli`, workflow `release.yml`, environment `pypi`, then rerun the failed job.
+- If `publish-cli` fails because PyPI Trusted Publishing is not configured, configure the trusted or pending publisher for project `asp-cli`, workflow `release.yml`, environment
+  `pypi`, then rerun the failed job.
 - If `publish-cli` fails because the PyPI version already exists, do not try to overwrite it. Stop and decide whether to cut a new patch version.
 
 ## Quick prompt for future releases
