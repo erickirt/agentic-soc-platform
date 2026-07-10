@@ -153,6 +153,18 @@ def category_keyword_weight(value):
     return max(1, keyword_weight(value) // 2)
 
 
+def weighted_severity_sum(queryset, multiplier=1):
+    severity_score = DbCase(
+        *[
+            When(severity=severity, then=Value(float(weight) * multiplier))
+            for severity, weight in SEVERITY_WEIGHTS.items()
+        ],
+        default=Value(0.0),
+        output_field=FloatField(),
+    )
+    return queryset.aggregate(total=Sum(severity_score))["total"] or 0
+
+
 def add_grouped_keywords(counter, queryset, field, weight_function):
     for row in queryset.exclude(**{field: ""}).values(field, "severity").annotate(count=Count("id")).order_by():
         add_keyword(counter, row[field], weight=row["count"] * weight_function(row["severity"]))
@@ -342,14 +354,8 @@ def build_mean_times(start):
 
 
 def build_active_risk_index(window_cases, window_alerts, window_playbooks):
-    case_score = sum(
-        severity_weight(severity) * 2
-        for severity in window_cases.filter(status__in=OPEN_CASE_STATUSES).values_list("severity", flat=True)
-    )
-    alert_score = sum(
-        severity_weight(severity)
-        for severity in window_alerts.filter(status__in=ACTIVE_ALERT_STATUSES).values_list("severity", flat=True)
-    )
+    case_score = weighted_severity_sum(window_cases.filter(status__in=OPEN_CASE_STATUSES), multiplier=2)
+    alert_score = weighted_severity_sum(window_alerts.filter(status__in=ACTIVE_ALERT_STATUSES))
     playbook_score = (
         window_playbooks.filter(job_status=PlaybookJobStatus.FAILED).count() * 4
         + window_playbooks.filter(job_status=PlaybookJobStatus.RUNNING).count()
