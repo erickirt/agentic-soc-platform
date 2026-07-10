@@ -2,7 +2,7 @@ import re
 from collections import Counter
 from datetime import timedelta
 
-from django.db.models import Count, DateTimeField, Min, Q
+from django.db.models import Case as DbCase, Count, DateTimeField, FloatField, Min, Q, Sum, Value, When
 from django.db.models.functions import Coalesce, TruncDay, TruncHour
 from django.utils import timezone
 from rest_framework import permissions, status
@@ -287,35 +287,41 @@ def build_active_risk_index(window_cases, window_alerts, window_playbooks):
 
 
 def build_top_risk_artifacts(window_alerts):
-    artifact_scores = {}
-    alerts = window_alerts.prefetch_related("artifacts")
-    for alert in alerts:
-        weight = severity_weight(alert.severity)
-        for artifact in alert.artifacts.all():
-            key = str(artifact.id)
-            entry = artifact_scores.setdefault(key, {
-                "id": key,
-                "name": artifact.name,
-                "type": artifact.type,
-                "role": artifact.role,
-                "value": artifact.value,
-                "risk_score": 0,
-                "alert_count": 0,
-            })
-            entry["risk_score"] += weight
-            entry["alert_count"] += 1
-
-    ranked = sorted(
-        artifact_scores.values(),
-        key=lambda item: (item["risk_score"], item["alert_count"], item["value"]),
-        reverse=True,
+    severity_score = DbCase(
+        *[
+            When(alert__severity=severity, then=Value(float(weight)))
+            for severity, weight in SEVERITY_WEIGHTS.items()
+        ],
+        default=Value(0.0),
+        output_field=FloatField(),
+    )
+    rows = (
+        Alert.artifacts.through.objects
+        .filter(alert_id__in=window_alerts.order_by().values("id"))
+        .values(
+            "artifact_id",
+            "artifact__name",
+            "artifact__type",
+            "artifact__role",
+            "artifact__value",
+        )
+        .annotate(
+            risk_score=Sum(severity_score),
+            alert_count=Count("alert_id"),
+        )
+        .order_by("-risk_score", "-alert_count", "-artifact__value")[:8]
     )
     return [
         {
-            **item,
-            "risk_score": round(item["risk_score"], 1),
+            "id": str(row["artifact_id"]),
+            "name": row["artifact__name"],
+            "type": row["artifact__type"],
+            "role": row["artifact__role"],
+            "value": row["artifact__value"],
+            "risk_score": round(row["risk_score"] or 0, 1),
+            "alert_count": row["alert_count"],
         }
-        for item in ranked[:8]
+        for row in rows
     ]
 
 
