@@ -2,6 +2,7 @@ import re
 from collections import Counter
 from datetime import timedelta
 
+from django.db import connection
 from django.db.models import Case as DbCase, Count, DateTimeField, FloatField, Min, Q, Sum, Value, When
 from django.db.models.functions import Coalesce, TruncDay, TruncHour
 from django.utils import timezone
@@ -55,6 +56,7 @@ KEYWORD_STOP_WORDS = {
     "mock",
     "unknown",
 }
+KEYWORD_AGGREGATION_LIMIT = 120
 
 
 def iso_datetime(value):
@@ -152,31 +154,89 @@ def add_keyword(counter, value, weight=1, split=False):
         counter[text] += weight
 
 
+def keyword_weight(value):
+    return max(1, int(severity_weight(value) or 1))
+
+
+def category_keyword_weight(value):
+    return max(1, keyword_weight(value) // 2)
+
+
+def add_grouped_keywords(counter, queryset, field, weight_function):
+    for row in queryset.exclude(**{field: ""}).values(field, "severity").annotate(count=Count("id")).order_by():
+        add_keyword(counter, row[field], weight=row["count"] * weight_function(row["severity"]))
+
+
+def add_title_tokens(counter, queryset, field):
+    sql, params = queryset.order_by().values(field).query.sql_with_params()
+    stop_words = list(KEYWORD_STOP_WORDS)
+    with connection.cursor() as cursor:
+        cursor.execute(
+            f"""
+            SELECT token, COUNT(*) AS value
+            FROM (
+                SELECT lower(trim(both '._-' FROM raw_token.value)) AS token
+                FROM ({sql}) AS source
+                CROSS JOIN LATERAL regexp_split_to_table(source.{field}, '[^A-Za-z0-9+._-]+') AS raw_token(value)
+            ) AS tokens
+            WHERE length(token) >= 3
+              AND token ~ '^[a-z][a-z0-9+._-]*$'
+              AND NOT (token = ANY(%s))
+            GROUP BY token
+            ORDER BY value DESC, token
+            LIMIT %s
+            """,
+            [*params, stop_words, KEYWORD_AGGREGATION_LIMIT],
+        )
+        for token, value in cursor.fetchall():
+            counter[token] += value
+
+
+def add_json_array_keywords(counter, queryset, field):
+    sql, params = queryset.order_by().values(field, "severity").query.sql_with_params()
+    severity_cases = " ".join(
+        "WHEN severity = %s THEN %s"
+        for _severity, _weight in SEVERITY_WEIGHTS.items()
+    )
+    severity_params = [
+        item
+        for severity, weight in SEVERITY_WEIGHTS.items()
+        for item in (severity, keyword_weight(severity))
+    ]
+    with connection.cursor() as cursor:
+        cursor.execute(
+            f"""
+            SELECT value, SUM(weight) AS score
+            FROM (
+                SELECT
+                    jsonb_array_elements_text(source.{field}) AS value,
+                    CASE {severity_cases} ELSE 1 END AS weight
+                FROM ({sql}) AS source
+            ) AS tokens
+            WHERE value <> ''
+            GROUP BY value
+            ORDER BY score DESC, value
+            LIMIT %s
+            """,
+            [*severity_params, *params, KEYWORD_AGGREGATION_LIMIT],
+        )
+        for value, score in cursor.fetchall():
+            add_keyword(counter, value, weight=score)
+
+
 def build_threat_keywords(window_cases, window_alerts):
     counter = Counter()
 
-    for alert in window_alerts.values(
-        "title",
-        "severity",
-        "labels",
-        "tactic",
-        "technique",
-        "product_category",
-        "product_name",
-    ):
-        weight = max(1, int(severity_weight(alert["severity"]) or 1))
-        add_keyword(counter, alert["title"], weight=1, split=True)
-        add_keyword(counter, alert["labels"], weight=weight)
-        add_keyword(counter, alert["tactic"], weight=weight)
-        add_keyword(counter, alert["technique"], weight=weight)
-        add_keyword(counter, alert["product_category"], weight=max(1, weight // 2))
-        add_keyword(counter, alert["product_name"], weight=1)
+    add_title_tokens(counter, window_alerts, "title")
+    add_json_array_keywords(counter, window_alerts, "labels")
+    add_grouped_keywords(counter, window_alerts, "tactic", keyword_weight)
+    add_grouped_keywords(counter, window_alerts, "technique", keyword_weight)
+    add_grouped_keywords(counter, window_alerts, "product_category", category_keyword_weight)
+    add_grouped_keywords(counter, window_alerts, "product_name", lambda _severity: 1)
 
-    for case in window_cases.values("title", "severity", "category", "tags"):
-        weight = max(1, int(severity_weight(case["severity"]) or 1))
-        add_keyword(counter, case["title"], weight=1, split=True)
-        add_keyword(counter, case["category"], weight=max(1, weight // 2))
-        add_keyword(counter, case["tags"], weight=weight)
+    add_title_tokens(counter, window_cases, "title")
+    add_json_array_keywords(counter, window_cases, "tags")
+    add_grouped_keywords(counter, window_cases, "category", category_keyword_weight)
 
     return [
         {"text": text, "value": value}
