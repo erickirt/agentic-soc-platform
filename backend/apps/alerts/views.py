@@ -11,9 +11,7 @@ from .serializers import AlertSerializer
 
 
 class AlertViewSet(AuditActorMixin, viewsets.ModelViewSet):
-    queryset = Alert.objects.select_related("case").prefetch_related("artifacts").annotate(
-        artifact_count=Count("artifacts", distinct=True)
-    ).order_by("-created_at")
+    queryset = Alert.objects.select_related("case").prefetch_related("artifacts").order_by("-created_at")
     serializer_class = AlertSerializer
     permission_classes = [permissions.IsAuthenticated, IsBusinessWriterOrReadOnly]
     lookup_field = "id"
@@ -83,8 +81,14 @@ class AlertViewSet(AuditActorMixin, viewsets.ModelViewSet):
         "created_at": "date",
     }
 
+    def is_ordering_by_artifact_count(self):
+        raw_ordering = self.request.query_params.get("ordering", "")
+        return any(field.strip().lstrip("-") == "artifact_count" for field in raw_ordering.split(","))
+
     def get_queryset(self):
         queryset = super().get_queryset()
+        if self.is_ordering_by_artifact_count():
+            queryset = queryset.annotate(artifact_count=Count("artifacts", distinct=True))
         artifact_id = self.request.query_params.get("artifacts")
         if artifact_id:
             queryset = queryset.filter(artifacts__id=artifact_id)

@@ -165,10 +165,11 @@ class Command(BaseCommand):
                 first_alert_seen_time=Min("alerts__first_seen_time"),
             ).order_by("-created_at")
 
-        def alert_queryset():
-            return Alert.objects.select_related("case").prefetch_related("artifacts").annotate(
-                artifact_count=Count("artifacts", distinct=True)
-            ).order_by("-created_at")
+        def alert_queryset(*, with_artifact_count=False):
+            queryset = Alert.objects.select_related("case").prefetch_related("artifacts")
+            if with_artifact_count:
+                queryset = queryset.annotate(artifact_count=Count("artifacts", distinct=True))
+            return queryset.order_by("-created_at")
 
         def artifact_queryset():
             return Artifact.objects.annotate(alert_count=Count("alerts", distinct=True)).order_by("-created_at")
@@ -204,7 +205,7 @@ class Command(BaseCommand):
             ("alerts.filter_status_severity", lambda: list_count(alert_queryset().filter(status__in=["New", "In Progress"], severity__in=["High", "Critical"]))),
             ("alerts.filter_product_risk", lambda: list_count(alert_queryset().filter(product_category="IAM", risk_level__in=["High", "Critical"]))),
             ("alerts.order_first_seen", lambda: list_count(alert_queryset().order_by("-first_seen_time", "-id"))),
-            ("alerts.order_artifact_count", lambda: list_count(alert_queryset().order_by("-artifact_count", "-created_at"))),
+            ("alerts.order_artifact_count", lambda: list_count(alert_queryset(with_artifact_count=True).order_by("-artifact_count", "-created_at"))),
             ("alerts.search_hot", lambda: list_count(alert_queryset().filter(Q(alert_id__icontains=HOT_SEARCH_TOKEN) | Q(title__icontains=HOT_SEARCH_TOKEN) | Q(desc__icontains=HOT_SEARCH_TOKEN) | Q(rule_name__icontains=HOT_SEARCH_TOKEN) | Q(source_uid__icontains=HOT_SEARCH_TOKEN)))),
             ("alerts.search_rare", lambda: list_count(alert_queryset().filter(Q(title__icontains=RARE_SEARCH_TOKEN) | Q(rule_name__icontains=RARE_SEARCH_TOKEN)))),
             ("artifacts.default_page", lambda: list_count(artifact_queryset())),
