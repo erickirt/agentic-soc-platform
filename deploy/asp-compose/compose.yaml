@@ -105,6 +105,7 @@ services:
   postgres:
     image: postgres:17
     restart: unless-stopped
+    shm_size: "1gb"
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}

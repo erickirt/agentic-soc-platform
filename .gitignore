@@ -13,6 +13,7 @@ build/
 *.sqlite3
 media/
 staticfiles/
+backend/perf-results/
 
 # Environment
 .env
