@@ -1,4 +1,5 @@
-from django.db.models import Count
+from django.db.models import Count, IntegerField, OuterRef, Subquery, Value
+from django.db.models.functions import Coalesce
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, permissions
 from rest_framework.filters import OrderingFilter, SearchFilter
@@ -11,7 +12,7 @@ from .serializers import ArtifactSerializer
 
 
 class ArtifactViewSet(AuditActorMixin, viewsets.ModelViewSet):
-    queryset = Artifact.objects.annotate(alert_count=Count("alerts", distinct=True)).order_by("-created_at")
+    queryset = Artifact.objects.order_by("-created_at")
     serializer_class = ArtifactSerializer
     permission_classes = [permissions.IsAuthenticated, IsBusinessWriterOrReadOnly]
     lookup_field = "id"
@@ -29,8 +30,28 @@ class ArtifactViewSet(AuditActorMixin, viewsets.ModelViewSet):
         "updated_at": "date",
     }
 
+    def is_ordering_by_alert_count(self):
+        raw_ordering = self.request.query_params.get("ordering", "")
+        return any(field.strip().lstrip("-") == "alert_count" for field in raw_ordering.split(","))
+
+    def annotate_alert_count(self, queryset):
+        if self.is_ordering_by_alert_count():
+            return queryset.annotate(alert_count=Count("alerts", distinct=True))
+
+        alert_count = (
+            Artifact.alerts.through.objects
+            .filter(artifact_id=OuterRef("pk"))
+            .order_by()
+            .values("artifact_id")
+            .annotate(count=Count("alert_id"))
+            .values("count")[:1]
+        )
+        return queryset.annotate(
+            alert_count=Coalesce(Subquery(alert_count, output_field=IntegerField()), Value(0))
+        )
+
     def get_queryset(self):
-        queryset = super().get_queryset()
+        queryset = self.annotate_alert_count(super().get_queryset())
         alert_id = self.request.query_params.get("alerts")
         if alert_id:
             queryset = queryset.filter(alerts__id=alert_id)
