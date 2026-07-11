@@ -63,7 +63,7 @@ export default function CaseInvestigationView({ caseId }: CaseInvestigationViewP
         <Alert
           type="error"
           showIcon
-          message={error}
+          title={error}
           action={<Button size="small" icon={<ReloadOutlined />} onClick={loadReport}>Retry</Button>}
         />
       </div>

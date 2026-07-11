@@ -7,6 +7,7 @@ import {Boxes, BrainCircuit, DatabaseZap} from 'lucide-react'
 import client from '../api/client'
 import JsonViewer from '../components/JsonViewer'
 import IconTabLabel from '../components/IconTabLabel'
+import OverflowTags from '../components/OverflowTags'
 import {comfortableTagProps} from '../utils/tagStyles'
 
 type SourceType = 'official' | 'custom'
@@ -436,11 +437,7 @@ function PlaybooksTab() {
       title: 'Tags',
       dataIndex: 'tags',
       width: 260,
-      render: (tags: string[]) => (
-        <Space size={[4, 4]} wrap>
-          {(tags || []).map((tag) => <Tag {...comfortableTagProps} key={tag} color={PLAYBOOK_TAG_COLORS[tag] || 'blue'}>{tag}</Tag>)}
-        </Space>
-      ),
+      render: (tags: string[]) => <OverflowTags items={tags} getColor={(tag) => PLAYBOOK_TAG_COLORS[tag] || 'blue'} />,
     },
     { title: 'Description', dataIndex: 'description', ellipsis: true },
     { title: 'Path', dataIndex: 'path', width: 300, render: (path: string) => <PathText path={path} /> },
