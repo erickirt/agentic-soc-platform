@@ -1,5 +1,4 @@
 from django.db import models
-from django.db.models.functions import Coalesce
 
 from apps.common.models import BaseModel
 from apps.common.readable_ids import save_with_readable_id
@@ -226,10 +225,6 @@ class Alert(BaseModel):
         indexes = [
             models.Index(fields=["-created_at", "-id"], name="alert_created_id_idx"),
             models.Index(fields=["-first_seen_time", "-id"], name="alert_first_seen_id_idx"),
-            models.Index(
-                Coalesce("last_seen_time", "first_seen_time", "created_at", output_field=models.DateTimeField()),
-                name="alert_event_time_expr_idx",
-            ),
         ]
 
     def __str__(self):
