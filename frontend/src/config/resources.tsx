@@ -413,14 +413,12 @@ export const resourceConfigs: Record<string, ResourceConfig<RecordRow>> = {
             column('alerts_link', 'Alerts', L132, {
                 dataIndex: 'alert_count',
                 defaultVisible: true,
-                sorter: true,
                 openRecordTab: 'alerts',
                 render: viewRelatedLabel,
             }),
             column('playbooks_link', 'Playbooks', L132, {
                 dataIndex: 'playbook_count',
                 defaultVisible: true,
-                sorter: true,
                 openRecordTab: 'playbooks',
                 render: viewRelatedLabel,
             }),
@@ -585,7 +583,6 @@ export const resourceConfigs: Record<string, ResourceConfig<RecordRow>> = {
             column('artifacts_link', 'Artifacts', L132, {
                 dataIndex: 'artifact_count',
                 defaultVisible: true,
-                sorter: true,
                 openRecordTab: 'artifacts',
                 render: viewRelatedLabel,
             }),
@@ -703,7 +700,6 @@ export const resourceConfigs: Record<string, ResourceConfig<RecordRow>> = {
             column('alerts_link', 'Alerts', L160, {
                 dataIndex: 'alert_count',
                 defaultVisible: true,
-                sorter: true,
                 openRecordTab: 'alerts',
                 render: viewRelatedLabel,
             }),

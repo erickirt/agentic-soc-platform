@@ -37,7 +37,6 @@ class AlertViewSet(AuditActorMixin, viewsets.ModelViewSet):
     ordering_fields = (
         "created_at",
         "updated_at",
-        "artifact_count",
         "severity",
         "confidence",
         "impact",
@@ -83,25 +82,18 @@ class AlertViewSet(AuditActorMixin, viewsets.ModelViewSet):
         "created_at": "date",
     }
 
-    def is_ordering_by_artifact_count(self):
-        raw_ordering = self.request.query_params.get("ordering", "")
-        return any(field.strip().lstrip("-") == "artifact_count" for field in raw_ordering.split(","))
-
     def annotate_list_counts(self, queryset):
-        if self.is_ordering_by_artifact_count():
-            queryset = queryset.annotate(artifact_count=Count("artifacts", distinct=True))
-        else:
-            artifact_count = (
-                Alert.artifacts.through.objects
-                .filter(alert_id=OuterRef("pk"))
-                .order_by()
-                .values("alert_id")
-                .annotate(count=Count("artifact_id"))
-                .values("count")[:1]
-            )
-            queryset = queryset.annotate(
-                artifact_count=Coalesce(Subquery(artifact_count, output_field=IntegerField()), Value(0))
-            )
+        artifact_count = (
+            Alert.artifacts.through.objects
+            .filter(alert_id=OuterRef("pk"))
+            .order_by()
+            .values("alert_id")
+            .annotate(count=Count("artifact_id"))
+            .values("count")[:1]
+        )
+        queryset = queryset.annotate(
+            artifact_count=Coalesce(Subquery(artifact_count, output_field=IntegerField()), Value(0))
+        )
 
         enrichment_count = (
             Enrichment.objects

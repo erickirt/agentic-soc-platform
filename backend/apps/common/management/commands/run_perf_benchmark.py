@@ -8,7 +8,7 @@ from types import SimpleNamespace
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db import connection, reset_queries
-from django.db.models import CharField, Count, DateTimeField, IntegerField, Min, OuterRef, Q, Subquery, Value
+from django.db.models import CharField, Count, DateTimeField, IntegerField, OuterRef, Q, Subquery, Value
 from django.db.models.functions import Cast, Coalesce, Concat
 from django.utils import timezone
 
@@ -159,13 +159,7 @@ class Command(BaseCommand):
             }
 
     def scenarios(self, *, page_size, deep_offset):
-        def case_queryset(*, with_count_order=False):
-            if with_count_order:
-                return Case.objects.select_related("assignee").annotate(
-                    alert_count=Count("alerts", distinct=True),
-                    playbook_count=Count("playbooks", distinct=True),
-                    first_alert_seen_time=Min("alerts__first_seen_time"),
-                ).order_by("-created_at")
+        def case_queryset():
             alert_count = (
                 Alert.objects
                 .filter(case_id=OuterRef("pk"))
@@ -194,15 +188,10 @@ class Command(BaseCommand):
                 first_alert_seen_time=Subquery(first_alert_seen_time, output_field=DateTimeField()),
             ).order_by("-created_at")
 
-        def alert_queryset(*, with_artifact_count=False):
-            queryset = Alert.objects.select_related("case").prefetch_related("artifacts")
-            if with_artifact_count:
-                queryset = queryset.annotate(artifact_count=Count("artifacts", distinct=True))
-            return queryset.order_by("-created_at")
+        def alert_queryset():
+            return Alert.objects.select_related("case").prefetch_related("artifacts").order_by("-created_at")
 
-        def artifact_queryset(*, with_alert_count_order=False):
-            if with_alert_count_order:
-                return Artifact.objects.annotate(alert_count=Count("alerts", distinct=True)).order_by("-created_at")
+        def artifact_queryset():
             alert_count = (
                 Artifact.alerts.through.objects
                 .filter(artifact_id=OuterRef("pk"))
@@ -239,19 +228,16 @@ class Command(BaseCommand):
             ("cases.default_page", lambda: list_count(case_queryset())),
             ("cases.deep_page", lambda: list_count(case_queryset()[deep_offset:deep_offset + page_size])),
             ("cases.filter_status_severity", lambda: list_count(case_queryset().filter(status__in=["New", "In Progress"], severity__in=["High", "Critical"]))),
-            ("cases.order_alert_count", lambda: list_count(case_queryset(with_count_order=True).order_by("-alert_count", "-created_at"))),
             ("cases.search_hot", lambda: list_count(case_queryset().filter(Q(case_id__icontains=HOT_SEARCH_TOKEN) | Q(title__icontains=HOT_SEARCH_TOKEN) | Q(description__icontains=HOT_SEARCH_TOKEN) | Q(summary__icontains=HOT_SEARCH_TOKEN) | Q(correlation_uid__icontains=HOT_SEARCH_TOKEN)))),
             ("cases.search_rare", lambda: list_count(case_queryset().filter(Q(title__icontains=RARE_SEARCH_TOKEN) | Q(description__icontains=RARE_SEARCH_TOKEN)))),
             ("alerts.default_page", lambda: list_count(alert_queryset())),
             ("alerts.filter_status_severity", lambda: list_count(alert_queryset().filter(status__in=["New", "In Progress"], severity__in=["High", "Critical"]))),
             ("alerts.filter_product_risk", lambda: list_count(alert_queryset().filter(product_category="IAM", risk_level__in=["High", "Critical"]))),
             ("alerts.order_first_seen", lambda: list_count(alert_queryset().order_by("-first_seen_time", "-id"))),
-            ("alerts.order_artifact_count", lambda: list_count(alert_queryset(with_artifact_count=True).order_by("-artifact_count", "-created_at"))),
             ("alerts.search_hot", lambda: list_count(alert_queryset().filter(Q(alert_id__icontains=HOT_SEARCH_TOKEN) | Q(title__icontains=HOT_SEARCH_TOKEN) | Q(desc__icontains=HOT_SEARCH_TOKEN) | Q(rule_name__icontains=HOT_SEARCH_TOKEN) | Q(source_uid__icontains=HOT_SEARCH_TOKEN)))),
             ("alerts.search_rare", lambda: list_count(alert_queryset().filter(Q(title__icontains=RARE_SEARCH_TOKEN) | Q(rule_name__icontains=RARE_SEARCH_TOKEN)))),
             ("artifacts.default_page", lambda: list_count(artifact_queryset())),
             ("artifacts.filter_type_role", lambda: list_count(artifact_queryset().filter(type="Hostname", role__in=["Actor", "Target"]))),
-            ("artifacts.order_alert_count", lambda: list_count(artifact_queryset(with_alert_count_order=True).order_by("-alert_count", "-created_at"))),
             ("artifacts.search_hot", lambda: list_count(artifact_queryset().filter(Q(artifact_id__icontains=HOT_SEARCH_TOKEN) | Q(value__icontains=HOT_SEARCH_TOKEN) | Q(name__icontains=HOT_SEARCH_TOKEN) | Q(type__icontains=HOT_SEARCH_TOKEN) | Q(role__icontains=HOT_SEARCH_TOKEN)))),
             ("artifacts.search_rare", lambda: list_count(artifact_queryset().filter(value__icontains=RARE_SEARCH_TOKEN))),
             ("dashboard.24h", lambda: len(build_dashboard_overview("24h"))),

@@ -1,4 +1,4 @@
-from django.db.models import Count, DateTimeField, IntegerField, Min, OuterRef, Subquery, Value
+from django.db.models import Count, DateTimeField, IntegerField, OuterRef, Subquery, Value
 from django.db.models.functions import Coalesce
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, permissions
@@ -29,8 +29,6 @@ class CaseViewSet(AuditActorMixin, viewsets.ModelViewSet):
         "updated_at",
         "acknowledged_time",
         "closed_time",
-        "alert_count",
-        "playbook_count",
         "severity",
         "severity_ai",
         "priority",
@@ -74,19 +72,7 @@ class CaseViewSet(AuditActorMixin, viewsets.ModelViewSet):
         "correlation_uid": "text",
     }
 
-    def is_ordering_by_relation_count(self):
-        raw_ordering = self.request.query_params.get("ordering", "")
-        ordering_fields = {field.strip().lstrip("-") for field in raw_ordering.split(",")}
-        return bool(ordering_fields & {"alert_count", "playbook_count"})
-
     def annotate_list_metrics(self, queryset):
-        if self.is_ordering_by_relation_count():
-            return queryset.annotate(
-                alert_count=Count("alerts", distinct=True),
-                playbook_count=Count("playbooks", distinct=True),
-                first_alert_seen_time=Min("alerts__first_seen_time"),
-            )
-
         alert_count = (
             Alert.objects
             .filter(case_id=OuterRef("pk"))

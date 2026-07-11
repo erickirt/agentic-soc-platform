@@ -19,7 +19,7 @@ class ArtifactViewSet(AuditActorMixin, viewsets.ModelViewSet):
     lookup_field = "id"
     filter_backends = (DjangoFilterBackend, SearchFilter, OrderingFilter, AdvancedFilterBackend)
     search_fields = ("artifact_id", "value", "name", "type", "role")
-    ordering_fields = ("created_at", "updated_at", "type", "role", "alert_count")
+    ordering_fields = ("created_at", "updated_at", "type", "role")
     filterset_fields = ("type", "role", "alerts__id")
     advanced_filter_fields = {
         "artifact_id": "text",
@@ -31,14 +31,7 @@ class ArtifactViewSet(AuditActorMixin, viewsets.ModelViewSet):
         "updated_at": "date",
     }
 
-    def is_ordering_by_alert_count(self):
-        raw_ordering = self.request.query_params.get("ordering", "")
-        return any(field.strip().lstrip("-") == "alert_count" for field in raw_ordering.split(","))
-
     def annotate_alert_count(self, queryset):
-        if self.is_ordering_by_alert_count():
-            return queryset.annotate(alert_count=Count("alerts", distinct=True))
-
         alert_count = (
             Artifact.alerts.through.objects
             .filter(artifact_id=OuterRef("pk"))
