@@ -1,3 +1,4 @@
+import logging
 from functools import lru_cache
 from pathlib import Path
 
@@ -5,6 +6,8 @@ import yaml
 
 from integrations.siem.models import IndexInfo, SchemaFieldInfo
 from asp import settings
+
+logger = logging.getLogger(__name__)
 
 CUSTOM_REGISTRY_DIR = Path(settings.CUSTOM_DIR) / "data" / "siem"
 
@@ -54,8 +57,9 @@ def scan_registry_configs():
     for yaml_file in _iter_overlaid_yaml_files(*default_registry_dirs()):
         try:
             index_info = _load_yaml_file(yaml_file)
-        except Exception as exc:
-            errors.append({"path": str(yaml_file), "error": f"{type(exc).__name__}: {exc}"})
+        except Exception:
+            logger.exception("Failed to load SIEM registry config from %s", yaml_file)
+            errors.append({"path": str(yaml_file), "error": "Failed to load SIEM registry config."})
             continue
         fields = [field.model_dump() for field in index_info.fields]
         indices.append({

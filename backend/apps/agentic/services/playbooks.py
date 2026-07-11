@@ -1,3 +1,4 @@
+import logging
 import uuid
 from pathlib import Path
 
@@ -8,6 +9,8 @@ from apps.agentic.runtime.base import BasePlaybook
 from apps.agentic.runtime.loader import discover_script_class, iter_overlaid_python_scripts
 from apps.inbox.notifications import notify_playbook_completion
 from apps.playbooks.models import Playbook, PlaybookJobStatus
+
+logger = logging.getLogger(__name__)
 
 
 def default_playbook_scripts_dir():
@@ -57,8 +60,9 @@ def scan_playbook_definitions(*, scripts_dir=None, scripts_dirs=None):
                 class_name="Playbook",
                 base_class=BasePlaybook,
             )
-        except Exception as exc:
-            errors.append({"path": str(path), "error": f"{type(exc).__name__}: {exc}"})
+        except Exception:
+            logger.exception("Failed to load playbook definition from %s", path)
+            errors.append({"path": str(path), "error": "Failed to load playbook definition."})
             continue
         if definition is not None:
             definitions.append(definition)

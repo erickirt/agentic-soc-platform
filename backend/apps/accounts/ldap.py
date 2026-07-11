@@ -32,8 +32,8 @@ def ldap_authenticates(username, password, config=None):
     try:
         from ldap3 import SUBTREE, Connection, Server
         from ldap3.core.exceptions import LDAPException
-    except ImportError as exc:
-        logger.warning("LDAP login failed for %s: ldap3 is not installed", username, exc_info=exc)
+    except ImportError:
+        logger.warning("LDAP login failed for %s: ldap3 is not installed", username, exc_info=True)
         return False
 
     connections = []
@@ -146,8 +146,9 @@ def test_ldap_config(config, *, test_username="", test_password=""):
     try:
         from ldap3 import Connection, Server
         from ldap3.core.exceptions import LDAPException
-    except ImportError as exc:
-        return {"success": False, "detail": f"ldap3 is not installed: {exc}", "response_preview": ""}
+    except ImportError:
+        logger.warning("LDAP test failed: ldap3 is not installed", exc_info=True)
+        return {"success": False, "detail": "LDAP support is not installed on the server.", "response_preview": ""}
 
     try:
         server = Server(config["server_uri"])
@@ -158,5 +159,6 @@ def test_ldap_config(config, *, test_username="", test_password=""):
         conn = Connection(server, auto_bind=True, **bind_kwargs)
         conn.unbind()
         return {"success": True, "detail": "LDAP bind succeeded.", "response_preview": ""}
-    except LDAPException as exc:
-        return {"success": False, "detail": f"LDAP bind failed: {exc}", "response_preview": ""}
+    except LDAPException:
+        logger.warning("LDAP bind test failed", exc_info=True)
+        return {"success": False, "detail": "LDAP bind failed.", "response_preview": ""}

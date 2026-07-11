@@ -1,5 +1,9 @@
+import logging
+
 from integrations.threat_intel.models import TIQueryOutput
 from integrations.threat_intel.providers import get_providers
+
+logger = logging.getLogger(__name__)
 
 RISK_PRIORITY = {"high": 3, "medium": 2, "low": 1, None: 0}
 
@@ -35,8 +39,9 @@ def query_indicator(indicator, *, artifact_type, provider=None):
             results.append(result)
             if result.error:
                 errors.append(f"[{provider_name}] {result.error}")
-        except Exception as exc:
-            errors.append(f"[{provider_name}] {type(exc).__name__}: {exc}")
+        except Exception:
+            logger.exception("Threat intelligence provider query failed: %s", provider_name)
+            errors.append(f"[{provider_name}] Provider query failed.")
 
     return TIQueryOutput(
         indicator=indicator,

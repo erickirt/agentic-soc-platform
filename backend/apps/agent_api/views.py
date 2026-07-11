@@ -1,4 +1,5 @@
 import json
+import logging
 import mimetypes
 
 from django.conf import settings
@@ -54,6 +55,7 @@ from .utils import bool_param, list_param, parse_tags, parse_timezone_aware_date
 API_VERSION = "v1"
 MIN_CLI_VERSION = "0.1.0"
 SERVER_VERSION = "0.5.0"
+logger = logging.getLogger(__name__)
 FOUNDATION_CAPABILITIES = [
     "agent.version",
     "case.list",
@@ -448,7 +450,8 @@ class PlaybookRunView(APIView):
                     user_input=request.data.get("user_input", ""),
                 )
         except ValueError as exc:
-            raise ValidationError({"detail": str(exc)}) from exc
+            logger.info("Invalid agent playbook run request", exc_info=True)
+            raise ValidationError({"detail": "Unknown playbook definition."}) from exc
         return agent_response(request, operation="playbook.run", data=serialize_playbook(playbook), status=status.HTTP_201_CREATED)
 
 
@@ -521,7 +524,8 @@ class ThreatIntelQueryView(APIView):
                 provider=provider,
             )
         except ValueError as exc:
-            raise ValidationError({"detail": str(exc)}) from exc
+            logger.info("Invalid agent threat intelligence query", exc_info=True)
+            raise ValidationError({"detail": "Invalid threat intelligence query."}) from exc
         return agent_response(request, operation="ti.query", data=_dump(result))
 
 
@@ -541,7 +545,8 @@ class CMDBLookupView(APIView):
                 provider=provider,
             )
         except ValueError as exc:
-            raise ValidationError({"detail": str(exc)}) from exc
+            logger.info("Invalid agent CMDB lookup request", exc_info=True)
+            raise ValidationError({"detail": "Invalid CMDB lookup request."}) from exc
         return agent_response(request, operation="cmdb.lookup", data=_dump(result))
 
 

@@ -66,8 +66,9 @@ def scan_module_definitions(*, scripts_dir=None, scripts_dirs=None):
     for path in paths:
         try:
             definition = _definition_from_script(path)
-        except Exception as exc:
-            errors.append({"path": str(path), "error": f"{type(exc).__name__}: {exc}"})
+        except Exception:
+            logger.exception("Failed to load module definition from %s", path)
+            errors.append({"path": str(path), "error": "Failed to load module definition."})
             continue
         if definition is not None:
             definitions.append(definition)

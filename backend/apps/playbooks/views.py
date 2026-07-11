@@ -1,3 +1,5 @@
+import logging
+
 from django.core.exceptions import ValidationError
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, permissions, status
@@ -13,6 +15,8 @@ from apps.cases.models import Case
 from apps.common.advanced_filters import AdvancedFilterBackend
 from .models import Playbook
 from .serializers import PlaybookSerializer
+
+logger = logging.getLogger(__name__)
 
 
 class PlaybookViewSet(AuditActorMixin, viewsets.ModelViewSet):
@@ -63,7 +67,8 @@ class PlaybookViewSet(AuditActorMixin, viewsets.ModelViewSet):
                     user=request.user,
                     user_input=user_input,
                 )
-        except ValueError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except ValueError:
+            logger.info("Invalid playbook run request", exc_info=True)
+            return Response({"detail": "Unknown playbook definition."}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(self.get_serializer(playbook).data, status=status.HTTP_201_CREATED)

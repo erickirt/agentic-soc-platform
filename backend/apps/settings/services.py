@@ -1,5 +1,9 @@
+import logging
+
 import httpx
 from pycti import OpenCTIApiClient
+
+logger = logging.getLogger(__name__)
 
 
 def _chat_completions_url(base_url):
@@ -57,10 +61,11 @@ def test_llm_provider(config):
             "detail": f"LLM provider test failed with HTTP {response.status_code}.",
             "response_preview": _redact(response.text, [api_key])[:500],
         }
-    except Exception as exc:
+    except Exception:
+        logger.exception("LLM provider test failed")
         return {
             "success": False,
-            "detail": _redact(exc, [api_key]),
+            "detail": "LLM provider test failed due to a connection error.",
             "response_preview": "",
         }
 
@@ -98,10 +103,11 @@ def test_alienvault_otx_config(config):
             "detail": f"AlienVault OTX test failed with HTTP {response.status_code}.",
             "response_preview": _redact(response.text, [api_key])[:500],
         }
-    except Exception as exc:
+    except Exception:
+        logger.exception("AlienVault OTX configuration test failed")
         return {
             "success": False,
-            "detail": _redact(exc, [api_key]),
+            "detail": "AlienVault OTX test failed due to a connection error.",
             "response_preview": "",
         }
 
@@ -159,10 +165,11 @@ def test_opencti_config(config):
             "detail": "OpenCTI responded successfully.",
             "response_preview": str(preview)[:500],
         }
-    except Exception as exc:
+    except Exception:
+        logger.exception("OpenCTI configuration test failed")
         return {
             "success": False,
-            "detail": _redact(exc, [token]),
+            "detail": "OpenCTI test failed due to a connection error.",
             "response_preview": "",
         }
 
@@ -186,10 +193,11 @@ def test_splunk_config(config):
             "detail": "Splunk responded successfully.",
             "response_preview": str({key: info.get(key) for key in ("serverName", "version", "guid")})[:500],
         }
-    except Exception as exc:
+    except Exception:
+        logger.exception("Splunk configuration test failed")
         return {
             "success": False,
-            "detail": _redact(exc, [password]),
+            "detail": "Splunk test failed due to a connection error.",
             "response_preview": "",
         }
 
@@ -213,9 +221,10 @@ def test_elk_config(config):
                 "version": (info.get("version") or {}).get("number") if isinstance(info.get("version"), dict) else "",
             })[:500],
         }
-    except Exception as exc:
+    except Exception:
+        logger.exception("ELK configuration test failed")
         return {
             "success": False,
-            "detail": _redact(exc, [api_key]),
+            "detail": "ELK test failed due to a connection error.",
             "response_preview": "",
         }

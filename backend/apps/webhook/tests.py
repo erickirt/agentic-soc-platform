@@ -198,7 +198,7 @@ class WebhookAPITests(SimpleTestCase):
         )
 
         self.assertEqual(response.status_code, 503)
-        self.assertEqual(response.json()["detail"], "Failed to write Redis stream search: RuntimeError")
+        self.assertEqual(response.json()["detail"], "Webhook stream service is unavailable.")
 
     def test_old_agentic_forwarder_route_is_removed(self):
         with self.assertRaises(Resolver404):

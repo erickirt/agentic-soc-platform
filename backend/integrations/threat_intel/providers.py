@@ -1,3 +1,4 @@
+import logging
 import ipaddress
 import re
 from urllib.parse import quote
@@ -44,6 +45,8 @@ OPENCTI_UNSUPPORTED_TYPES = {
     ArtifactType.PORT,
     ArtifactType.SCRIPT_CONTENT,
 }
+
+logger = logging.getLogger(__name__)
 
 
 class BaseThreatIntelProvider:
@@ -135,8 +138,9 @@ class OpenCTIProvider(BaseThreatIntelProvider):
             matches = self._find_matches(client, indicator, plan)
             context = self._load_context(client, matches)
             return self._summarize(indicator, artifact_type, plan, matches, context)
-        except Exception as exc:
-            return self._error(indicator, artifact_type, _redact(str(exc), [self.token]), indicator_type=plan.get("indicator_type"))
+        except Exception:
+            logger.exception("OpenCTI query failed")
+            return self._error(indicator, artifact_type, "OpenCTI query failed.", indicator_type=plan.get("indicator_type"))
 
     def _client(self):
         if self.client is not None:
@@ -251,9 +255,8 @@ class OpenCTIProvider(BaseThreatIntelProvider):
 
     @staticmethod
     def _pattern_contains_value(pattern, indicator):
-        values = re.findall(r"'((?:\\.|[^'])*)'", pattern)
         lowered = indicator.lower()
-        for value in values:
+        for value in _single_quoted_values(pattern):
             unescaped = value.replace("\\'", "'").replace("\\\\", "\\")
             if unescaped.lower() == lowered:
                 return True
@@ -565,11 +568,14 @@ class AlienVaultOTXProvider(BaseThreatIntelProvider):
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as exc:
-            return {"error": f"OTX HTTP {exc.response.status_code}: {exc.response.text}"}
-        except httpx.HTTPError as exc:
-            return {"error": f"OTX request failed: {type(exc).__name__}: {exc}"}
-        except ValueError as exc:
-            return {"error": f"OTX response is not valid JSON: {exc}"}
+            logger.info("OTX request returned HTTP %s", exc.response.status_code)
+            return {"error": f"OTX HTTP {exc.response.status_code}."}
+        except httpx.HTTPError:
+            logger.exception("OTX request failed")
+            return {"error": "OTX request failed."}
+        except ValueError:
+            logger.exception("OTX response is not valid JSON")
+            return {"error": "OTX response is not valid JSON."}
 
     def summarize_result(self, attributes, indicator_type, indicator):
         if attributes.get("error"):
@@ -742,6 +748,32 @@ def _looks_like_url(value):
     if re.match(r"^(https?://|ftp://|www\.)", value, re.IGNORECASE):
         return True
     return "." in value and "/" in value
+
+
+def _single_quoted_values(value):
+    values = []
+    current = []
+    in_quote = False
+    escaped = False
+    for char in value:
+        if not in_quote:
+            if char == "'":
+                in_quote = True
+                current = []
+            continue
+        if escaped:
+            current.append(f"\\{char}")
+            escaped = False
+            continue
+        if char == "\\":
+            escaped = True
+            continue
+        if char == "'":
+            values.append("".join(current))
+            in_quote = False
+            continue
+        current.append(char)
+    return values
 
 
 def _redact(value, secrets):

@@ -101,14 +101,15 @@ def _module_record_with_stream_health(definition, *, redis_client=None):
     record = _module_record(definition)
     try:
         record["stream_health"] = _stream_health(definition.stream_name, redis_client=redis_client)
-    except redis.RedisError as exc:
+    except redis.RedisError:
+        logger.exception("Failed to read module stream health for %s", definition.stream_name)
         record["stream_health"] = {
             "available": False,
             "length": 0,
             "first_id": "",
             "last_id": "",
             "groups": [],
-            "warning": f"{type(exc).__name__}: {exc}",
+            "warning": "Stream health is unavailable.",
         }
     return record
 

@@ -1,3 +1,5 @@
+import logging
+
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
@@ -32,6 +34,8 @@ from .serializers import (
     ThreatIntelOpenCTIConfigSerializer,
 )
 from .services import test_alienvault_otx_config, test_elk_config, test_llm_provider, test_opencti_config, test_splunk_config
+
+logger = logging.getLogger(__name__)
 
 LLM_AUDIT_FIELDS = ("name", "base_url", "model", "proxy", "tags", "enabled", "priority", "api_key")
 OTX_AUDIT_FIELDS = ("enabled", "api_key", "base_url", "proxy")
@@ -98,8 +102,9 @@ def _run_config_test(operation, func, config):
             config,
             timeout_seconds=settings.CONFIG_TEST_TIMEOUT_SECONDS,
         )
-    except OperationTimeoutError as exc:
-        return {"success": False, "detail": str(exc), "response_preview": ""}
+    except OperationTimeoutError:
+        logger.warning("Configuration test timed out: %s", operation, exc_info=True)
+        return {"success": False, "detail": "Configuration test timed out.", "response_preview": ""}
 
 
 def _config_from_instance(instance, values):

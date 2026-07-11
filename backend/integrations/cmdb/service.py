@@ -1,5 +1,9 @@
+import logging
+
 from integrations.cmdb.models import CMDBQueryOutput
 from integrations.cmdb.providers import get_providers
+
+logger = logging.getLogger(__name__)
 
 
 def list_providers():
@@ -25,8 +29,9 @@ def lookup_artifact_context(artifact_type, artifact_value, provider=None):
             results.append(result)
             if result.error:
                 errors.append(f"[{provider_name}] {result.error}")
-        except Exception as exc:
-            errors.append(f"[{provider_name}] {type(exc).__name__}: {exc}")
+        except Exception:
+            logger.exception("CMDB provider lookup failed: %s", provider_name)
+            errors.append(f"[{provider_name}] Provider lookup failed.")
 
     return CMDBQueryOutput(
         artifact_type=artifact_type,
