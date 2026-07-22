@@ -2,7 +2,7 @@ import type {Key} from 'react'
 import {useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react'
 import {Button, Checkbox, Divider, Input, Pagination, Popconfirm, Popover, Select, Space, Table, Tooltip} from 'antd'
 import {message} from '../utils/appMessage'
-import {ClearOutlined, CloseOutlined, DeleteOutlined, FilterOutlined, HolderOutlined, PushpinFilled, PushpinOutlined, ReloadOutlined, SettingOutlined} from '@ant-design/icons'
+import {ClearOutlined, CloseOutlined, DeleteOutlined, FilterOutlined, HolderOutlined, PushpinFilled, PushpinOutlined, QuestionCircleOutlined, ReloadOutlined, SettingOutlined} from '@ant-design/icons'
 import {closestCenter, DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors} from '@dnd-kit/core'
 import {arrayMove, SortableContext, useSortable, verticalListSortingStrategy} from '@dnd-kit/sortable'
 import {CSS} from '@dnd-kit/utilities'
@@ -820,7 +820,7 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
   }, [dense, toolbarGap])
 
   return (
-    <div ref={containerRef} style={{ display: 'flex', flexDirection: 'column', height: fillParent ? '100%' : 'calc(100vh - 96px)', minHeight: 0, overflow: 'hidden' }}>
+    <div ref={containerRef} style={{ position: 'relative', display: 'flex', flexDirection: 'column', height: fillParent ? '100%' : 'calc(100vh - 96px)', minHeight: 0, overflow: 'hidden' }}>
       <div ref={toolbarRef} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: toolbarGap, flexShrink: 0 }}>
         <Space wrap align="center">
           {searchPlacement === 'start' && searchControl}
@@ -921,6 +921,19 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
         pagination={false}
         onChange={handleChange}
       />
+      <Popover
+        trigger="click"
+        placement="topRight"
+        title="Table tips"
+        content={<div style={{ maxWidth: 260 }}>Wide tables: hold Shift and use the mouse wheel to scroll horizontally.</div>}
+      >
+        <Button
+          className="asp-table-floating-help"
+          shape="circle"
+          size="small"
+          icon={<QuestionCircleOutlined />}
+        />
+      </Popover>
       <TableFilterModal
         open={filterModalOpen}
         savedFiltersKey={resolvedSavedFiltersKey}
