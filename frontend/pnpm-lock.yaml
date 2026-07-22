@@ -12,8 +12,8 @@ importers:
         specifier: ^2.6.7
         version: 2.6.7(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@ant-design/icons':
-        specifier: ^6.2.5
-        version: 6.2.5(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        specifier: ^6.3.2
+        version: 6.3.2(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@dnd-kit/core':
         specifier: ^6.3.1
         version: 6.3.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -139,18 +139,8 @@ packages:
       react: '>=16.8.4'
       react-dom: '>=16.8.4'
 
-  '@ant-design/icons-svg@4.4.2':
-    resolution: {integrity: sha512-vHbT+zJEVzllwP+CM+ul7reTEfBR0vgxFe7+lREAsAA7YGsYpboiq2sQNeQeRvh09GfQgs/GyFEvZpJ9cLXpXA==}
-
   '@ant-design/icons-svg@4.5.0':
     resolution: {integrity: sha512-1BTUFyKPTBZ53MuTP8s0k5SFEXL7o3VHEOwLgzaoWKwnBeqIcqUtVshc4SKzhI6uACfqhJqBwBUE9FsWR3uULA==}
-
-  '@ant-design/icons@6.2.5':
-    resolution: {integrity: sha512-0hKtoKqTjGFOndUyJLJmC9Cg6k4rEO7rLo6xmgbNJH+/ZX1C57RVals2v1j1knHl9n7Q+sBOveTvn931wLOCKw==}
-    engines: {node: '>=8'}
-    peerDependencies:
-      react: '>=16.0.0'
-      react-dom: '>=16.0.0'
 
   '@ant-design/icons@6.3.2':
     resolution: {integrity: sha512-B6O5a5XJ4wjtNOfZejXYwHW5zvKV5gYkjGf11dHGLEbKn0ABDGndo41+gfIiXyTFhvESj4XTotuud33mUFid0g==}
@@ -714,12 +704,6 @@ packages:
     peerDependencies:
       react: '>=16.9.0'
       react-dom: '>=16.9.0'
-
-  '@rc-component/util@1.11.1':
-    resolution: {integrity: sha512-awVlI3ub2vqfqkYxOBc/uQ0efm3jw0wcrhtO/YWLyZfxiKXczKwNbVuhlnyxytDt7H9pbbVQiqr+O6MLATtRYg==}
-    peerDependencies:
-      react: '>=18.0.0'
-      react-dom: '>=18.0.0'
 
   '@rc-component/util@1.12.0':
     resolution: {integrity: sha512-AEjPL8JVdohIITaiXokyjL9WQ6tKWWjAYK9QU16tGNE9JaQABBQy+hA4H2Lup5MgXy9yY3iLrbZJheuU13hTdQ==}
@@ -2016,9 +2000,6 @@ packages:
       react: '>=16.4.0'
       react-dom: '>=16.4.0'
 
-  react-is@18.3.1:
-    resolution: {integrity: sha512-/LLMVyas0ljjAtoYiPqYiL8VWXzUUdThrmU5+n20DZv+a+ClRoevUzw5JxU+Ieh5/c87ytoTBV9G1FiKfNJdmg==}
-
   react-is@19.2.7:
     resolution: {integrity: sha512-kZFnouyVv7eP/Phmrlo9FK+zcAdriZJvzxXHF1Sl1P377WSGe2G/JxVolhTrB/jeV47lKImhNUsijjHAAbcl/A==}
 
@@ -2432,18 +2413,7 @@ snapshots:
       - css-to-react-native
       - react-native
 
-  '@ant-design/icons-svg@4.4.2': {}
-
   '@ant-design/icons-svg@4.5.0': {}
-
-  '@ant-design/icons@6.2.5(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
-    dependencies:
-      '@ant-design/colors': 8.0.1
-      '@ant-design/icons-svg': 4.4.2
-      '@rc-component/util': 1.11.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      clsx: 2.1.1
-      react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
 
   '@ant-design/icons@6.3.2(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
     dependencies:
@@ -3235,13 +3205,6 @@ snapshots:
       clsx: 2.1.1
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
-
-  '@rc-component/util@1.11.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
-    dependencies:
-      is-mobile: 5.0.0
-      react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
-      react-is: 18.3.1
 
   '@rc-component/util@1.12.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
     dependencies:
@@ -4792,8 +4755,6 @@ snapshots:
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
       tslib: 2.8.1
-
-  react-is@18.3.1: {}
 
   react-is@19.2.7: {}
 
