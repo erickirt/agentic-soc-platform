@@ -785,4 +785,4 @@ def _run_siem_operation(operation, func, input_data):
         return run_with_operation_timeout(operation, func, input_data)
     except ValueError as exc:
         logger.info("Invalid agent SIEM request", exc_info=True)
-        raise ValidationError({"detail": str(exc)}) from exc
+        raise ValidationError({"detail": "Invalid SIEM request."}) from exc

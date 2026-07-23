@@ -11,16 +11,19 @@ class AgentSIEMValidationTests(TestCase):
         self.client = APIClient()
         self.client.force_authenticate(self.user)
 
-    def test_keyword_search_backend_value_error_returns_bad_request(self):
+    def test_keyword_search_backend_value_error_returns_generic_bad_request(self):
         payload = {
             "keyword": "powershell",
             "index_name": 'main" | delete index=* | search index="x',
             "time_range_start": "2026-06-23T12:00:00Z",
             "time_range_end": "2026-06-23T13:00:00Z",
         }
+        internal_detail = "Traceback in /opt/asp/custom/secrets.py: Invalid Splunk index name"
 
-        with patch("apps.agent_api.views.siem_service.keyword_search", side_effect=ValueError("Invalid Splunk index name")):
+        with patch("apps.agent_api.views.siem_service.keyword_search", side_effect=ValueError(internal_detail)):
             response = self.client.post("/api/agent/v1/siem/search/keyword/", payload, format="json")
 
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.data["detail"], "Invalid Splunk index name")
+        self.assertEqual(response.data["detail"], "Invalid SIEM request.")
+        self.assertNotIn("Traceback", str(response.data))
+        self.assertNotIn("/opt/asp/custom", str(response.data))
