@@ -7,6 +7,7 @@ import client from '../api/client'
 interface RuntimeConfig {
   prompt_language: 'en' | 'zh'
   stream_maxlen: number
+  dashboard_refresh_interval_seconds: 300 | 900 | 1800 | 3600
   updated_at?: string
 }
 
@@ -14,6 +15,7 @@ function initialValues(): RuntimeConfig {
   return {
     prompt_language: 'en',
     stream_maxlen: 10000,
+    dashboard_refresh_interval_seconds: 300,
   }
 }
 
@@ -108,6 +110,25 @@ export default function RuntimeSettings() {
                 rules={[{ required: true }]}
               >
                 <InputNumber min={1} max={10000000} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Typography.Text strong>Dashboard Runtime</Typography.Text>
+          <Divider style={{ margin: '8px 0 16px' }} />
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="dashboard_refresh_interval_seconds"
+                label={helpLabel('Dashboard Refresh Interval', 'Controls how often the background worker recalculates the 24h, 7d, and 30d dashboard caches.')}
+                rules={[{ required: true }]}
+              >
+                <Select options={[
+                  { label: '5 minutes', value: 300 },
+                  { label: '15 minutes', value: 900 },
+                  { label: '30 minutes', value: 1800 },
+                  { label: '60 minutes', value: 3600 },
+                ]} />
               </Form.Item>
             </Col>
           </Row>

@@ -142,7 +142,14 @@ function eventAccentColor(item: DashboardHighlight) {
 
 function generatedAtLabel(value: string | undefined) {
   if (!value) return 'Waiting for telemetry'
-  return `Last refresh ${new Date(value).toLocaleString()}`
+  return `Data generated ${new Date(value).toLocaleString()}`
+}
+
+function cacheAgeLabel(seconds: number) {
+  if (seconds < 60) return `${seconds}s`
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`
+  return `${Math.floor(seconds / 86400)}d`
 }
 
 function CyberEmpty({ title = 'Signal Quiet', description = 'No telemetry in this window.' }: { title?: string; description?: string }) {
@@ -691,8 +698,11 @@ export default function Dashboard() {
     try {
       const overview = await fetchDashboardOverview(targetWindow)
       setData(overview)
-    } catch {
-      setError('Telemetry link degraded. Showing last known dashboard frame.')
+    } catch (requestError: unknown) {
+      const responseStatus = (requestError as { response?: { status?: number } }).response?.status
+      setError(responseStatus === 503
+        ? 'Dashboard cache is preparing. Data will appear after the background worker completes its first refresh.'
+        : 'Telemetry link degraded. Showing the last known dashboard frame when available.')
     } finally {
       setLoading(false)
     }
@@ -702,6 +712,14 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadOverview(selectedWindow)
   }, [loadOverview, selectedWindow])
+
+  useEffect(() => {
+    const intervalSeconds = data?.cache.refresh_interval_seconds ?? 300
+    const timer = window.setInterval(() => {
+      void loadOverview(selectedWindow)
+    }, intervalSeconds * 1000)
+    return () => window.clearInterval(timer)
+  }, [data?.cache.refresh_interval_seconds, loadOverview, selectedWindow])
 
   const summary = data?.summary
   const riskLevel = getRiskPostureLevel(summary?.active_risk_index)
@@ -721,6 +739,14 @@ export default function Dashboard() {
             </div>
             <div className="dashboard-hero-actions">
               {error && <Alert className="dashboard-soft-alert" type="warning" title={error} showIcon />}
+              {data?.cache.stale_warning && (
+                <Alert
+                  className="dashboard-soft-alert"
+                  type="warning"
+                  title={`Dashboard data is stale. Last successful refresh was ${cacheAgeLabel(data.cache.age_seconds)} ago.`}
+                  showIcon
+                />
+              )}
               <div className="dashboard-control-panel">
                 <Text className="dashboard-refresh-time">{generatedAtLabel(data?.generated_at)}</Text>
                 <div className="dashboard-control-row">

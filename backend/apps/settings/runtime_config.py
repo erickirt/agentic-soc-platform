@@ -100,6 +100,7 @@ def get_runtime_config():
     return {
         "prompt_language": config.prompt_language,
         "stream_maxlen": config.stream_maxlen,
+        "dashboard_refresh_interval_seconds": config.dashboard_refresh_interval_seconds,
     }
 
 
@@ -114,6 +115,10 @@ def get_stream_maxlen():
         if exc.__class__.__name__ == "DatabaseOperationForbidden":
             return 10000
         raise
+
+
+def get_dashboard_refresh_interval_seconds():
+    return get_runtime_config()["dashboard_refresh_interval_seconds"]
 
 
 def invalidate(group=None):

@@ -29,6 +29,9 @@ class Knowledge(BaseModel):
     class Meta:
         db_table = "knowledge"
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["created_at", "source"], name="knowledge_created_src_idx"),
+        ]
 
     def save(self, *args, **kwargs):
         return save_with_readable_id(self, "knowledge_id", "knowledge", *args, **kwargs)

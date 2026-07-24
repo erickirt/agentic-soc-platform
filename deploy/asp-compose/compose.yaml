@@ -101,6 +101,11 @@ services:
     restart: unless-stopped
     command: ["python", "manage.py", "run_elk_action_worker"]
 
+  asp-worker-dashboard-cache:
+    <<: *asp-backend
+    restart: unless-stopped
+    command: ["python", "manage.py", "run_dashboard_cache_worker"]
+
   asp-migrate:
     <<: *asp-backend
     restart: "no"

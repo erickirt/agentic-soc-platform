@@ -185,6 +185,9 @@ class Enrichment(BaseModel):
     class Meta:
         db_table = "enrichments"
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["created_at"], name="enrichment_created_idx"),
+        ]
 
     def save(self, *args, **kwargs):
         return save_with_readable_id(self, "enrichment_id", "enrichment", *args, **kwargs)

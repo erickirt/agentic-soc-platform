@@ -1,3 +1,4 @@
+import logging
 import re
 from collections import Counter
 from datetime import timedelta
@@ -6,6 +7,8 @@ from django.db import connection
 from django.db.models import Case as DbCase, Count, DateTimeField, FloatField, Min, Q, Sum, Value, When
 from django.db.models.functions import Coalesce, TruncDay, TruncHour
 from django.utils import timezone
+from django_redis.exceptions import ConnectionInterrupted
+from redis.exceptions import RedisError
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -16,7 +19,10 @@ from apps.cases.models import Case, CaseStatus
 from apps.enrichments.models import Enrichment
 from apps.knowledge.models import Knowledge, KnowledgeSource
 from apps.playbooks.models import Playbook, PlaybookJobStatus
+from .cache import get_cached_dashboard_overview
 
+
+logger = logging.getLogger(__name__)
 
 WINDOW_DELTAS = {
     "24h": timedelta(hours=24),
@@ -523,4 +529,17 @@ class DashboardOverviewView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        return Response(build_dashboard_overview(window))
+        try:
+            overview = get_cached_dashboard_overview(window)
+        except (ConnectionInterrupted, RedisError, KeyError, TypeError, ValueError):
+            logger.exception("Dashboard cache read failed: window=%s", window)
+            return Response(
+                {"detail": "Dashboard cache is temporarily unavailable."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        if overview is None:
+            return Response(
+                {"detail": "Dashboard cache is not ready. Wait for the background refresh worker."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        return Response(overview)

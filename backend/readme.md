@@ -18,6 +18,12 @@ For websocket development, also run the ASGI server:
 .\.venv\Scripts\python.exe -m uvicorn asp.asgi:application --host 127.0.0.1 --port 8001
 ```
 
+Run the dashboard cache worker in another terminal so dashboard snapshots stay available:
+
+```powershell
+.\.venv\Scripts\python.exe manage.py run_dashboard_cache_worker
+```
+
 ## Admin user
 
 ASP admin users are Django superusers and are maintained from the backend command line:

@@ -62,6 +62,7 @@ LDAP_AUDIT_FIELDS = (
 RUNTIME_AUDIT_FIELDS = (
     "prompt_language",
     "stream_maxlen",
+    "dashboard_refresh_interval_seconds",
 )
 
 

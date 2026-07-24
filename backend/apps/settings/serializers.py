@@ -381,11 +381,14 @@ class LdapConfigSerializer(serializers.ModelSerializer):
 
 
 class RuntimeConfigSerializer(serializers.ModelSerializer):
+    DASHBOARD_REFRESH_INTERVALS = {300, 900, 1800, 3600}
+
     class Meta:
         model = RuntimeConfig
         fields = (
             "prompt_language",
             "stream_maxlen",
+            "dashboard_refresh_interval_seconds",
             "updated_at",
         )
         read_only_fields = ("updated_at",)
@@ -399,4 +402,9 @@ class RuntimeConfigSerializer(serializers.ModelSerializer):
     def validate_stream_maxlen(self, value):
         if value <= 0:
             raise serializers.ValidationError("Stream maxlen must be greater than 0.")
+        return value
+
+    def validate_dashboard_refresh_interval_seconds(self, value):
+        if value not in self.DASHBOARD_REFRESH_INTERVALS:
+            raise serializers.ValidationError("Dashboard refresh interval must be 300, 900, 1800, or 3600 seconds.")
         return value

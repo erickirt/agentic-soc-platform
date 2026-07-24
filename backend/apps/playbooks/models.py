@@ -32,6 +32,9 @@ class Playbook(BaseModel):
     class Meta:
         db_table = "playbooks"
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["created_at", "job_status"], name="playbook_created_job_idx"),
+        ]
 
     def save(self, *args, **kwargs):
         return save_with_readable_id(self, "playbook_id", "playbook", *args, **kwargs)

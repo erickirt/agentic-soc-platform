@@ -117,6 +117,10 @@ class Case(BaseModel):
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["-created_at", "-id"], name="case_created_id_idx"),
+            models.Index(fields=["status", "severity"], name="case_status_severity_idx"),
+            models.Index(fields=["updated_at"], name="case_updated_at_idx"),
+            models.Index(fields=["acknowledged_time"], name="case_ack_time_idx"),
+            models.Index(fields=["closed_time"], name="case_closed_time_idx"),
         ]
 
     def __str__(self):

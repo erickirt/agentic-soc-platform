@@ -16,6 +16,7 @@ LOG_ROLE_FILES = {
     "agentic-case-analysis-worker": "agentic-case-analysis-worker.log",
     "agentic-module-worker": "agentic-module-worker.log",
     "elk-action-worker": "elk-action-worker.log",
+    "dashboard-cache-worker": "dashboard-cache-worker.log",
 }
 ROOT_PROCESS_FILE_LOGGERS = [""]
 SERVER_PROCESS_FILE_LOGGERS = {

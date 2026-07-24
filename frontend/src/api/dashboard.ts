@@ -71,10 +71,19 @@ export interface DashboardHighlight {
   subtitle: string
 }
 
+export interface DashboardCacheMetadata {
+  generated_at: string
+  refreshed_at: string
+  refresh_interval_seconds: number
+  age_seconds: number
+  stale_warning: boolean
+}
+
 export interface DashboardOverview {
   window: DashboardWindow
   window_start: string
   generated_at: string
+  cache: DashboardCacheMetadata
   summary: DashboardSummary
   mean_times: {
     mttd: DashboardMeanTime

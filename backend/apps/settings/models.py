@@ -142,6 +142,7 @@ class RuntimeConfig(models.Model):
     singleton_id = models.PositiveSmallIntegerField(default=1, unique=True, editable=False)
     prompt_language = models.CharField(max_length=10, default="en")
     stream_maxlen = models.PositiveIntegerField(default=10000)
+    dashboard_refresh_interval_seconds = models.PositiveIntegerField(default=300)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
