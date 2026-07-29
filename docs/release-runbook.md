@@ -110,6 +110,14 @@ Current managed surfaces:
       ```bash
       bash ./deploy/package-asp-compose.sh --version <version> --output-dir dist-release-check
       test -f dist-release-check/asp-compose-<version>.tar.gz
+      test -f dist-release-check/asp-compose-<version>.tar.gz.sha256
+      test -x dist-release-check/asp-upgrade-<version>.sh
+      test -f dist-release-check/asp-upgrade-<version>.sh.sha256
+      (
+        cd dist-release-check
+        sha256sum -c asp-compose-<version>.tar.gz.sha256
+        sha256sum -c asp-upgrade-<version>.sh.sha256
+      )
       rm -rf dist-release-check/unpacked
       mkdir -p dist-release-check/unpacked
       tar -xzf dist-release-check/asp-compose-<version>.tar.gz -C dist-release-check/unpacked
@@ -162,6 +170,7 @@ Current managed surfaces:
 9. **Post-release checks**
     - Confirm the GitHub Release exists.
     - Confirm the compose archive is attached.
+    - Confirm the compose archive checksum, standalone upgrader, and upgrader checksum are attached.
     - Confirm backend and frontend images exist in GHCR with the version tag.
     - Confirm `asp-cli==<version>` exists on PyPI.
     - Confirm the release body links to the expected release notes URL from `python deploy/release_tool.py show`.
@@ -174,6 +183,9 @@ Current managed surfaces:
 - Release doc slug: explicit and stable after publishing, usually generated from version/title, for example `0_5_1_Winter_is_Coming`.
 - GitHub Release title: `v<version> - <title>`.
 - Compose archive: `asp-compose-<version>.tar.gz`.
+- Compose archive checksum: `asp-compose-<version>.tar.gz.sha256`.
+- Standalone upgrader: `asp-upgrade-<version>.sh`.
+- Standalone upgrader checksum: `asp-upgrade-<version>.sh.sha256`.
 - GHCR image tags:
     - `ghcr.io/<owner>/<repo>/asp-backend:<version>`
     - `ghcr.io/<owner>/<repo>/asp-frontend:<version>`

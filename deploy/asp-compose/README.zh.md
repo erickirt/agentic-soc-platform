@@ -90,6 +90,16 @@ ASP_RUSTFS_CONSOLE_PORT=9001
 
 默认绑定地址是 `0.0.0.0`，适合服务器部署。如果管理界面不应被不可信网络访问，请使用防火墙或 VPN 进行访问控制。
 
+## Compose 定制
+
+`init.sh` 会在文件不存在时创建带说明注释和 `services: {}` 空映射的 `compose.override.yaml`。Docker Compose 会自动将它与官方 `compose.yaml` 合并。
+
+- 密码、端口、镜像等已有设置优先写入 `.env`。
+- 新增 volume、环境变量、command 或其他服务级覆盖时，编辑 `compose.override.yaml`。
+- 升级器会替换官方 `compose.yaml`，但永不覆盖 `.env` 或 `compose.override.yaml`。
+
+不要直接修改官方 `compose.yaml`；下一次托管升级会备份并替换这些修改。
+
 ## 定制定义
 
 - `custom/modules/*.py` 存放自定义 Module 脚本。
@@ -114,6 +124,7 @@ logs/agentic-module-worker.log
 logs/agentic-case-analysis-worker.log
 logs/agentic-playbook-worker.log
 logs/elk-action-worker.log
+logs/dashboard-cache-worker.log
 ```
 
 容器标准输出和标准错误仍可通过 `docker compose logs` 查看。
@@ -126,6 +137,8 @@ logs/elk-action-worker.log
 docker compose ps
 ./scripts/doctor.sh
 ```
+
+`doctor.sh` 会等待全部官方常驻服务进入 running/healthy 状态，再检查 PostgreSQL、Redis、Django、定制定义和 RustFS/S3 bucket。
 
 重启所有服务：
 
@@ -144,7 +157,7 @@ docker compose restart asp-frontend asp-web asp-asgi
 只重启后台 Worker：
 
 ```bash
-docker compose restart asp-worker-module asp-worker-case-analysis asp-worker-playbook asp-worker-elk-action
+docker compose restart asp-worker-module asp-worker-case-analysis asp-worker-playbook asp-worker-elk-action asp-worker-dashboard-cache
 ```
 
 修改 `.env`、`compose.yaml` 或端口映射后，执行：
@@ -171,7 +184,7 @@ docker compose stop
 BACKUP_DIR="$PWD/backups/asp-full-$(date +%Y%m%d%H%M%S)"
 mkdir -p "$BACKUP_DIR"
 docker compose stop
-tar -czf "$BACKUP_DIR/files.tar.gz" --exclude='./backups' .env .env.example compose.yaml scripts custom certs logs
+tar -czf "$BACKUP_DIR/files.tar.gz" --exclude='./backups' .env .env.example compose*.yaml scripts custom certs logs
 docker run --rm \
   -v asp-compose_postgres-data:/volumes/postgres-data:ro \
   -v asp-compose_redis-data:/volumes/redis-data:ro \
@@ -213,19 +226,32 @@ docker compose up -d
 
 升级前先完成一次停机全量备份。
 
-编辑 `.env`，把镜像标签更新到目标版本：
-
-```text
-ASP_BACKEND_IMAGE=ghcr.io/funnywolf/agentic-soc-platform/asp-backend:<version>
-ASP_FRONTEND_IMAGE=ghcr.io/funnywolf/agentic-soc-platform/asp-frontend:<version>
-```
-
-执行升级：
+本地升级脚本已支持托管升级时，在当前部署目录执行：
 
 ```bash
-./scripts/upgrade.sh
+./scripts/upgrade.sh --version <version>
 ```
 
-`upgrade.sh` 会拉取镜像、执行数据库迁移、启动服务，并执行 `./scripts/doctor.sh`。
+脚本会下载目标 Release 的 Compose 发布包和 SHA-256 文件，校验并备份官方文件，自动更新 `.env` 中的镜像标签，然后拉取镜像、执行迁移、启动服务和检查全部常驻服务。
 
-只有发布说明明确要求更新发布包文件时，才替换 `compose.yaml`、`scripts/` 和 `.env.example`。请保留现有 `.env`、`custom/`、`certs/` 和 Docker named volumes。
+先通过不会执行升级的文本检查确认旧部署脚本是否支持 `--version`：
+
+```bash
+grep -q -- '--version' ./scripts/upgrade.sh
+```
+
+如果没有匹配结果，从目标 Release 下载一次性升级器：
+
+```bash
+version="<version>"
+base_url="https://github.com/FunnyWolf/agentic-soc-platform/releases/download/v${version}"
+curl -fL -O "${base_url}/asp-upgrade-${version}.sh"
+curl -fL -O "${base_url}/asp-upgrade-${version}.sh.sha256"
+sha256sum -c "asp-upgrade-${version}.sh.sha256" &&
+  chmod +x "asp-upgrade-${version}.sh" &&
+  ./asp-upgrade-${version}.sh --version "${version}"
+```
+
+升级器管理并更新 `compose.yaml`、`scripts/`、`.env.example`、`README.md` 和 `README.zh.md`。它保留 `.env`、`compose.override.yaml`、`custom/`、`certs/`、`logs/` 和 Docker named volumes。
+
+迁移前失败会自动恢复旧文件。数据库迁移开始后不自动降级；脚本会输出 `backups/upgrade-<version>-<timestamp>-<pid>/` 备份路径供排障使用。

@@ -69,7 +69,10 @@ class Manifest:
         version = str(data["version"])
         if version.startswith("v"):
             raise ReleaseError("release-manifest.json field 'version' must not start with 'v'")
-        if not re.fullmatch(r"\d+\.\d+\.\d+(?:[a-zA-Z0-9.+-]*)?", version):
+        if len(version) > 128 or not re.fullmatch(
+            r"[0-9]+\.[0-9]+\.[0-9]+(?:[a-zA-Z0-9.-]*)?",
+            version,
+        ):
             raise ReleaseError(f"Unsupported release version format: {version!r}")
 
         previous_version = str(data["previousVersion"])
@@ -270,22 +273,39 @@ def check_generated_block(
 
 def deployment_block(manifest: Manifest, lang: str) -> str:
     url = project_release_url(manifest)
+    version_numbers = tuple(int(part) for part in manifest.version.split(".", 2)[:2])
+    verified_assets = version_numbers >= (0, 6) or (
+        version_numbers == (0, 5)
+        and int(re.match(r"[0-9]+", manifest.version.split(".", 2)[2]).group()) >= 3
+    )
     if lang == "zh":
+        download = f"""curl -fL -O {url}
+tar -xzf {manifest.archive_name}"""
+        if verified_assets:
+            download = f"""curl -fL -O {url} &&
+curl -fL -O {url}.sha256 &&
+sha256sum -c {manifest.archive_name}.sha256 &&
+tar -xzf {manifest.archive_name}"""
         body = f"""- GitHub Releases 页面：[https://github.com/{PROJECT_REPOSITORY}/releases](https://github.com/{PROJECT_REPOSITORY}/releases)
 - 当前版本发布包：`{manifest.archive_name}`
 
 ```bash
-curl -fL -O {url}
-tar -xzf {manifest.archive_name}
+{download}
 cd asp-compose
 ```"""
     else:
+        download = f"""curl -fL -O {url}
+tar -xzf {manifest.archive_name}"""
+        if verified_assets:
+            download = f"""curl -fL -O {url} &&
+curl -fL -O {url}.sha256 &&
+sha256sum -c {manifest.archive_name}.sha256 &&
+tar -xzf {manifest.archive_name}"""
         body = f"""- GitHub Releases: [https://github.com/{PROJECT_REPOSITORY}/releases](https://github.com/{PROJECT_REPOSITORY}/releases)
 - Current release package: `{manifest.archive_name}`
 
 ```bash
-curl -fL -O {url}
-tar -xzf {manifest.archive_name}
+{download}
 cd asp-compose
 ```"""
     return generated_block("release:deployment-package", body)
@@ -339,23 +359,29 @@ def check_quickstart_deployment_docs(manifest: Manifest, failures: list[str]) ->
 
 def upgrade_block(manifest: Manifest, lang: str) -> str:
     if lang == "zh":
-        body = f"""```text
-ASP_BACKEND_IMAGE=ghcr.io/funnywolf/agentic-soc-platform/asp-backend:<version>
-ASP_FRONTEND_IMAGE=ghcr.io/funnywolf/agentic-soc-platform/asp-frontend:<version>
+        body = """```bash
+./scripts/upgrade.sh --version <version>
 ```
 
-`<version>` 使用目标 Release 的版本号，例如 `{manifest.version}`。"""
+`<version>` 使用目标 GitHub Release 的版本号，不包含 `v` 前缀。"""
     else:
-        body = f"""```text
-ASP_BACKEND_IMAGE=ghcr.io/funnywolf/agentic-soc-platform/asp-backend:<version>
-ASP_FRONTEND_IMAGE=ghcr.io/funnywolf/agentic-soc-platform/asp-frontend:<version>
+        body = """```bash
+./scripts/upgrade.sh --version <version>
 ```
 
-Use the target Release version for `<version>`, for example `{manifest.version}`."""
-    return generated_block("release:upgrade-image-tags", body)
+Use the target GitHub Release version for `<version>` without the `v` prefix."""
+    return generated_block("release:managed-upgrade", body)
 
 
 def bootstrap_upgrade(text: str, expected: str) -> str:
+    old_generated_block = re.compile(
+        r"<!-- release:upgrade-image-tags:start -->.*?<!-- release:upgrade-image-tags:end -->",
+        re.DOTALL,
+    )
+    new_text, count = old_generated_block.subn(expected, text, count=1)
+    if count == 1:
+        return new_text
+
     pattern = re.compile(
         r"```text\n"
         r"ASP_BACKEND_IMAGE=ghcr\.io/funnywolf/agentic-soc-platform/asp-backend:<version>\n"
@@ -381,7 +407,7 @@ def prepare_quickstart_upgrade_docs(manifest: Manifest) -> None:
         lang = "zh" if "\\zh\\" in str(path) or "/zh/" in str(path) else "en"
         ensure_generated_block(
             path,
-            "release:upgrade-image-tags",
+            "release:managed-upgrade",
             upgrade_block(manifest, lang),
             bootstrap_upgrade,
         )
@@ -396,7 +422,7 @@ def check_quickstart_upgrade_docs(manifest: Manifest, failures: list[str]) -> No
     for lang, path in paths:
         check_generated_block(
             path,
-            "release:upgrade-image-tags",
+            "release:managed-upgrade",
             upgrade_block(manifest, lang),
             failures,
         )

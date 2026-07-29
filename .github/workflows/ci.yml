@@ -117,11 +117,26 @@ jobs:
         run: bash ./deploy/package-asp-compose.sh --version 0.0.0-ci --output-dir dist-ci
       - name: Validate package contents
         run: |
-          archive_path="dist-ci/asp-compose-0.0.0-ci.tar.gz"
+          version="0.0.0-ci"
+          archive_path="dist-ci/asp-compose-$version.tar.gz"
+          archive_checksum_path="$archive_path.sha256"
+          upgrade_script_path="dist-ci/asp-upgrade-$version.sh"
+          upgrade_checksum_path="$upgrade_script_path.sha256"
           test -f "$archive_path"
+          test -f "$archive_checksum_path"
+          test -x "$upgrade_script_path"
+          test -f "$upgrade_checksum_path"
+          (
+            cd dist-ci
+            sha256sum -c "asp-compose-$version.tar.gz.sha256"
+            sha256sum -c "asp-upgrade-$version.sh.sha256"
+          )
+          cmp deploy/asp-compose/scripts/upgrade.sh "$upgrade_script_path"
           rm -rf dist-ci/unpacked
           mkdir -p dist-ci/unpacked
           tar -xzf "$archive_path" -C dist-ci/unpacked
+          test -f dist-ci/unpacked/asp-compose/scripts/upgrade.sh
+          test -f dist-ci/unpacked/asp-compose/scripts/doctor.sh
           if find dist-ci/unpacked -type f | grep -E 'custom/(modules|playbooks)/.+\.py$|custom/data/(modules|siem|playbooks)/.+\.(json|ya?ml|md)$'; then
             echo "Release custom template contains development samples." >&2
             exit 1

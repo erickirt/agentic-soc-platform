@@ -173,7 +173,7 @@ REST_FRAMEWORK = {
 SPECTACULAR_SETTINGS = {
     "TITLE": "Agentic SOC Platform API",
     "DESCRIPTION": "HTTP API for Agentic SOC Platform. External automation integrations should prefer API keys.",
-    "VERSION": "0.5.0",
+    "VERSION": "0.5.2",
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_REQUEST": True,
     "SWAGGER_UI_DIST": "SIDECAR",

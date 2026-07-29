@@ -90,6 +90,16 @@ ASP_RUSTFS_CONSOLE_PORT=9001
 
 The default bind address is `0.0.0.0` for server deployments. Use firewall or VPN controls when these management UIs should not be reachable from untrusted networks.
 
+## Compose customization
+
+When the file does not exist, `init.sh` creates a `compose.override.yaml` with explanatory comments and an empty `services: {}` mapping. Docker Compose automatically merges it with the official `compose.yaml`.
+
+- Keep supported passwords, ports, and image settings in `.env`.
+- Edit `compose.override.yaml` for service-level additions such as volumes, environment variables, or command overrides.
+- The upgrader replaces the official `compose.yaml` but never overwrites `.env` or `compose.override.yaml`.
+
+Do not edit the official `compose.yaml` directly; the next managed upgrade backs up and replaces those changes.
+
 ## Custom definitions
 
 - `custom/modules/*.py` contains custom Module scripts.
@@ -114,6 +124,7 @@ logs/agentic-module-worker.log
 logs/agentic-case-analysis-worker.log
 logs/agentic-playbook-worker.log
 logs/elk-action-worker.log
+logs/dashboard-cache-worker.log
 ```
 
 Container stdout and stderr are still available through `docker compose logs`.
@@ -126,6 +137,8 @@ Check service status and run deployment diagnostics:
 docker compose ps
 ./scripts/doctor.sh
 ```
+
+`doctor.sh` waits for every official long-running service to become running/healthy, then checks PostgreSQL, Redis, Django, custom definitions, and the RustFS/S3 bucket.
 
 Restart all services:
 
@@ -144,7 +157,7 @@ The reverse proxy must forward `/ws/` to the ASGI service.
 Restart only background workers:
 
 ```bash
-docker compose restart asp-worker-module asp-worker-case-analysis asp-worker-playbook asp-worker-elk-action
+docker compose restart asp-worker-module asp-worker-case-analysis asp-worker-playbook asp-worker-elk-action asp-worker-dashboard-cache
 ```
 
 After changing `.env`, `compose.yaml`, or port mappings, run:
@@ -171,7 +184,7 @@ Full stopped backup:
 BACKUP_DIR="$PWD/backups/asp-full-$(date +%Y%m%d%H%M%S)"
 mkdir -p "$BACKUP_DIR"
 docker compose stop
-tar -czf "$BACKUP_DIR/files.tar.gz" --exclude='./backups' .env .env.example compose.yaml scripts custom certs logs
+tar -czf "$BACKUP_DIR/files.tar.gz" --exclude='./backups' .env .env.example compose*.yaml scripts custom certs logs
 docker run --rm \
   -v asp-compose_postgres-data:/volumes/postgres-data:ro \
   -v asp-compose_redis-data:/volumes/redis-data:ro \
@@ -213,19 +226,32 @@ Do not change the `asp-compose` directory name before restoring.
 
 Before upgrading, complete a full stopped backup.
 
-Edit `.env` and update image tags to the target version:
-
-```text
-ASP_BACKEND_IMAGE=ghcr.io/funnywolf/agentic-soc-platform/asp-backend:<version>
-ASP_FRONTEND_IMAGE=ghcr.io/funnywolf/agentic-soc-platform/asp-frontend:<version>
-```
-
-Run the upgrade:
+When the local upgrade script supports managed upgrades, run this from the deployment directory:
 
 ```bash
-./scripts/upgrade.sh
+./scripts/upgrade.sh --version <version>
 ```
 
-`upgrade.sh` pulls images, runs database migrations, starts services, and executes `./scripts/doctor.sh`.
+The script downloads the target Release Compose package and SHA-256 file, verifies and backs up official files, updates image tags in `.env`, then pulls images, runs migrations, starts services, and checks every long-running service.
 
-Only replace `compose.yaml`, `scripts/`, and `.env.example` when the release notes explicitly require package file updates. Keep the existing `.env`, `custom/`, `certs/`, and Docker named volumes.
+Use a non-executing text check to see whether an older deployment script supports `--version`:
+
+```bash
+grep -q -- '--version' ./scripts/upgrade.sh
+```
+
+If the command finds no match, download the one-time upgrader from the target Release:
+
+```bash
+version="<version>"
+base_url="https://github.com/FunnyWolf/agentic-soc-platform/releases/download/v${version}"
+curl -fL -O "${base_url}/asp-upgrade-${version}.sh"
+curl -fL -O "${base_url}/asp-upgrade-${version}.sh.sha256"
+sha256sum -c "asp-upgrade-${version}.sh.sha256" &&
+  chmod +x "asp-upgrade-${version}.sh" &&
+  ./asp-upgrade-${version}.sh --version "${version}"
+```
+
+The upgrader manages `compose.yaml`, `scripts/`, `.env.example`, `README.md`, and `README.zh.md`. It preserves `.env`, `compose.override.yaml`, `custom/`, `certs/`, `logs/`, and Docker named volumes.
+
+Failures before migration restore the old files automatically. Automatic downgrade is disabled after database migration starts; the script prints the `backups/upgrade-<version>-<timestamp>-<pid>/` path for troubleshooting.

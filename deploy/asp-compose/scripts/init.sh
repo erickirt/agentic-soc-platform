@@ -23,6 +23,21 @@ set_env_value() {
     fi
 }
 
+if [ ! -e compose.override.yaml ]; then
+    cat > compose.override.yaml <<'EOF'
+# User-managed Docker Compose overrides.
+# ASP upgrades never overwrite this file.
+# Keep supported passwords, ports, and image settings in .env.
+# Replace the empty services mapping below when service-level overrides are needed.
+#
+# services:
+#   asp-web:
+#     environment:
+#       EXAMPLE_SETTING: value
+services: {}
+EOF
+fi
+
 if [ ! -f .env ]; then
     cp .env.example .env
     postgres_password="$(generate_secret)"

@@ -18,6 +18,7 @@ backend/perf-results/
 # Environment
 .env
 .env.local
+/deploy/asp-compose/compose.override.yaml
 
 # IDE
 .idea/
