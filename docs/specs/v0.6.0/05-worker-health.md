@@ -6,14 +6,13 @@ Status: Confirmed
 
 让 Admin 不依赖 Docker CLI 或日志文件，就能判断后台 Worker 是否存活、正在做什么、是否失败以及业务积压情况。
 
-v0.6.0 最终监控六个逻辑 Worker：
+v0.6.0 最终监控五个逻辑 Worker：
 
 1. Agentic Module。
 2. Case Analysis。
 3. Playbook。
 4. ELK Action。
 5. Dashboard Cache。
-6. Integration Health。
 
 监控粒度是逻辑进程类型，不是每个 Module/Playbook definition，也不是 Docker container ID。
 
@@ -115,7 +114,7 @@ Worker 启动：
 5. 启动 heartbeat thread。
 6. 进入主循环。
 
-这适用于所有六个正式 Worker。`--once` 是运维命令，不应长期占用 singleton lease；如果它会与正式 Worker 并行影响同一数据，需要显式决定是否短暂获取 lease，默认建议获取以避免并发。
+这适用于所有五个正式 Worker。`--once` 是运维命令，不应长期占用 singleton lease；如果它会与正式 Worker 并行影响同一数据，需要显式决定是否短暂获取 lease，默认建议获取以避免并发。
 
 ## 6. States
 
@@ -218,12 +217,6 @@ class WorkerIterationResult:
 - configured interval。
 - cache missing 标记。
 
-### Integration Health
-
-- enabled target count。
-- Healthy/Unhealthy/Disabled counts。
-- current serial check progress（如果可安全获得）。
-
 Backlog 查询失败不应使 heartbeat 消失。API 行级 diagnostics 可返回 safe warning。
 
 ## 9. Error safety
@@ -290,7 +283,7 @@ Redis health storage 无法访问：
 
 - HTTP 503。
 - 固定信息：`Worker health monitoring is unavailable.`
-- 不返回六个伪造 Down 状态。
+- 不返回五个伪造 Down 状态。
 
 API 不提供：
 
@@ -333,15 +326,14 @@ API 不提供：
 
 ## 14. Compose changes
 
-- 新增 Integration Health Worker 服务。
-- 六个 Worker 使用明确 command 和 log role。
+- 五个 Worker 使用明确 command 和 log role。
 - 不挂载 Docker socket。
 - 不通过 Web app 重启容器。
 - Worker singleton 冲突应在日志中明确显示。
 
 ## 15. Acceptance criteria
 
-1. 六类 Worker 正常显示 Starting→Idle/Running。
+1. 五类 Worker 正常显示 Starting→Idle/Running。
 2. 第二个同类型实例拒绝启动。
 3. heartbeat 10 秒、30 秒过期行为正确。
 4. 长 Running 任务保持 heartbeat，不被判 Stalled/Down。

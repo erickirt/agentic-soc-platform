@@ -85,11 +85,10 @@ v0.6.0 保持三个固定角色：
 3. Playbook 执行可观测性和控制。
 4. Custom Variables。
 5. Worker Health。
-6. Integration Health。
-7. SLA 管理，待详细讨论。
-8. AI 质量评估，待详细讨论。
-9. 抑制规则，待详细讨论。
-10. Operations 页面整合，待详细讨论。
+6. SLA 管理，待详细讨论。
+7. AI 质量评估，待详细讨论。
+8. 抑制规则，待详细讨论。
+9. Operations 页面整合，待详细讨论。
 
 SLA、AI 质量评估和抑制规则都是 v0.6.0 正式发布的阻断项，但必须限制为最小可用闭环。
 
