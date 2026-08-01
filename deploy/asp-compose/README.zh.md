@@ -2,256 +2,167 @@
 
 英文版本：[README.md](README.md)
 
-这个发布包用于在单台主机上通过 Docker Compose 部署 ASP。
+该发布包用于在单台 Linux 主机上通过 Docker Compose 部署 ASP。
+
+> 所有命令都在名为 `asp-compose` 的部署目录中执行。不要修改目录名，否则 Docker Compose project name 和 named volumes 名称会发生变化。
 
 ## 首次部署
 
-1. 执行 `./scripts/init.sh`。如果 `.env` 不存在，脚本会从 `.env.example` 创建 `.env`，并生成随机服务密钥。
-2. 如有需要，将自定义 Module、Playbook、SIEM YAML 或 Python 依赖放到 `custom/` 目录。
-3. 初始化并启动 ASP。如果 `custom/requirements.txt` 不为空，`init.sh` 后面的参数会传给 `uv pip install`：
+初始化并启动：
 
-   ```bash
-   ./scripts/init.sh --index-url https://pypi.org/simple
-   ```
+```bash
+./scripts/init.sh
+```
 
-   需要代理时使用标准环境变量：
+`init.sh` 会创建运行目录、`compose.override.yaml` 和 `.env`，生成 Django、PostgreSQL、Redis、RustFS 随机凭据，拉取镜像、执行数据库迁移并启动服务。
 
-   ```bash
-   HTTP_PROXY=http://proxy.example:8080 HTTPS_PROXY=http://proxy.example:8080 \
-   ./scripts/init.sh --index-url https://pypi.org/simple
-   ```
+检查部署：
 
-4. 如果没有额外 Python 依赖，直接执行：
+```bash
+./scripts/doctor.sh
+```
 
-   ```bash
-   ./scripts/init.sh
-   ```
+创建管理员：
 
-5. 创建管理员：
+```bash
+docker compose exec asp-web python manage.py createsuperuser
+```
 
-   ```bash
-   docker compose exec asp-web python manage.py createsuperuser
-   ```
+## 环境变量
 
-初始化后请检查 `.env`。你可以继续修改密码、主机名或端口。不要在 `.env` 中保留 `change-me-*` 占位密钥；`init.sh` 会拒绝使用占位密钥启动。
+部署配置保存在 `.env`。初始化生成的随机服务凭据无需手工修改；初始化后不要只修改 PostgreSQL、Redis 或 RustFS 密码，否则应用与服务端凭据会不一致。
+
+修改其他 `.env` 配置后执行：
+
+```bash
+docker compose up -d
+./scripts/doctor.sh
+```
 
 ## HTTPS 证书
 
-`asp-frontend` 只监听 HTTPS。宿主机绑定地址和端口由 `.env` 中的 `ASP_BIND` 和 `ASP_HTTPS_PORT` 控制，默认值适合服务器部署：
+默认 HTTPS 入口为：
 
 ```text
-ASP_BIND=0.0.0.0
-ASP_HTTPS_PORT=443
+https://<server>:443
 ```
 
-如果 `certs/asp.crt` 和 `certs/asp.key` 不存在，前端容器首次启动时会生成自签名证书。生成的证书会使用 `ASP_PUBLIC_HOSTNAME`，并包含 `localhost` 和 `127.0.0.1` 作为 SAN。可以通过 `ASP_CERT_EXTRA_SAN` 添加额外域名或 IP：
-
-```text
-ASP_CERT_EXTRA_SAN=DNS:asp.example.com,IP:10.0.0.10
-```
-
-如需使用自定义证书，请在启动前放置这两个文件，或替换后重启前端：
+如果 `certs/asp.crt` 和 `certs/asp.key` 不存在，前端首次启动时会生成自签名证书。正式环境请把证书放到：
 
 ```text
 certs/asp.crt
 certs/asp.key
 ```
 
+替换证书后重启前端：
+
 ```bash
 docker compose restart asp-frontend
 ```
 
-## Web API 与上传限制
-
-`.env` 中可以调整 Web API 进程和上传大小：
-
-```text
-ASP_WEB_WORKERS=3
-ASP_WEB_TIMEOUT=210
-ASP_MAX_UPLOAD_SIZE=20m
-```
-
 ## 管理界面
-
-Redis Stack 和 RustFS 自带管理界面。发布包直接暴露它们的官方 HTTP 管理端口，避免反向代理带来的静态资源或 WebSocket 兼容问题：
 
 - Redis Stack UI：`http://<server>:8001`
 - RustFS Console：`http://<server>:9001`
 
-RustFS S3 API 默认保持容器内部访问，不映射到宿主机。
+端口和绑定地址由 `.env` 中的 `ASP_MANAGEMENT_BIND`、`ASP_REDIS_UI_PORT`、`ASP_RUSTFS_CONSOLE_PORT` 控制。生产环境应通过防火墙或 VPN 限制访问。
 
-宿主机绑定地址和端口由 `.env` 控制：
+## 定制内容
+
+`init.sh` 会创建：
 
 ```text
-ASP_MANAGEMENT_BIND=0.0.0.0
-ASP_REDIS_UI_PORT=8001
-ASP_RUSTFS_CONSOLE_PORT=9001
+custom/modules/
+custom/playbooks/
+custom/data/modules/
+custom/data/siem/
+custom/data/playbooks/
+custom/requirements.txt
 ```
 
-默认绑定地址是 `0.0.0.0`，适合服务器部署。如果管理界面不应被不可信网络访问，请使用防火墙或 VPN 进行访问控制。
+只修改 Module、Playbook 或 SIEM YAML 后，在 ASP 的 Custom Console 中执行 `Refresh / Validate`。
+
+新增 Python 依赖时，写入 `custom/requirements.txt` 并执行：
+
+```bash
+docker compose run --rm asp-custom-deps
+docker compose restart asp-web asp-worker-module asp-worker-playbook
+./scripts/doctor.sh
+```
 
 ## Compose 定制
 
-`init.sh` 会在文件不存在时创建带说明注释和 `services: {}` 空映射的 `compose.override.yaml`。Docker Compose 会自动将它与官方 `compose.yaml` 合并。
+已有配置优先写入 `.env`。需要增加 volume、环境变量、command 或其他服务级覆盖时，编辑 `compose.override.yaml`。
 
-- 密码、端口、镜像等已有设置优先写入 `.env`。
-- 新增 volume、环境变量、command 或其他服务级覆盖时，编辑 `compose.override.yaml`。
-- 升级器会替换官方 `compose.yaml`，但永不覆盖 `.env` 或 `compose.override.yaml`。
-
-不要直接修改官方 `compose.yaml`；下一次托管升级会备份并替换这些修改。
-
-## 定制定义
-
-- `custom/modules/*.py` 存放自定义 Module 脚本。
-- `custom/playbooks/*.py` 存放自定义 Playbook 脚本。
-- `custom/data/modules/<module_slug>/raw_alert_*.json` 存放 Module 开发样本。
-- `custom/data/siem/*.yaml` 存放自定义 SIEM schema 文件。
-- `custom/data/playbooks/<playbook_slug>/*.md` 存放自定义 Playbook prompt。
-- `custom/requirements.txt` 存放额外 Python 依赖。
-
-只修改脚本或 YAML 定义后，可以在 ASP 中使用 **System Settings > Runtime > Refresh / Validate**。修改 Python 包依赖或公共 helper module 后，需要重新执行 `asp-custom-deps` 并重启相关容器。
-
-## 日志
-
-Nginx 和后端进程日志会挂载到 `./logs`：
-
-```text
-logs/nginx/access.log
-logs/nginx/error.log
-logs/django.log
-logs/asgi.log
-logs/agentic-module-worker.log
-logs/agentic-case-analysis-worker.log
-logs/agentic-playbook-worker.log
-logs/elk-action-worker.log
-logs/dashboard-cache-worker.log
-```
-
-容器标准输出和标准错误仍可通过 `docker compose logs` 查看。
+不要直接修改官方 `compose.yaml`；升级时最新发布包会覆盖该文件。发布包不包含 `.env`、`compose.override.yaml`、`custom/`、`certs/` 和 `logs/`。
 
 ## 运维
 
-查看服务状态并执行部署诊断：
+查看状态并运行完整诊断：
 
 ```bash
 docker compose ps
 ./scripts/doctor.sh
 ```
 
-`doctor.sh` 会等待全部官方常驻服务进入 running/healthy 状态，再检查 PostgreSQL、Redis、Django、定制定义和 RustFS/S3 bucket。
+查看服务日志：
 
-重启所有服务：
+```bash
+docker compose logs --tail=100 <service>
+docker compose logs -f <service>
+```
+
+Nginx 和后端进程日志也会写入 `logs/`。
+
+重启、停止和启动：
 
 ```bash
 docker compose restart
-```
-
-只重启 Web/API 入口：
-
-```bash
-docker compose restart asp-frontend asp-web asp-asgi
-```
-
-反向代理需要将 `/ws/` 转发到 ASGI 服务。
-
-只重启后台 Worker：
-
-```bash
-docker compose restart asp-worker-module asp-worker-case-analysis asp-worker-playbook asp-worker-elk-action asp-worker-dashboard-cache
-```
-
-修改 `.env`、`compose.yaml` 或端口映射后，执行：
-
-```bash
+docker compose stop
 docker compose up -d
 ```
 
-停止容器但保留 Docker 数据卷：
-
-```bash
-docker compose stop
-```
-
-不要在生产环境执行 `docker compose down -v`，除非明确要删除 PostgreSQL、Redis 和 RustFS 的 Docker 数据卷。
+不要执行 `docker compose down -v`，除非明确要删除全部持久化数据。
 
 ## 备份 & 恢复
 
-备份和恢复都在目录名为 `asp-compose` 的部署目录中执行，避免 Docker Compose volume 名称变化。
-
-停机全量备份：
+创建停机全量备份：
 
 ```bash
-BACKUP_DIR="$PWD/backups/asp-full-$(date +%Y%m%d%H%M%S)"
-mkdir -p "$BACKUP_DIR"
-docker compose stop
-tar -czf "$BACKUP_DIR/files.tar.gz" --exclude='./backups' .env .env.example compose*.yaml scripts custom certs logs
-docker run --rm \
-  -v asp-compose_postgres-data:/volumes/postgres-data:ro \
-  -v asp-compose_redis-data:/volumes/redis-data:ro \
-  -v asp-compose_rustfs-data:/volumes/rustfs-data:ro \
-  -v asp-compose_custom-python-packages:/volumes/custom-python-packages:ro \
-  -v asp-compose_static-files:/volumes/static-files:ro \
-  -v "$BACKUP_DIR:/backup" \
-  alpine sh -lc 'cd /volumes && tar -czf /backup/volumes.tar.gz postgres-data redis-data rustfs-data custom-python-packages static-files'
-docker compose up -d
-./scripts/doctor.sh
+./scripts/backup.sh
 ```
 
-全量恢复：
+指定其他备份根目录：
 
 ```bash
-BACKUP_DIR=/path/to/asp-full-backup
-tar -xzf "$BACKUP_DIR/files.tar.gz" -C .
-docker compose down --remove-orphans
-docker run --rm \
-  -v asp-compose_postgres-data:/volumes/postgres-data \
-  -v asp-compose_redis-data:/volumes/redis-data \
-  -v asp-compose_rustfs-data:/volumes/rustfs-data \
-  -v asp-compose_custom-python-packages:/volumes/custom-python-packages \
-  -v asp-compose_static-files:/volumes/static-files \
-  -v "$BACKUP_DIR:/backup" \
-  alpine sh -lc '
-    for dir in postgres-data redis-data rustfs-data custom-python-packages static-files; do
-      rm -rf "/volumes/$dir"/* "/volumes/$dir"/.[!.]* "/volumes/$dir"/..?*
-    done
-    tar -xzf /backup/volumes.tar.gz -C /volumes
-  '
-docker compose up -d
-./scripts/doctor.sh
+./scripts/backup.sh /mnt/asp-backups
 ```
 
-恢复前不要修改 `asp-compose` 目录名。
+恢复全量备份：
+
+```bash
+./scripts/restore.sh /path/to/asp-full-backup
+```
+
+恢复会替换当前部署文件和 Docker named volumes。脚本会在停止服务前校验备份 manifest、SHA-256、归档文件和 Compose 配置。
 
 ## 升级
 
-升级前先完成一次停机全量备份。
-
-本地升级脚本已支持托管升级时，在当前部署目录执行：
+先在当前部署目录创建全量备份：
 
 ```bash
-./scripts/upgrade.sh --version <version>
+./scripts/backup.sh
 ```
 
-脚本会下载目标 Release 的 Compose 发布包和 SHA-256 文件，校验并备份官方文件，自动更新 `.env` 中的镜像标签，然后拉取镜像、执行迁移、启动服务和检查全部常驻服务。
-
-先通过不会执行升级的文本检查确认旧部署脚本是否支持 `--version`：
+返回父目录，下载并覆盖最新发布包，然后执行新包中的升级脚本：
 
 ```bash
-grep -q -- '--version' ./scripts/upgrade.sh
+cd ..
+curl -fL -o asp-compose.tar.gz https://github.com/FunnyWolf/agentic-soc-platform/releases/latest/download/asp-compose.tar.gz &&
+tar -xzf asp-compose.tar.gz &&
+rm asp-compose.tar.gz &&
+cd asp-compose &&
+./scripts/upgrade.sh
 ```
 
-如果没有匹配结果，从目标 Release 下载一次性升级器：
-
-```bash
-version="<version>"
-base_url="https://github.com/FunnyWolf/agentic-soc-platform/releases/download/v${version}"
-curl -fL -O "${base_url}/asp-upgrade-${version}.sh"
-curl -fL -O "${base_url}/asp-upgrade-${version}.sh.sha256"
-sha256sum -c "asp-upgrade-${version}.sh.sha256" &&
-  chmod +x "asp-upgrade-${version}.sh" &&
-  ./asp-upgrade-${version}.sh --version "${version}"
-```
-
-升级器管理并更新 `compose.yaml`、`scripts/`、`.env.example`、`README.md` 和 `README.zh.md`。它保留 `.env`、`compose.override.yaml`、`custom/`、`certs/`、`logs/` 和 Docker named volumes。
-
-迁移前失败会自动恢复旧文件。数据库迁移开始后不自动降级；脚本会输出 `backups/upgrade-<version>-<timestamp>-<pid>/` 备份路径供排障使用。
+升级脚本会更新镜像、停止旧版本应用服务、执行目标版本升级操作和数据库迁移、启动服务并运行 `doctor.sh`。升级不会自动回滚；需要完整恢复时使用升级前的全量备份。

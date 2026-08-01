@@ -99,7 +99,7 @@ class Manifest:
 
     @property
     def archive_name(self) -> str:
-        return f"asp-compose-{self.version}.tar.gz"
+        return "asp-compose.tar.gz"
 
     @property
     def release_doc_url(self) -> str:
@@ -150,7 +150,7 @@ def image_name(manifest: Manifest, image: str) -> str:
 
 
 def project_release_url(manifest: Manifest) -> str:
-    return f"https://github.com/{PROJECT_REPOSITORY}/releases/download/{manifest.tag}/{manifest.archive_name}"
+    return f"https://github.com/{PROJECT_REPOSITORY}/releases/latest/download/{manifest.archive_name}"
 
 
 def run_prepare(manifest: Manifest) -> None:
@@ -273,39 +273,24 @@ def check_generated_block(
 
 def deployment_block(manifest: Manifest, lang: str) -> str:
     url = project_release_url(manifest)
-    version_numbers = tuple(int(part) for part in manifest.version.split(".", 2)[:2])
-    verified_assets = version_numbers >= (0, 6) or (
-        version_numbers == (0, 5)
-        and int(re.match(r"[0-9]+", manifest.version.split(".", 2)[2]).group()) >= 3
-    )
     if lang == "zh":
-        download = f"""curl -fL -O {url}
-tar -xzf {manifest.archive_name}"""
-        if verified_assets:
-            download = f"""curl -fL -O {url} &&
-curl -fL -O {url}.sha256 &&
-sha256sum -c {manifest.archive_name}.sha256 &&
-tar -xzf {manifest.archive_name}"""
         body = f"""- GitHub Releases 页面：[https://github.com/{PROJECT_REPOSITORY}/releases](https://github.com/{PROJECT_REPOSITORY}/releases)
-- 当前版本发布包：`{manifest.archive_name}`
+- 最新版本发布包：`{manifest.archive_name}`
 
 ```bash
-{download}
+curl -fL -o {manifest.archive_name} {url} &&
+tar -xzf {manifest.archive_name} &&
+rm {manifest.archive_name} &&
 cd asp-compose
 ```"""
     else:
-        download = f"""curl -fL -O {url}
-tar -xzf {manifest.archive_name}"""
-        if verified_assets:
-            download = f"""curl -fL -O {url} &&
-curl -fL -O {url}.sha256 &&
-sha256sum -c {manifest.archive_name}.sha256 &&
-tar -xzf {manifest.archive_name}"""
         body = f"""- GitHub Releases: [https://github.com/{PROJECT_REPOSITORY}/releases](https://github.com/{PROJECT_REPOSITORY}/releases)
-- Current release package: `{manifest.archive_name}`
+- Latest release package: `{manifest.archive_name}`
 
 ```bash
-{download}
+curl -fL -o {manifest.archive_name} {url} &&
+tar -xzf {manifest.archive_name} &&
+rm {manifest.archive_name} &&
 cd asp-compose
 ```"""
     return generated_block("release:deployment-package", body)
@@ -358,18 +343,25 @@ def check_quickstart_deployment_docs(manifest: Manifest, failures: list[str]) ->
 
 
 def upgrade_block(manifest: Manifest, lang: str) -> str:
+    url = project_release_url(manifest)
     if lang == "zh":
-        body = """```bash
-./scripts/upgrade.sh --version <version>
-```
-
-`<version>` 使用目标 GitHub Release 的版本号，不包含 `v` 前缀。"""
+        body = f"""```bash
+cd ..
+curl -fL -o {manifest.archive_name} {url} &&
+tar -xzf {manifest.archive_name} &&
+rm {manifest.archive_name} &&
+cd asp-compose &&
+./scripts/upgrade.sh
+```"""
     else:
-        body = """```bash
-./scripts/upgrade.sh --version <version>
-```
-
-Use the target GitHub Release version for `<version>` without the `v` prefix."""
+        body = f"""```bash
+cd ..
+curl -fL -o {manifest.archive_name} {url} &&
+tar -xzf {manifest.archive_name} &&
+rm {manifest.archive_name} &&
+cd asp-compose &&
+./scripts/upgrade.sh
+```"""
     return generated_block("release:managed-upgrade", body)
 
 

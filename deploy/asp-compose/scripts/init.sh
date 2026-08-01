@@ -1,6 +1,28 @@
 #!/bin/sh
 set -eu
 
+if [ "$#" -ne 0 ]; then
+    echo "init.sh does not accept arguments. Install custom Python dependencies with asp-custom-deps." >&2
+    exit 2
+fi
+
+mkdir -p \
+    certs \
+    custom/data/modules \
+    custom/data/playbooks \
+    custom/data/siem \
+    custom/modules \
+    custom/playbooks \
+    logs/nginx
+
+if [ ! -e custom/requirements.txt ]; then
+    cat > custom/requirements.txt <<'EOF'
+# Add Python packages required by custom Module or Playbook scripts.
+# Example:
+# requests==2.32.5
+EOF
+fi
+
 generate_secret() {
     if command -v openssl >/dev/null 2>&1; then
         openssl rand -hex 32
@@ -57,10 +79,6 @@ if grep -Eq '^(DJANGO_SECRET_KEY|POSTGRES_PASSWORD|REDIS_PASSWORD|RUSTFS_SECRET_
 fi
 
 docker compose pull
-
-if [ -f custom/requirements.txt ] && grep -qEv '^[[:space:]]*(#|$)' custom/requirements.txt; then
-    docker compose run --rm asp-custom-deps "$@"
-fi
 
 docker compose run --rm asp-migrate
 docker compose up -d

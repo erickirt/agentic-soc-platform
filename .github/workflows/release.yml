@@ -55,24 +55,14 @@ jobs:
             --frontend-image "${{ needs.prepare.outputs.frontend_image }}"
       - name: Validate package
         run: |
-          version="${{ needs.prepare.outputs.version }}"
-          archive_path="dist/asp-compose-$version.tar.gz"
-          archive_checksum_path="$archive_path.sha256"
-          upgrade_script_path="dist/asp-upgrade-$version.sh"
-          upgrade_checksum_path="$upgrade_script_path.sha256"
+          archive_path="dist/asp-compose.tar.gz"
           test -f "$archive_path"
-          test -f "$archive_checksum_path"
-          test -x "$upgrade_script_path"
-          test -f "$upgrade_checksum_path"
-          (
-            cd dist
-            sha256sum -c "asp-compose-$version.tar.gz.sha256"
-            sha256sum -c "asp-upgrade-$version.sh.sha256"
-          )
-          cmp deploy/asp-compose/scripts/upgrade.sh "$upgrade_script_path"
+          tar -tzf "$archive_path" >/dev/null
           rm -rf dist/unpacked
           mkdir -p dist/unpacked
           tar -xzf "$archive_path" -C dist/unpacked
+          test -x dist/unpacked/asp-compose/scripts/upgrade.sh
+          test ! -e dist/unpacked/asp-compose/.env
           grep -F "${{ needs.prepare.outputs.backend_image }}" dist/unpacked/asp-compose/.env.example
           grep -F "${{ needs.prepare.outputs.frontend_image }}" dist/unpacked/asp-compose/.env.example
           if find dist/unpacked -type f | grep -E 'custom/(modules|playbooks)/.+\.py$|custom/data/(modules|siem|playbooks)/.+\.(json|ya?ml|md)$'; then
@@ -81,7 +71,6 @@ jobs:
           fi
       - name: Write release body
         run: |
-          version="${{ needs.prepare.outputs.version }}"
           cat > dist/release-body.md <<EOF
           ## Release notes
 
@@ -89,10 +78,7 @@ jobs:
 
           ## Downloads
 
-          - asp-compose-$version.tar.gz
-          - asp-compose-$version.tar.gz.sha256
-          - asp-upgrade-$version.sh
-          - asp-upgrade-$version.sh.sha256
+          - asp-compose.tar.gz
 
           ## Container images
 
@@ -103,11 +89,7 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           body_path: dist/release-body.md
-          files: |
-            dist/asp-compose-${{ needs.prepare.outputs.version }}.tar.gz
-            dist/asp-compose-${{ needs.prepare.outputs.version }}.tar.gz.sha256
-            dist/asp-upgrade-${{ needs.prepare.outputs.version }}.sh
-            dist/asp-upgrade-${{ needs.prepare.outputs.version }}.sh.sha256
+          files: dist/asp-compose.tar.gz
 
   publish-cli:
     name: Publish CLI to PyPI

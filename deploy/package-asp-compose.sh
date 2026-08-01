@@ -53,16 +53,12 @@ root="$(cd "$script_dir/.." && pwd)"
 source_dir="$script_dir/asp-compose"
 dist_dir="$root/$output_dir"
 staging="$dist_dir/asp-compose"
-archive_path="$dist_dir/asp-compose-$version.tar.gz"
-archive_checksum_path="$archive_path.sha256"
-upgrade_script_name="asp-upgrade-$version.sh"
-upgrade_script_path="$dist_dir/$upgrade_script_name"
-upgrade_checksum_path="$upgrade_script_path.sha256"
+archive_path="$dist_dir/asp-compose.tar.gz"
 
 rm -rf "$staging"
 mkdir -p "$dist_dir"
 cp -a "$source_dir" "$staging"
-rm -f "$staging/.env"
+rm -rf "$staging/.env" "$staging/custom" "$staging/certs" "$staging/logs"
 chmod +x "$staging"/scripts/*.sh
 
 env_example="$staging/.env.example"
@@ -80,19 +76,5 @@ fi
 
 rm -f "$archive_path"
 tar -czf "$archive_path" -C "$dist_dir" asp-compose
-(
-  cd "$dist_dir"
-  sha256sum "$(basename "$archive_path")" > "$(basename "$archive_checksum_path")"
-)
-
-cp "$source_dir/scripts/upgrade.sh" "$upgrade_script_path"
-chmod +x "$upgrade_script_path"
-(
-  cd "$dist_dir"
-  sha256sum "$upgrade_script_name" > "$(basename "$upgrade_checksum_path")"
-)
 
 echo "Created $archive_path"
-echo "Created $archive_checksum_path"
-echo "Created $upgrade_script_path"
-echo "Created $upgrade_checksum_path"
