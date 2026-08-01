@@ -38,6 +38,7 @@ RESOURCE_MODEL_TO_KEY = {
     "siemelkconfig": "siem-elk",
     "ldapconfig": "ldap",
     "runtimeconfig": "runtime",
+    "customvariable": "custom-variables",
 }
 
 RESOURCE_LABELS = {
@@ -55,6 +56,7 @@ RESOURCE_LABELS = {
     "siemelkconfig": "ELK Settings",
     "ldapconfig": "LDAP Settings",
     "runtimeconfig": "Runtime Settings",
+    "customvariable": "Custom Variable",
 }
 
 

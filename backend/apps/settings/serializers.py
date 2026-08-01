@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from .models import (
+    CustomVariable,
     LdapConfig,
     LLMProviderConfig,
     RuntimeConfig,
@@ -9,6 +10,76 @@ from .models import (
     ThreatIntelAlienVaultOTXConfig,
     ThreatIntelOpenCTIConfig,
 )
+
+
+MAX_CUSTOM_VARIABLE_VALUE_BYTES = 65_536
+
+
+class CustomVariableSerializer(serializers.ModelSerializer):
+    value_configured = serializers.SerializerMethodField()
+    confirm_secret_exposure = serializers.BooleanField(write_only=True, required=False, default=False)
+
+    class Meta:
+        model = CustomVariable
+        fields = (
+            "id",
+            "key",
+            "value",
+            "value_configured",
+            "is_secret",
+            "description",
+            "enabled",
+            "created_at",
+            "updated_at",
+            "confirm_secret_exposure",
+        )
+        read_only_fields = ("id", "value_configured", "created_at", "updated_at")
+        extra_kwargs = {
+            "value": {"required": False, "trim_whitespace": False, "allow_blank": False},
+            "description": {"required": False, "allow_blank": True},
+        }
+
+    def get_value_configured(self, obj):
+        return bool(obj.value)
+
+    def validate_key(self, value):
+        if self.instance is not None and value != self.instance.key:
+            raise serializers.ValidationError("Key cannot be changed.")
+        return value
+
+    def validate_value(self, value):
+        if value == "":
+            raise serializers.ValidationError("Value cannot be empty.")
+        if len(value.encode("utf-8")) > MAX_CUSTOM_VARIABLE_VALUE_BYTES:
+            raise serializers.ValidationError(
+                f"Value cannot exceed {MAX_CUSTOM_VARIABLE_VALUE_BYTES:,} UTF-8 bytes."
+            )
+        return value
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        confirmation = attrs.pop("confirm_secret_exposure", False)
+
+        if self.instance is None:
+            if "value" not in attrs:
+                raise serializers.ValidationError({"value": "Value is required."})
+            return attrs
+
+        if not self.partial and "value" not in attrs and not self.instance.is_secret:
+            raise serializers.ValidationError({"value": "Value is required."})
+
+        next_is_secret = attrs.get("is_secret", self.instance.is_secret)
+        if self.instance.is_secret and not next_is_secret and not confirmation:
+            raise serializers.ValidationError({
+                "confirm_secret_exposure": "Confirm that this secret value may be exposed."
+            })
+        return attrs
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if instance.is_secret:
+            data["value"] = ""
+        return data
 
 
 class LLMProviderConfigSerializer(serializers.ModelSerializer):

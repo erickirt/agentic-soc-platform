@@ -98,6 +98,14 @@ const llmProviderStatusTag = (v: unknown) => {
     const enabled = v === true || v === 'true'
     return choiceTag(enabled ? 'Enabled' : 'Disabled', enabled ? 'green' : 'default')
 }
+const customVariableSecretTag = (v: unknown) => {
+    const secret = v === true || v === 'true'
+    return choiceTag(secret ? 'Secret' : 'Plain', secret ? 'purple' : 'default')
+}
+const customVariableConfiguredTag = (v: unknown) => {
+    const configured = v === true || v === 'true'
+    return choiceTag(configured ? 'Configured' : 'Not configured', configured ? 'green' : 'red')
+}
 const llmTagColors: Record<string, string> = {
     fast: 'blue',
     powerful: 'purple',
@@ -1007,6 +1015,36 @@ export const resourceConfigs: Record<string, ResourceConfig<RecordRow>> = {
             column('tags', 'Tags', L360, {defaultVisible: true, render: llmTags}),
             column('enabled', 'Enabled', L96, {defaultVisible: true, sorter: true, render: llmProviderStatusTag}),
             column('priority', 'Priority', L96, {defaultVisible: true, sorter: true}),
+        ],
+        basicSections: [],
+        tabs: [],
+    },
+    'custom-variables': {
+        key: 'custom-variables',
+        label: 'Custom Variables',
+        icon: <ApiOutlined/>,
+        endpoint: '/custom/variables/',
+        rowKey: 'id',
+        searchPlaceholder: 'Key, Description',
+        filters: [
+            {key: 'is_secret', label: 'Secret', valueType: 'select', options: [{label: 'Secret', value: 'true'}, {label: 'Plain', value: 'false'}], width: L132},
+            {key: 'enabled', label: 'Enabled', valueType: 'select', options: [{label: 'Enabled', value: 'true'}, {label: 'Disabled', value: 'false'}], width: L132},
+        ],
+        advancedFilters: [
+            field('key', 'Key', 'text'),
+            field('description', 'Description', 'text'),
+            {key: 'is_secret', label: 'Secret', valueType: 'select', options: [{label: 'Secret', value: 'true'}, {label: 'Plain', value: 'false'}]},
+            {key: 'enabled', label: 'Enabled', valueType: 'select', options: [{label: 'Enabled', value: 'true'}, {label: 'Disabled', value: 'false'}]},
+            field('created_at', 'Created At', 'date'),
+            field('updated_at', 'Updated At', 'date'),
+        ],
+        columns: [
+            column('key', 'Key', L240, {required: true, defaultVisible: true, openRecord: true, sorter: true}),
+            column('description', 'Description', L360, {defaultVisible: true}),
+            column('is_secret', 'Secret', L96, {defaultVisible: true, sorter: true, render: customVariableSecretTag}),
+            column('enabled', 'Enabled', L96, {defaultVisible: true, sorter: true, render: llmProviderStatusTag}),
+            column('value_configured', 'Value', L132, {defaultVisible: true, render: customVariableConfiguredTag}),
+            column('updated_at', 'Updated At', L160, {defaultVisible: true, sorter: true, render: date('updated_at')}),
         ],
         basicSections: [],
         tabs: [],

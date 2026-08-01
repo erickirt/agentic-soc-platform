@@ -10,7 +10,6 @@
 | [01-bulk-case-triage.md](01-bulk-case-triage.md) | Confirmed | Case 批量分诊、共享状态机、通知与审计 |
 | [02-case-merge.md](02-case-merge.md) | Confirmed | 多源案件合并、数据迁移、只读源案件与幂等 |
 | [03-playbook-execution.md](03-playbook-execution.md) | Confirmed | Playbook Run、结构化 Stage、取消、重试与 Worker 语义 |
-| [04-custom-variables.md](04-custom-variables.md) | Confirmed | Playbook/Module 可读取的 UI 管理变量 |
 | [05-worker-health.md](05-worker-health.md) | Confirmed | Redis 心跳、Worker 状态、积压指标与 Admin API |
 | [06-integration-health.md](06-integration-health.md) | Confirmed | 定时集成检查、当前状态持久化与安全错误 |
 | [07-sla-management.md](07-sla-management.md) | Confirmed | TTD/TTA/TTR 时限、Severity 策略、通知和 Dashboard 达标率 |

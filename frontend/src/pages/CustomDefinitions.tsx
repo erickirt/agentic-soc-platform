@@ -3,11 +3,12 @@ import {Alert, Button, Descriptions, Drawer, Empty, Flex, Input, InputNumber, Li
 import {message} from '../utils/appMessage'
 import {ReloadOutlined} from '@ant-design/icons'
 import type {ColumnsType} from 'antd/es/table'
-import {Boxes, BrainCircuit, DatabaseZap} from 'lucide-react'
+import {Boxes, BrainCircuit, DatabaseZap, KeyRound} from 'lucide-react'
 import client from '../api/client'
 import JsonViewer from '../components/JsonViewer'
 import IconTabLabel from '../components/IconTabLabel'
 import OverflowTags from '../components/OverflowTags'
+import CustomVariablesSettings from './CustomVariablesSettings'
 import {comfortableTagProps} from '../utils/tagStyles'
 
 type SourceType = 'official' | 'custom'
@@ -585,6 +586,7 @@ export default function CustomDefinitions() {
           { key: 'modules', label: <IconTabLabel icon={Boxes}>Modules</IconTabLabel>, children: <ModulesTab /> },
           { key: 'playbooks', label: <IconTabLabel icon={BrainCircuit}>Playbooks</IconTabLabel>, children: <PlaybooksTab /> },
           { key: 'siem', label: <IconTabLabel icon={DatabaseZap}>SIEM YAML</IconTabLabel>, children: <SiemTab /> },
+          { key: 'variables', label: <IconTabLabel icon={KeyRound}>Variables</IconTabLabel>, children: <CustomVariablesSettings /> },
         ]}
       />
     </div>

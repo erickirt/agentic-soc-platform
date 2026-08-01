@@ -1,5 +1,6 @@
 import uuid
 
+from django.core.validators import RegexValidator
 from django.db import models
 
 
@@ -156,3 +157,30 @@ class RuntimeConfig(models.Model):
     def get_current(cls):
         instance, _ = cls.objects.get_or_create(singleton_id=1)
         return instance
+
+
+class CustomVariable(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    key = models.CharField(
+        max_length=128,
+        unique=True,
+        validators=[
+            RegexValidator(
+                regex=r"^[A-Z][A-Z0-9_]{0,127}$",
+                message="Key must start with an uppercase letter and contain only uppercase letters, numbers, and underscores.",
+            )
+        ],
+    )
+    value = models.TextField()
+    is_secret = models.BooleanField(default=False)
+    description = models.TextField(blank=True, default="")
+    enabled = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "setting_custom_variables"
+        ordering = ["key"]
+
+    def __str__(self):
+        return self.key

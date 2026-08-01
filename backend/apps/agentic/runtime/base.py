@@ -7,6 +7,7 @@ from django.conf import settings
 from django.utils import timezone as django_timezone
 
 from apps.settings.runtime_config import get_prompt_language
+from apps.settings.custom_variables import get_custom_variable
 
 
 class BasePlaybook:
@@ -43,6 +44,9 @@ class BasePlaybook:
             raise FileNotFoundError(f"Custom playbook prompt not found: {path}")
         return path.read_text(encoding="utf-8")
 
+    def get_variable(self, key):
+        return get_custom_variable(key)
+
 
 class BaseModule:
     NAME = ""
@@ -52,6 +56,9 @@ class BaseModule:
 
     def run(self, message):
         raise NotImplementedError
+
+    def get_variable(self, key):
+        return get_custom_variable(key)
 
 
 def parse_event_time(value, default=None):

@@ -10,6 +10,7 @@ from .custom_views import (
     CustomModuleStreamMessagesView,
 )
 from .views import (
+    CustomVariableViewSet,
     LLMProviderConfigViewSet,
     LdapConfigView,
     LdapTestView,
@@ -29,6 +30,9 @@ router = DefaultRouter()
 router.register("llm-providers", LLMProviderConfigViewSet, basename="llm-provider")
 router.register("audit-logs", AdminAuditLogViewSet, basename="settings-audit-log")
 
+custom_router = DefaultRouter()
+custom_router.register("variables", CustomVariableViewSet, basename="custom-variable")
+
 urlpatterns = [
     path("settings/threat-intel/otx/", ThreatIntelAlienVaultOTXConfigView.as_view(), name="threat-intel-otx-config"),
     path("settings/threat-intel/otx/test/", ThreatIntelAlienVaultOTXTestView.as_view(), name="threat-intel-otx-test"),
@@ -46,5 +50,6 @@ urlpatterns = [
     path("custom/modules/stream/message/", CustomModuleStreamMessageView.as_view(), name="custom-module-stream-message"),
     path("custom/playbooks/", CustomDefinitionsPlaybookView.as_view(), name="custom-definitions-playbooks"),
     path("custom/siem/", CustomDefinitionsSiemView.as_view(), name="custom-definitions-siem"),
+    path("custom/", include(custom_router.urls)),
     path("settings/", include(router.urls)),
 ]

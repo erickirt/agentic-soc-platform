@@ -15,6 +15,7 @@ from apps.audit.models import AuditLog
 from apps.common.advanced_filters import AdvancedFilterBackend
 from apps.common.operation_timeout import OperationTimeoutError, run_with_operation_timeout
 from .models import (
+    CustomVariable,
     LdapConfig,
     LLMProviderConfig,
     RuntimeConfig,
@@ -25,6 +26,7 @@ from .models import (
 )
 from .runtime_config import invalidate
 from .serializers import (
+    CustomVariableSerializer,
     LLMProviderConfigSerializer,
     LdapConfigSerializer,
     SiemElkConfigSerializer,
@@ -64,6 +66,7 @@ RUNTIME_AUDIT_FIELDS = (
     "stream_maxlen",
     "dashboard_refresh_interval_seconds",
 )
+CUSTOM_VARIABLE_AUDIT_FIELDS = ("key", "value", "is_secret", "description", "enabled")
 
 
 def _snapshot(instance, fields):
@@ -200,6 +203,97 @@ class LLMProviderConfigViewSet(viewsets.ModelViewSet):
         result = _run_config_test("settings.llm.test", test_llm_provider, _config_from_instance(instance, serializer.validated_data))
         _write_audit(instance, "test", request.user, metadata={"success": result["success"]})
         return Response(result, status=status.HTTP_200_OK)
+
+
+class CustomVariableViewSet(viewsets.ModelViewSet):
+    queryset = CustomVariable.objects.all()
+    serializer_class = CustomVariableSerializer
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+    filter_backends = (DjangoFilterBackend, SearchFilter, OrderingFilter, AdvancedFilterBackend)
+    search_fields = ("key", "description")
+    filterset_fields = ("is_secret", "enabled")
+    ordering_fields = ("key", "is_secret", "enabled", "created_at", "updated_at")
+    advanced_filter_fields = {
+        "key": "text",
+        "description": "text",
+        "is_secret": "select",
+        "enabled": "select",
+        "created_at": "date",
+        "updated_at": "date",
+    }
+
+    @staticmethod
+    def _safe_changes(before, after):
+        changes = {}
+        for field in CUSTOM_VARIABLE_AUDIT_FIELDS:
+            old_value = before.get(field) if before else None
+            new_value = after.get(field) if after else None
+            if old_value == new_value:
+                continue
+            if field == "value":
+                changes[field] = {"from": "***", "to": "***"}
+            else:
+                changes[field] = {"from": old_value, "to": new_value}
+        return changes
+
+    @transaction.atomic
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        after = _snapshot(instance, CUSTOM_VARIABLE_AUDIT_FIELDS)
+        _write_audit(
+            instance,
+            "create",
+            self.request.user,
+            changes=self._safe_changes(None, after),
+            metadata={"key": instance.key, "value_changed": True},
+        )
+
+    @transaction.atomic
+    def perform_update(self, serializer):
+        instance = self.get_object()
+        before = _snapshot(instance, CUSTOM_VARIABLE_AUDIT_FIELDS)
+        instance = serializer.save()
+        after = _snapshot(instance, CUSTOM_VARIABLE_AUDIT_FIELDS)
+        changes = self._safe_changes(before, after)
+        if changes:
+            _write_audit(
+                instance,
+                "update",
+                self.request.user,
+                changes=changes,
+                metadata={"key": instance.key, "value_changed": before["value"] != after["value"]},
+            )
+
+    @transaction.atomic
+    def perform_destroy(self, instance):
+        before = _snapshot(instance, CUSTOM_VARIABLE_AUDIT_FIELDS)
+        _write_audit(
+            instance,
+            "delete",
+            self.request.user,
+            changes=self._safe_changes(before, None),
+            metadata={
+                "key": instance.key,
+                "description": instance.description,
+                "is_secret": instance.is_secret,
+                "enabled": instance.enabled,
+            },
+        )
+        instance.delete()
+
+    @action(detail=True, methods=["post"])
+    def reveal(self, request, pk=None):
+        instance = self.get_object()
+        if not instance.is_secret:
+            return Response(
+                {"detail": "Only secret variables can be revealed."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        _write_audit(instance, "reveal", request.user, metadata={"key": instance.key})
+        response = Response({"value": instance.value})
+        response["Cache-Control"] = "no-store"
+        response["Pragma"] = "no-cache"
+        return response
 
 
 def _otx_config_from_instance(instance, values):
