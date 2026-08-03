@@ -17,6 +17,7 @@ class Command(BaseCommand):
             self,
             options=options,
             worker_name="agentic module",
+            worker_type="agentic-module",
             run_once=run_all_modules_once,
             default_interval=DEFAULT_INTERVAL_SECONDS,
             sleep_policy=SLEEP_WHEN_IDLE,

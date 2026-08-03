@@ -62,6 +62,8 @@ class Command(BaseCommand):
                     DASHBOARD_REFRESH_WARNING_SECONDS,
                 )
             next_sleep_seconds = min(60, interval) if failed else interval
+            if failed:
+                raise RuntimeError("Dashboard cache refresh failed.")
 
             return WorkerIterationResult(
                 processed=bool(refreshed),
@@ -77,6 +79,7 @@ class Command(BaseCommand):
             self,
             options=options,
             worker_name="dashboard cache",
+            worker_type="dashboard-cache",
             run_once=refresh_once,
             default_interval=get_dashboard_refresh_interval_seconds,
             sleep_policy=SLEEP_ALWAYS,

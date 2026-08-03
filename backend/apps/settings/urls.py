@@ -23,6 +23,7 @@ from .views import (
     ThreatIntelAlienVaultOTXTestView,
     ThreatIntelOpenCTIConfigView,
     ThreatIntelOpenCTITestView,
+    WorkerHealthView,
 )
 
 
@@ -45,6 +46,7 @@ urlpatterns = [
     path("settings/ldap/", LdapConfigView.as_view(), name="ldap-config"),
     path("settings/ldap/test/", LdapTestView.as_view(), name="ldap-test"),
     path("settings/runtime/", RuntimeConfigView.as_view(), name="runtime-config"),
+    path("settings/workers/", WorkerHealthView.as_view(), name="worker-health"),
     path("custom/modules/", CustomDefinitionsModuleView.as_view(), name="custom-definitions-modules"),
     path("custom/modules/stream/messages/", CustomModuleStreamMessagesView.as_view(), name="custom-module-stream-messages"),
     path("custom/modules/stream/message/", CustomModuleStreamMessageView.as_view(), name="custom-module-stream-message"),

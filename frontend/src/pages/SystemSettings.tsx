@@ -1,5 +1,5 @@
 import {Tabs} from 'antd'
-import {Bot, DatabaseSearch, FileSearch, Network, Radar, SlidersHorizontal, Tags, UsersRound} from 'lucide-react'
+import {Activity, Bot, DatabaseSearch, FileSearch, Network, Radar, SlidersHorizontal, Tags, UsersRound} from 'lucide-react'
 import AuditLogsSettings from './AuditLogsSettings'
 import LDAPSettings from './LDAPSettings'
 import LLMProviderSettings from './LLMProviderSettings'
@@ -8,6 +8,7 @@ import SIEMSettings from './SIEMSettings'
 import TagPreviewSettings from './TagPreviewSettings'
 import ThreatIntelligenceSettings from './ThreatIntelligenceSettings'
 import UserManagement from './UserManagement'
+import WorkersSettings from './WorkersSettings'
 import IconTabLabel from '../components/IconTabLabel'
 
 export default function SystemSettings() {
@@ -45,6 +46,11 @@ export default function SystemSettings() {
             key: 'runtime',
             label: <IconTabLabel icon={SlidersHorizontal}>Runtime</IconTabLabel>,
             children: <RuntimeSettings />,
+          },
+          {
+            key: 'workers',
+            label: <IconTabLabel icon={Activity}>Workers</IconTabLabel>,
+            children: <WorkersSettings />,
           },
           {
             key: 'tag-preview',

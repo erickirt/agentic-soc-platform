@@ -9,11 +9,13 @@ from rest_framework import permissions, status, views, viewsets
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.response import Response
+from redis.exceptions import RedisError
 
 from apps.accounts.permissions import IsAdmin
 from apps.audit.models import AuditLog
 from apps.common.advanced_filters import AdvancedFilterBackend
 from apps.common.operation_timeout import OperationTimeoutError, run_with_operation_timeout
+from apps.common.worker_health import get_worker_health_states
 from .models import (
     CustomVariable,
     LdapConfig,
@@ -579,3 +581,17 @@ class RuntimeConfigView(views.APIView):
             _write_audit(instance, "update", request.user, changes=changes)
         transaction.on_commit(lambda: invalidate("runtime"))
         return Response(RuntimeConfigSerializer(instance).data)
+
+
+class WorkerHealthView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    def get(self, request):
+        try:
+            results = get_worker_health_states()
+        except RedisError:
+            return Response(
+                {"detail": "Worker health monitoring is unavailable."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        return Response({"results": results})

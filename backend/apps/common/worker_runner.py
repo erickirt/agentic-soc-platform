@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from django.core.management.base import CommandError
 
 from apps.common.logging import configure_process_file_logging
+from apps.common.worker_health import WorkerHealthReporter
 
 SLEEP_ALWAYS = "always"
 SLEEP_WHEN_IDLE = "when_idle"
@@ -78,6 +79,7 @@ def run_worker(
     *,
     options,
     worker_name,
+    worker_type,
     run_once,
     default_interval,
     sleep_policy=SLEEP_WHEN_IDLE,
@@ -99,10 +101,15 @@ def run_worker(
         return
 
     command.stdout.write(_styled(command, "SUCCESS", started_message or f"{worker_label} started"))
+    health = WorkerHealthReporter(worker_type)
+    health.start()
     try:
         while True:
+            iteration_started = time.perf_counter()
+            health.iteration_started()
             try:
                 result = _run_once_or_raise(worker_label, run_once)
+                health.iteration_succeeded(result, (time.perf_counter() - iteration_started) * 1000)
                 if result.message:
                     command.stdout.write(result.message)
                 if _should_sleep(result, sleep_policy):
@@ -111,8 +118,10 @@ def run_worker(
                         raise CommandError("worker sleep interval must be greater than 0.")
                     time.sleep(current_sleep_seconds)
             except Exception as exc:
+                health.iteration_failed(exc.__cause__ or exc, (time.perf_counter() - iteration_started) * 1000)
                 logger.exception("%s iteration failed", worker_label)
                 command.stderr.write(_styled(command, "ERROR", f"{worker_label} failed: {type(exc).__name__}: {exc}"))
                 time.sleep(interval)
     except KeyboardInterrupt:
+        health.stop()
         command.stdout.write(_styled(command, "WARNING", stopped_message or f"{worker_label} stopped."))

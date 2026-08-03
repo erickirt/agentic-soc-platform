@@ -17,6 +17,7 @@ class Command(BaseCommand):
             self,
             options=options,
             worker_name="agentic playbook",
+            worker_type="playbook",
             run_once=run_playbook_once,
             default_interval=DEFAULT_INTERVAL_SECONDS,
             sleep_policy=SLEEP_WHEN_IDLE,

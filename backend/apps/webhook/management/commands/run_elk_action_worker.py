@@ -48,6 +48,7 @@ class Command(BaseCommand):
             self,
             options=options,
             worker_name="ELK action",
+            worker_type="elk-action",
             run_once=process_once,
             default_interval=lambda: processor.interval_seconds,
             sleep_policy=SLEEP_ALWAYS,

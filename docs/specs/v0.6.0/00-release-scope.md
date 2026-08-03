@@ -10,7 +10,7 @@ v0.6.0 面向单组织私有化部署，目标是让一个小型 SOC 团队完�
 
 - 唯一正式支持的部署拓扑是单主机 Docker Compose。
 - 不承诺 Kubernetes、横向扩容、多节点高可用或自动故障切换。
-- 每种后台 Worker 正式支持一个实例；重复实例必须按 Worker Health Spec 拒绝启动。
+- 每种后台 Worker 正式支持一个实例；重复实例不受支持，并会互相覆盖 Worker Health 状态。
 - 数据库降级不受支持。回滚依赖升级前备份恢复。
 
 ## 3. Upgrade contract

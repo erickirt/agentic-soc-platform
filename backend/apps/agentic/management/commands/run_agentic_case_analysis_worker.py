@@ -17,6 +17,7 @@ class Command(BaseCommand):
             self,
             options=options,
             worker_name="agentic case analysis",
+            worker_type="case-analysis",
             run_once=run_case_analysis_once,
             default_interval=DEFAULT_INTERVAL_SECONDS,
             sleep_policy=SLEEP_WHEN_IDLE,
