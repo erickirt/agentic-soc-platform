@@ -106,6 +106,19 @@ const customVariableConfiguredTag = (v: unknown) => {
     const configured = v === true || v === 'true'
     return choiceTag(configured ? 'Configured' : 'Not configured', configured ? 'green' : 'red')
 }
+const customVariableTypeOptions = [
+    {label: 'String', value: 'string'},
+    {label: 'Integer', value: 'integer'},
+    {label: 'Float', value: 'float'},
+    {label: 'Boolean', value: 'boolean'},
+    {label: 'List', value: 'list'},
+    {label: 'Dictionary', value: 'dictionary'},
+]
+const customVariableTypeTag = (v: unknown) => {
+    const type = String(v || '')
+    const option = customVariableTypeOptions.find((item) => item.value === type)
+    return choiceTag(option?.label || type, 'blue')
+}
 const llmTagColors: Record<string, string> = {
     fast: 'blue',
     powerful: 'purple',
@@ -1027,12 +1040,14 @@ export const resourceConfigs: Record<string, ResourceConfig<RecordRow>> = {
         rowKey: 'id',
         searchPlaceholder: 'Key, Description',
         filters: [
+            {key: 'value_type', label: 'Type', valueType: 'select', options: customVariableTypeOptions, width: L160},
             {key: 'is_secret', label: 'Secret', valueType: 'select', options: [{label: 'Secret', value: 'true'}, {label: 'Plain', value: 'false'}], width: L132},
             {key: 'enabled', label: 'Enabled', valueType: 'select', options: [{label: 'Enabled', value: 'true'}, {label: 'Disabled', value: 'false'}], width: L132},
         ],
         advancedFilters: [
             field('key', 'Key', 'text'),
             field('description', 'Description', 'text'),
+            {key: 'value_type', label: 'Type', valueType: 'select', options: customVariableTypeOptions},
             {key: 'is_secret', label: 'Secret', valueType: 'select', options: [{label: 'Secret', value: 'true'}, {label: 'Plain', value: 'false'}]},
             {key: 'enabled', label: 'Enabled', valueType: 'select', options: [{label: 'Enabled', value: 'true'}, {label: 'Disabled', value: 'false'}]},
             field('created_at', 'Created At', 'date'),
@@ -1041,6 +1056,7 @@ export const resourceConfigs: Record<string, ResourceConfig<RecordRow>> = {
         columns: [
             column('key', 'Key', L240, {required: true, defaultVisible: true, openRecord: true, sorter: true}),
             column('description', 'Description', L360, {defaultVisible: true}),
+            column('value_type', 'Type', L132, {defaultVisible: true, sorter: true, render: customVariableTypeTag}),
             column('is_secret', 'Secret', L96, {defaultVisible: true, sorter: true, render: customVariableSecretTag}),
             column('enabled', 'Enabled', L96, {defaultVisible: true, sorter: true, render: llmProviderStatusTag}),
             column('value_configured', 'Value', L132, {defaultVisible: true, render: customVariableConfiguredTag}),

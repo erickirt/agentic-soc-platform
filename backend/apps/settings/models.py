@@ -160,6 +160,14 @@ class RuntimeConfig(models.Model):
 
 
 class CustomVariable(models.Model):
+    class ValueType(models.TextChoices):
+        STRING = "string", "String"
+        INTEGER = "integer", "Integer"
+        FLOAT = "float", "Float"
+        BOOLEAN = "boolean", "Boolean"
+        LIST = "list", "List"
+        DICTIONARY = "dictionary", "Dictionary"
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     key = models.CharField(
         max_length=128,
@@ -171,7 +179,8 @@ class CustomVariable(models.Model):
             )
         ],
     )
-    value = models.TextField()
+    value_type = models.CharField(max_length=16, choices=ValueType.choices)
+    value = models.JSONField()
     is_secret = models.BooleanField(default=False)
     description = models.TextField(blank=True, default="")
     enabled = models.BooleanField(default=True)

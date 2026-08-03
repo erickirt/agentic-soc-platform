@@ -1,3 +1,6 @@
+import json
+import math
+
 from rest_framework import serializers
 
 from .models import (
@@ -13,9 +16,94 @@ from .models import (
 
 
 MAX_CUSTOM_VARIABLE_VALUE_BYTES = 65_536
+MAX_CUSTOM_VARIABLE_DEPTH = 20
+MAX_SAFE_INTEGER = 9_007_199_254_740_991
+
+
+def _validate_structured_custom_variable(value, depth=0):
+    if isinstance(value, list):
+        if depth > MAX_CUSTOM_VARIABLE_DEPTH:
+            raise serializers.ValidationError(
+                f"Value cannot exceed {MAX_CUSTOM_VARIABLE_DEPTH} levels of nesting."
+            )
+        for item in value:
+            _validate_structured_custom_variable(item, depth + 1)
+        return
+    if isinstance(value, dict):
+        if depth > MAX_CUSTOM_VARIABLE_DEPTH:
+            raise serializers.ValidationError(
+                f"Value cannot exceed {MAX_CUSTOM_VARIABLE_DEPTH} levels of nesting."
+            )
+        if any(not isinstance(key, str) for key in value):
+            raise serializers.ValidationError("Dictionary keys must be strings.")
+        for item in value.values():
+            _validate_structured_custom_variable(item, depth + 1)
+        return
+    if value is None or type(value) in {str, int, float, bool}:
+        return
+    raise serializers.ValidationError("Value must contain valid JSON values.")
+
+
+def _validate_custom_variable_value(value_type, value):
+    if value_type == CustomVariable.ValueType.STRING:
+        if not isinstance(value, str):
+            raise serializers.ValidationError("Value must be a string.")
+        if value == "":
+            raise serializers.ValidationError("Value cannot be empty.")
+        encoded_value = value.encode("utf-8")
+    elif value_type == CustomVariable.ValueType.INTEGER:
+        if type(value) is not int:
+            raise serializers.ValidationError("Value must be an integer.")
+        if not -MAX_SAFE_INTEGER <= value <= MAX_SAFE_INTEGER:
+            raise serializers.ValidationError(
+                f"Value must be between {-MAX_SAFE_INTEGER:,} and {MAX_SAFE_INTEGER:,}."
+            )
+        encoded_value = json.dumps(value).encode("utf-8")
+    elif value_type == CustomVariable.ValueType.FLOAT:
+        if type(value) not in {int, float}:
+            raise serializers.ValidationError("Value must be a number.")
+        value = float(value)
+        if not math.isfinite(value):
+            raise serializers.ValidationError("Value must be a finite number.")
+        encoded_value = json.dumps(value).encode("utf-8")
+    elif value_type == CustomVariable.ValueType.BOOLEAN:
+        if type(value) is not bool:
+            raise serializers.ValidationError("Value must be a boolean.")
+        encoded_value = json.dumps(value).encode("utf-8")
+    elif value_type == CustomVariable.ValueType.LIST:
+        if not isinstance(value, list):
+            raise serializers.ValidationError("Value must be a list.")
+        encoded_value = _encode_structured_custom_variable(value)
+    elif value_type == CustomVariable.ValueType.DICTIONARY:
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("Value must be a dictionary.")
+        encoded_value = _encode_structured_custom_variable(value)
+    else:
+        raise serializers.ValidationError("Unsupported value type.")
+
+    if len(encoded_value) > MAX_CUSTOM_VARIABLE_VALUE_BYTES:
+        raise serializers.ValidationError(
+            f"Value cannot exceed {MAX_CUSTOM_VARIABLE_VALUE_BYTES:,} UTF-8 bytes."
+        )
+    return value
+
+
+def _encode_structured_custom_variable(value):
+    _validate_structured_custom_variable(value, depth=1)
+    try:
+        serialized = json.dumps(
+            value,
+            ensure_ascii=False,
+            allow_nan=False,
+            separators=(",", ":"),
+        )
+    except (TypeError, ValueError) as exc:
+        raise serializers.ValidationError("Value must contain valid JSON values.") from exc
+    return serialized.encode("utf-8")
 
 
 class CustomVariableSerializer(serializers.ModelSerializer):
+    value = serializers.JSONField(required=False)
     value_configured = serializers.SerializerMethodField()
     confirm_secret_exposure = serializers.BooleanField(write_only=True, required=False, default=False)
 
@@ -24,6 +112,7 @@ class CustomVariableSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "key",
+            "value_type",
             "value",
             "value_configured",
             "is_secret",
@@ -35,25 +124,15 @@ class CustomVariableSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("id", "value_configured", "created_at", "updated_at")
         extra_kwargs = {
-            "value": {"required": False, "trim_whitespace": False, "allow_blank": False},
             "description": {"required": False, "allow_blank": True},
         }
 
     def get_value_configured(self, obj):
-        return bool(obj.value)
+        return obj.value is not None
 
     def validate_key(self, value):
         if self.instance is not None and value != self.instance.key:
             raise serializers.ValidationError("Key cannot be changed.")
-        return value
-
-    def validate_value(self, value):
-        if value == "":
-            raise serializers.ValidationError("Value cannot be empty.")
-        if len(value.encode("utf-8")) > MAX_CUSTOM_VARIABLE_VALUE_BYTES:
-            raise serializers.ValidationError(
-                f"Value cannot exceed {MAX_CUSTOM_VARIABLE_VALUE_BYTES:,} UTF-8 bytes."
-            )
         return value
 
     def validate(self, attrs):
@@ -61,24 +140,49 @@ class CustomVariableSerializer(serializers.ModelSerializer):
         confirmation = attrs.pop("confirm_secret_exposure", False)
 
         if self.instance is None:
+            if "value_type" not in attrs:
+                raise serializers.ValidationError({"value_type": "Value type is required."})
             if "value" not in attrs:
                 raise serializers.ValidationError({"value": "Value is required."})
-            return attrs
+        elif attrs.get("value_type", self.instance.value_type) != self.instance.value_type:
+            if "value" not in attrs:
+                raise serializers.ValidationError({
+                    "value": "Value is required when changing the value type."
+                })
 
-        if not self.partial and "value" not in attrs and not self.instance.is_secret:
-            raise serializers.ValidationError({"value": "Value is required."})
-
-        next_is_secret = attrs.get("is_secret", self.instance.is_secret)
-        if self.instance.is_secret and not next_is_secret and not confirmation:
+        value_type = attrs.get(
+            "value_type",
+            self.instance.value_type if self.instance else None,
+        )
+        next_is_secret = attrs.get(
+            "is_secret",
+            self.instance.is_secret if self.instance else False,
+        )
+        if next_is_secret and value_type != CustomVariable.ValueType.STRING:
+            raise serializers.ValidationError({
+                "is_secret": "Only String variables can be secret."
+            })
+        if (
+            self.instance is not None
+            and self.instance.is_secret
+            and not next_is_secret
+            and not confirmation
+        ):
             raise serializers.ValidationError({
                 "confirm_secret_exposure": "Confirm that this secret value may be exposed."
             })
+
+        if "value" in attrs:
+            try:
+                attrs["value"] = _validate_custom_variable_value(value_type, attrs["value"])
+            except serializers.ValidationError as exc:
+                raise serializers.ValidationError({"value": exc.detail}) from exc
         return attrs
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
         if instance.is_secret:
-            data["value"] = ""
+            data["value"] = None
         return data
 
 
