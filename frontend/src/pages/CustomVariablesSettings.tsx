@@ -1,6 +1,8 @@
 import {useMemo, useState} from 'react'
-import {App as AntApp, Button, Form, Input, Modal, Popconfirm, Space, Switch, Typography} from 'antd'
+import {App as AntApp, Button, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Switch, Typography} from 'antd'
 import {DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined} from '@ant-design/icons'
+import CodeMirror from '@uiw/react-codemirror'
+import {json} from '@codemirror/lang-json'
 import client from '../api/client'
 import DataTable from '../components/DataTable'
 import {getResourceConfig} from '../config/resources'
@@ -9,7 +11,8 @@ import {message} from '../utils/appMessage'
 type CustomVariable = Record<string, unknown> & {
   id: string
   key: string
-  value: string
+  value_type: CustomVariableValueType
+  value: unknown
   value_configured: boolean
   is_secret: boolean
   description: string
@@ -18,9 +21,12 @@ type CustomVariable = Record<string, unknown> & {
   updated_at: string
 }
 
+type CustomVariableValueType = 'string' | 'integer' | 'float' | 'boolean' | 'list' | 'dictionary'
+
 interface CustomVariableFormValues {
   key: string
-  value?: string
+  value_type: CustomVariableValueType
+  value?: unknown
   is_secret: boolean
   description?: string
   enabled: boolean
@@ -32,6 +38,16 @@ interface RevealedValue {
 }
 
 const MAX_VALUE_BYTES = 65_536
+const MAX_SAFE_INTEGER = Number.MAX_SAFE_INTEGER
+const JSON_EDITOR_EXTENSIONS = [json()]
+const VALUE_TYPE_OPTIONS = [
+  {label: 'String', value: 'string'},
+  {label: 'Integer', value: 'integer'},
+  {label: 'Float', value: 'float'},
+  {label: 'Boolean', value: 'boolean'},
+  {label: 'List', value: 'list'},
+  {label: 'Dictionary', value: 'dictionary'},
+]
 
 function apiErrorMessage(error: unknown, fallback: string) {
   const data = (error as { response?: { data?: unknown } }).response?.data
@@ -47,6 +63,7 @@ function apiErrorMessage(error: unknown, fallback: string) {
 function initialValues(): CustomVariableFormValues {
   return {
     key: '',
+    value_type: 'string',
     value: '',
     is_secret: false,
     description: '',
@@ -65,6 +82,7 @@ export default function CustomVariablesSettings() {
   const [revealed, setRevealed] = useState<RevealedValue | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
   const isSecret = Form.useWatch('is_secret', form) ?? false
+  const valueType = Form.useWatch('value_type', form) ?? 'string'
 
   const refresh = () => setRefreshKey((value) => value + 1)
 
@@ -78,7 +96,12 @@ export default function CustomVariablesSettings() {
     try {
       const {data} = await client.get<CustomVariable>(`/custom/variables/${record.id}/`)
       setEditing(data)
-      form.setFieldsValue({...initialValues(), ...data})
+      const value = data.is_secret
+        ? ''
+        : data.value_type === 'list' || data.value_type === 'dictionary'
+          ? JSON.stringify(data.value, null, 2)
+          : data.value
+      form.setFieldsValue({...initialValues(), ...data, value})
       setModalOpen(true)
     } catch (error: unknown) {
       message.error(apiErrorMessage(error, 'Failed to load custom variable'))
@@ -93,12 +116,18 @@ export default function CustomVariablesSettings() {
 
   const persist = async (values: CustomVariableFormValues, confirmSecretExposure: boolean) => {
     const payload: Record<string, unknown> = {
+      value_type: values.value_type,
       is_secret: values.is_secret,
       description: values.description || '',
       enabled: values.enabled,
     }
     if (!editing) payload.key = values.key
-    if (values.value !== '' && values.value !== undefined) payload.value = values.value
+    const omitUnchangedSecret = Boolean(editing?.is_secret && values.value_type === 'string' && values.value === '')
+    if (!omitUnchangedSecret) {
+      payload.value = values.value_type === 'list' || values.value_type === 'dictionary'
+        ? JSON.parse(String(values.value))
+        : values.value
+    }
     if (confirmSecretExposure) payload.confirm_secret_exposure = true
 
     if (editing) {
@@ -116,12 +145,18 @@ export default function CustomVariablesSettings() {
     setSaving(true)
     try {
       const values = await form.validateFields()
-      if (editing?.is_secret && !values.is_secret) {
+      const exposesSecret = Boolean(editing?.is_secret && !values.is_secret)
+      const changesType = Boolean(editing && editing.value_type !== values.value_type)
+      if (exposesSecret || changesType) {
         modal.confirm({
-          title: `Expose ${editing.key} as a non-secret variable?`,
-          content: 'This value will become visible in normal Admin API responses and UI.',
-          okText: 'Expose value',
-          okButtonProps: {danger: true},
+          title: exposesSecret
+            ? `Expose ${editing?.key} as a non-secret variable?`
+            : `Change ${editing?.key} from ${editing?.value_type} to ${values.value_type}?`,
+          content: exposesSecret
+            ? 'This value will become visible in normal Admin API responses and UI.'
+            : 'Playbooks and modules will receive a different Python value type.',
+          okText: exposesSecret ? 'Expose value' : 'Change type',
+          okButtonProps: {danger: exposesSecret},
           onOk: async () => {
             try {
               await persist(values, true)
@@ -163,14 +198,51 @@ export default function CustomVariablesSettings() {
     }
   }
 
-  const validateValue = (_: unknown, value: string | undefined) => {
-    if (!value && !editing?.is_secret) {
+  const validateValue = (_: unknown, value: unknown) => {
+    const unchangedSecret = editing?.is_secret && valueType === 'string' && value === ''
+    if (unchangedSecret) return Promise.resolve()
+    if (value === undefined || value === null || (valueType === 'string' && value === '')) {
       return Promise.reject(new Error('Value is required.'))
     }
-    if (value !== undefined && new TextEncoder().encode(value).length > MAX_VALUE_BYTES) {
+    if (valueType === 'integer' && (typeof value !== 'number' || !Number.isSafeInteger(value))) {
+      return Promise.reject(new Error('Value must be a safe integer.'))
+    }
+    let serialized = String(value)
+    if (valueType === 'list' || valueType === 'dictionary') {
+      try {
+        const parsed = JSON.parse(serialized)
+        if (valueType === 'list' && !Array.isArray(parsed)) {
+          return Promise.reject(new Error('Value must be a JSON list.'))
+        }
+        if (valueType === 'dictionary' && (parsed === null || Array.isArray(parsed) || typeof parsed !== 'object')) {
+          return Promise.reject(new Error('Value must be a JSON dictionary.'))
+        }
+        serialized = JSON.stringify(parsed)
+      } catch {
+        return Promise.reject(new Error('Value must be valid JSON.'))
+      }
+    }
+    if (new TextEncoder().encode(serialized).length > MAX_VALUE_BYTES) {
       return Promise.reject(new Error(`Value cannot exceed ${MAX_VALUE_BYTES.toLocaleString()} UTF-8 bytes.`))
     }
     return Promise.resolve()
+  }
+
+  const changeValueType = (nextType: CustomVariableValueType) => {
+    form.setFieldsValue({
+      value_type: nextType,
+      value: nextType === 'boolean' ? false : undefined,
+      is_secret: nextType === 'string' ? form.getFieldValue('is_secret') : false,
+    })
+  }
+
+  const formatStructuredValue = () => {
+    try {
+      const parsed = JSON.parse(String(form.getFieldValue('value') ?? ''))
+      form.setFieldValue('value', JSON.stringify(parsed, null, 2))
+    } catch {
+      message.error('Value must be valid JSON before it can be formatted')
+    }
   }
 
   return (
@@ -241,6 +313,7 @@ export default function CustomVariablesSettings() {
       <Modal
         title={editing ? `Custom Variable: ${editing.key}` : 'Add Custom Variable'}
         open={modalOpen}
+        width={valueType === 'list' || valueType === 'dictionary' ? 760 : undefined}
         onCancel={closeEditor}
         destroyOnHidden
         footer={(
@@ -262,22 +335,71 @@ export default function CustomVariablesSettings() {
             <Input disabled={editing !== null} placeholder="EDR_API_TOKEN" maxLength={128} />
           </Form.Item>
           <Form.Item
+            name="value_type"
+            label="Type"
+            rules={[{required: true}]}
+          >
+            <Select options={VALUE_TYPE_OPTIONS} onChange={changeValueType} />
+          </Form.Item>
+          <Form.Item
             name="value"
-            label="Value"
+            valuePropName={valueType === 'boolean' ? 'checked' : 'value'}
+            label={(
+              <Space>
+                <span>Value</span>
+                {(valueType === 'list' || valueType === 'dictionary')
+                  ? <Button type="link" size="small" onClick={formatStructuredValue}>Format</Button>
+                  : null}
+              </Space>
+            )}
             rules={[{validator: validateValue}]}
             extra={editing?.is_secret
               ? 'Leave blank to keep the current value. Maximum 65,536 UTF-8 bytes.'
               : 'Maximum 65,536 UTF-8 bytes.'}
           >
-            {isSecret
-              ? <Input.Password autoComplete="new-password" />
-              : <Input.TextArea autoSize={{minRows: 3, maxRows: 10}} />}
+            {valueType === 'boolean' ? (
+              <Switch />
+            ) : valueType === 'integer' ? (
+              <InputNumber
+                min={-MAX_SAFE_INTEGER}
+                max={MAX_SAFE_INTEGER}
+                precision={0}
+                style={{width: '100%'}}
+              />
+            ) : valueType === 'float' ? (
+              <InputNumber style={{width: '100%'}} />
+            ) : isSecret ? (
+              <Input.Password autoComplete="new-password" />
+            ) : valueType === 'list' || valueType === 'dictionary' ? (
+              <CodeMirror
+                height="320px"
+                theme="dark"
+                extensions={JSON_EDITOR_EXTENSIONS}
+                placeholder={valueType === 'list' ? '[\n  \n]' : '{\n  \n}'}
+                basicSetup={{
+                  lineNumbers: true,
+                  foldGutter: true,
+                  bracketMatching: true,
+                  closeBrackets: true,
+                  autocompletion: true,
+                  highlightActiveLine: true,
+                  highlightActiveLineGutter: true,
+                }}
+                style={{
+                  border: '1px solid rgba(253, 253, 253, 0.12)',
+                  borderRadius: 6,
+                  overflow: 'hidden',
+                }}
+              />
+            ) : (
+              <Input.TextArea autoSize={{minRows: 3, maxRows: 10}} />
+            )}
           </Form.Item>
           <Form.Item name="description" label="Description">
             <Input.TextArea autoSize={{minRows: 2, maxRows: 5}} />
           </Form.Item>
           <Form.Item name="is_secret" label="Secret" valuePropName="checked">
-            <Switch />
+            <Switch disabled={valueType !== 'string'} />
           </Form.Item>
           <Form.Item name="enabled" label="Enabled" valuePropName="checked">
             <Switch />

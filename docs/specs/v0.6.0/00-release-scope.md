@@ -85,12 +85,10 @@ v0.6.0 保持三个固定角色：
 3. Playbook 执行可观测性和控制。
 4. Custom Variables。
 5. Worker Health。
-6. SLA 管理，待详细讨论。
-7. AI 质量评估，待详细讨论。
-8. 抑制规则，待详细讨论。
-9. Operations 页面整合，待详细讨论。
+6. SLA 管理。
+7. AI 质量评估。
 
-SLA、AI 质量评估和抑制规则都是 v0.6.0 正式发布的阻断项，但必须限制为最小可用闭环。
+SLA 和 AI 质量评估是 v0.6.0 正式发布的阻断项。
 
 ## 10. Explicit exclusions
 
@@ -102,6 +100,9 @@ SLA、AI 质量评估和抑制规则都是 v0.6.0 正式发布的阻断项，但
 - 可视化或表单式 Playbook 编排器。
 - Playbook 中途人工审批。
 - 通用 HTTP/Webhook Connector 或统一厂商动作抽象。
+- UI/数据库驱动的 Suppression Rules；抑制逻辑由自定义 Module Python 代码负责。
+- Integration Health 定时探测和统一状态页；保留各 Settings 页手动 Test。
+- Worker/Integration 统一 Operations Center；Worker Health 使用独立实现。
 - 全站 UI 国际化。
 - 旧 CLI/插件兼容层。
 - 自动 Unmerge。

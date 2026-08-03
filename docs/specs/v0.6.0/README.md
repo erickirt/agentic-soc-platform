@@ -10,19 +10,19 @@
 | [01-bulk-case-triage.md](01-bulk-case-triage.md) | Confirmed | Case 批量分诊、共享状态机、通知与审计 |
 | [02-case-merge.md](02-case-merge.md) | Confirmed | 多源案件合并、数据迁移、只读源案件与幂等 |
 | [03-playbook-execution.md](03-playbook-execution.md) | Confirmed | Playbook Run、结构化 Stage、取消、重试与 Worker 语义 |
-| [05-worker-health.md](05-worker-health.md) | Confirmed | Redis 心跳、Worker 状态、积压指标与 Admin API |
 | [07-sla-management.md](07-sla-management.md) | Confirmed | TTD/TTA/TTR 时限、Severity 策略、通知和 Dashboard 达标率 |
+| [08-ai-quality-evaluation.md](08-ai-quality-evaluation.md) | Confirmed | AI–Human Agreement、Coverage、混淆矩阵和样本下钻 |
 
 ## 待讨论
 
-[TODO-remaining-domains.md](TODO-remaining-domains.md) 记录 AI 质量评估、抑制规则、Operations 页面整合和版本验收。继续讨论时应逐项把决定写回独立 Spec。
+[TODO-remaining-domains.md](TODO-remaining-domains.md) 仅记录版本验收。所有 v0.6.0 功能域均已确认或明确排除。
 
 ## 实施顺序
 
 1. 先完成 Case 状态机，再实现批量分诊和案件合并。
-2. 完成 Playbook Run/Stage 后实现 Custom Variables。
-3. 完成通用 Worker Health 基础设施并接入五类 Worker，再实现 Operations 页面。
-4. 待剩余三个业务域定稿后，统一补齐 v0.6.0 验收规范。
+2. 完成 Playbook Run/Stage。
+3. 完成 SLA 和 AI Quality。
+4. 最后统一补齐 v0.6.0 验收规范。
 
 ## Spec 使用规则
 

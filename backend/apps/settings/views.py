@@ -66,7 +66,14 @@ RUNTIME_AUDIT_FIELDS = (
     "stream_maxlen",
     "dashboard_refresh_interval_seconds",
 )
-CUSTOM_VARIABLE_AUDIT_FIELDS = ("key", "value", "is_secret", "description", "enabled")
+CUSTOM_VARIABLE_AUDIT_FIELDS = (
+    "key",
+    "value_type",
+    "value",
+    "is_secret",
+    "description",
+    "enabled",
+)
 
 
 def _snapshot(instance, fields):
@@ -211,11 +218,19 @@ class CustomVariableViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated, IsAdmin]
     filter_backends = (DjangoFilterBackend, SearchFilter, OrderingFilter, AdvancedFilterBackend)
     search_fields = ("key", "description")
-    filterset_fields = ("is_secret", "enabled")
-    ordering_fields = ("key", "is_secret", "enabled", "created_at", "updated_at")
+    filterset_fields = ("value_type", "is_secret", "enabled")
+    ordering_fields = (
+        "key",
+        "value_type",
+        "is_secret",
+        "enabled",
+        "created_at",
+        "updated_at",
+    )
     advanced_filter_fields = {
         "key": "text",
         "description": "text",
+        "value_type": "select",
         "is_secret": "select",
         "enabled": "select",
         "created_at": "date",

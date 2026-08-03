@@ -113,6 +113,10 @@ input:-webkit-autofill:active,
   background: transparent;
 }
 
+.asp-data-table .ant-table-body {
+  min-height: var(--asp-table-body-height);
+}
+
 .asp-table-floating-help {
   position: absolute;
   right: 12px;

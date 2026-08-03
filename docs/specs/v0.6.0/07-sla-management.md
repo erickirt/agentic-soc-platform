@@ -247,7 +247,7 @@ Warning 和 Breached 分别通知。同一 recipient 最多各一次。Worker �
 新增单实例 `run_sla_worker`：
 
 - 每 60 秒扫描。
-- 接入 Worker Health，成为第 7 个 Worker。
+- 接入 Worker Health，成为第 6 个 Worker。
 - 只负责发现需通知状态并去重发送。
 - API 状态仍动态计算，不依赖 Worker 更新状态。
 - 对适用且未完成的 TTA/TTR 使用 deadline 索引扫描。
@@ -375,7 +375,7 @@ TTD 没有当前 Warning/Breach count。
 8. 80% Warning、100% Breached，完成后 late 仍 Breached。
 9. 旧 Case 无 SLA，新 Case有 SLA。
 10. merged source 排除，target 仅重算 TTD。
-11. SLA Worker 每分钟运行并进入 Worker Health。
+11. SLA Worker 每分钟运行并作为第 6 个 Worker 进入 Worker Health。
 12. 仅当前 Assignee 强制接收去重 Warning/Breach。
 13. 新 Assignee 可收到当前状态，未分配不通知。
 14. Case list/detail、Dashboard 和 Settings 行为符合 Spec。
