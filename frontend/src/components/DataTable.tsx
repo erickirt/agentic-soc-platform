@@ -1,4 +1,4 @@
-import type {Key} from 'react'
+import type {CSSProperties, Key} from 'react'
 import {useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react'
 import {Button, Checkbox, Divider, Input, Pagination, Popconfirm, Popover, Select, Space, Table, Tooltip} from 'antd'
 import {message} from '../utils/appMessage'
@@ -775,6 +775,9 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
   const activeFilterCount = filterState.advanced.filter(isActiveAdvancedFilter).length
   const filterSummary = savedFilterName || (activeFilterCount > 0 ? `${activeFilterCount} filter(s)` : '')
   const renderedActions = typeof actions === 'function' ? actions({ params: tableParams }) : actions
+  const tableStyle: CSSProperties & {'--asp-table-body-height': string} = {
+    '--asp-table-body-height': `${tableBodyHeight}px`,
+  }
   const searchControl = (
     <Input.Search
       placeholder={searchPlaceholder}
@@ -902,6 +905,7 @@ export default function DataTable<RecordType extends Record<string, unknown> = R
       <Table<RecordType>
         key={tableResetKey}
         className="asp-data-table"
+        style={tableStyle}
         columns={antColumns}
         dataSource={data}
         rowKey={rowKey}
