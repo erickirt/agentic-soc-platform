@@ -10,13 +10,14 @@ import {
     SyncOutlined,
     UserOutlined,
 } from '@ant-design/icons'
-import {BookOpenText, BrainCircuit, BriefcaseBusiness, Fingerprint, Siren, WandSparkles} from 'lucide-react'
+import {BookOpenText, BrainCircuit, BriefcaseBusiness, Fingerprint, Link2, Siren, WandSparkles} from 'lucide-react'
 import AlertBasicView from '../components/AlertBasicView'
 import ArtifactBasicView from '../components/ArtifactBasicView'
 import CaseBasicView from '../components/CaseBasicView'
 import CaseInvestigationView from '../components/CaseInvestigationView'
 import CaseKnowledgeView from '../components/CaseKnowledgeView'
 import CasePlaybookAction from '../components/CasePlaybookRunModal'
+import CaseRelationshipsView from '../components/CaseRelationshipsView'
 import EnrichmentBasicView from '../components/EnrichmentBasicView'
 import KnowledgeBasicView from '../components/KnowledgeBasicView'
 import OverflowTags from '../components/OverflowTags'
@@ -279,6 +280,18 @@ const emptyTabs = {
             icon: <FileTextOutlined/>,
             render: (record: RecordRow) => <CaseInvestigationView caseId={String(record.id || '')}/>,
         },
+        {
+            key: 'related-cases',
+            label: 'Related Cases',
+            icon: <Link2 {...lucideIconProps}/>,
+            render: (record: RecordRow, options?: RecordTabRenderOptions) => (
+                <CaseRelationshipsView
+                    caseId={String(record.id || '')}
+                    onOpenCase={(caseId) => options?.onOpenResource?.('cases', caseId)}
+                    onChanged={options?.onChanged}
+                />
+            ),
+        },
     ],
     alert: [
         {
@@ -447,6 +460,11 @@ export const resourceConfigs: Record<string, ResourceConfig<RecordRow>> = {
                 dataIndex: 'enrichment_count',
                 defaultVisible: true,
                 openRecordTab: 'enrichments',
+                render: viewRelatedLabel,
+            }),
+            column('relationships_link', 'Related Cases', L132, {
+                dataIndex: 'relationship_count',
+                openRecordTab: 'related-cases',
                 render: viewRelatedLabel,
             }),
             column('category', 'Category', L132, {defaultVisible: true, render: (v) => caseCategoryTag(String(v || ''))}),

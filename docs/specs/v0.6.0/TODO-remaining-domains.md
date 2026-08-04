@@ -15,12 +15,12 @@ Release blocking: Yes
 - medium 数据规模下的关键 API/页面性能阈值。
 - Admin/User/Viewer 权限矩阵回归。
 - Case 单条和批量状态机一致性。
-- 部分成功批量分诊、原子合并、幂等重试和 merged source 路由。
+- 部分成功批量分诊、Case Relationship 约束、Artifact 候选和 Agent 读取。
 - Playbook Pending/Running/终态、Cancel、Retry、Stage 和 Worker 崩溃恢复。
 - Custom Variables 的 Secret masking、Reveal audit 和 Module/Playbook 读取。
 - Worker Redis 故障、重复实例、优雅退出和心跳过期。
-- SLA 的 TTD/TTA/TTR、通知、Reopen、merge 和 Dashboard 达标率。
-- AI Quality 的回填、Coverage、Agreement、合并排除和权限。
+- SLA 的 TTD/TTA/TTR、通知、Reopen 和 Dashboard 达标率。
+- AI Quality 的回填、Coverage、Agreement 和权限。
 - 已明确排除的 Integration Health、Suppression Rules、Operations Center 不得误入发布范围。
 - 备份、恢复和回滚演练。
 - 文档、release notes、已知限制和功能冻结条件。

@@ -248,8 +248,8 @@ Running 无取消入口。Playbook 中每个外部调用必须自行设置超时
 `POST /api/playbooks/run/`
 
 - Admin/User 可运行，Viewer 403。
-- 任何未合并 Case 均可运行，包括 Closed。
-- merged source 返回 409 和 target 摘要。
+- 任何 Case 均可运行，包括 Closed。
+- Case Relationship 不影响运行 eligibility。
 - name 必须能在当前定义扫描中找到。
 - user_input 是可选自由文本。
 - 点击 Run 直接创建 Pending，不增加确认。
@@ -374,7 +374,7 @@ Audit metadata 不包含 user_input 全文、Stage summary 或任何 Secret。
 7. 同一 Case 不同时 Running 两个 Run。
 8. FIFO claim 可预测。
 9. Worker 崩溃后遗留 Running 标记 Failed且不自动重跑。
-10. Closed Case 可运行，merged source 409。
+10. Closed Case 可运行，Case Relationship 不影响运行。
 11. Success/Failed 通知符合用户偏好。
 12. Stage 数量大时 API 正确分页。
 

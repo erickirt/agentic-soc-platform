@@ -12,6 +12,10 @@ RELATION_FK_FIELDS = {
     "alert": {"case": "alerts"},
     "playbook": {"case": "playbooks"},
     "enrichment": {"case": "enrichments", "alert": "enrichments", "artifact": "enrichments"},
+    "caserelationship": {
+        "source_case": "case_relationships",
+        "target_case": "case_relationships",
+    },
 }
 
 
