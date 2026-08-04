@@ -1,21 +1,28 @@
-import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
+import {useCallback, useMemo, useRef, useState} from 'react'
 import {
+  Alert,
   Button,
-  Card,
   Empty,
   Form,
   Input,
-  List,
   Modal,
   Popconfirm,
   Select,
   Space,
   Table,
   Tag,
+  theme,
   Tooltip,
   Typography,
 } from 'antd'
-import {DeleteOutlined, EditOutlined, PlusOutlined} from '@ant-design/icons'
+import {
+  DeleteOutlined,
+  EditOutlined,
+  PlusOutlined,
+  ReloadOutlined,
+  SearchOutlined,
+} from '@ant-design/icons'
+import type {ColumnsType} from 'antd/es/table'
 import {
   type CaseRelationship,
   type CaseRelationshipInput,
@@ -24,7 +31,6 @@ import {
   type RelatedCaseSummary,
   createCaseRelationship,
   deleteCaseRelationship,
-  fetchCaseRelationships,
   fetchCaseRelationshipSuggestions,
   searchCases,
   updateCaseRelationship,
@@ -32,6 +38,8 @@ import {
 import {useAuthStore} from '../stores/auth'
 import {message} from '../utils/appMessage'
 import {formatDateTime, severityTag, statusTag, verdictTag} from '../utils/recordDisplay'
+import type {ResourceColumn, ResourceFilterConfig} from '../types/records'
+import DataTable from './DataTable'
 
 type RelationshipDirection = 'current_to_other' | 'other_to_current'
 
@@ -52,6 +60,15 @@ const relationshipTypeOptions = [
   {label: 'Related', value: 'Related'},
   {label: 'Duplicate of', value: 'Duplicate of'},
   {label: 'Parent of', value: 'Parent of'},
+]
+
+const relationshipFilters: ResourceFilterConfig[] = [
+  {
+    key: 'relationship_type',
+    label: 'Relationship',
+    valueType: 'select',
+    options: relationshipTypeOptions,
+  },
 ]
 
 function apiErrorMessage(error: unknown, fallback: string) {
@@ -105,63 +122,60 @@ export default function CaseRelationshipsView({
   onOpenCase,
   onChanged,
 }: CaseRelationshipsViewProps) {
+  const {token} = theme.useToken()
   const user = useAuthStore((state) => state.user)
   const canWrite = user?.role === 'admin' || user?.role === 'user'
   const [form] = Form.useForm<RelationshipFormValues>()
   const relationshipType = Form.useWatch('relationship_type', form)
-  const [relationships, setRelationships] = useState<CaseRelationship[]>([])
-  const [relationshipCount, setRelationshipCount] = useState(0)
-  const [relationshipPage, setRelationshipPage] = useState(1)
+  const [relationshipRefreshKey, setRelationshipRefreshKey] = useState(0)
   const [suggestions, setSuggestions] = useState<CaseRelationshipSuggestion[]>([])
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false)
+  const [suggestionsError, setSuggestionsError] = useState('')
   const [caseOptions, setCaseOptions] = useState<RelatedCaseSummary[]>([])
-  const [loading, setLoading] = useState(false)
   const [suggestionsLoading, setSuggestionsLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [editing, setEditing] = useState<CaseRelationship | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const searchRequestRef = useRef(0)
-
-  const loadRelationships = useCallback(async () => {
-    if (!caseId) return
-    setLoading(true)
-    try {
-      const result = await fetchCaseRelationships(caseId, relationshipPage)
-      setRelationships(result.results)
-      setRelationshipCount(result.count)
-    } catch (error) {
-      message.error(apiErrorMessage(error, 'Failed to load Case relationships'))
-    } finally {
-      setLoading(false)
-    }
-  }, [caseId, relationshipPage])
+  const suggestionRequestRef = useRef(0)
 
   const loadSuggestions = useCallback(async () => {
     if (!caseId) return
+    const requestId = suggestionRequestRef.current + 1
+    suggestionRequestRef.current = requestId
+    setSuggestions([])
+    setSuggestionsError('')
     setSuggestionsLoading(true)
     try {
-      setSuggestions(await fetchCaseRelationshipSuggestions(caseId))
+      const nextSuggestions = await fetchCaseRelationshipSuggestions(caseId)
+      if (requestId === suggestionRequestRef.current) {
+        setSuggestions(nextSuggestions)
+      }
     } catch (error) {
-      message.error(apiErrorMessage(error, 'Failed to load related Case suggestions'))
+      if (requestId === suggestionRequestRef.current) {
+        setSuggestionsError(apiErrorMessage(error, 'Failed to load related Case suggestions'))
+      }
     } finally {
-      setSuggestionsLoading(false)
+      if (requestId === suggestionRequestRef.current) {
+        setSuggestionsLoading(false)
+      }
     }
   }, [caseId])
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setRelationshipPage(1)
-  }, [caseId])
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void loadRelationships()
-    void loadSuggestions()
-  }, [loadRelationships, loadSuggestions])
-
-  const refresh = useCallback(async () => {
-    await Promise.all([loadRelationships(), loadSuggestions()])
+  const refreshRelationships = useCallback(() => {
+    setRelationshipRefreshKey((current) => current + 1)
     onChanged?.()
-  }, [loadRelationships, loadSuggestions, onChanged])
+  }, [onChanged])
+
+  const openSuggestions = () => {
+    if (suggestionsLoading) return
+    setSuggestionsOpen(true)
+    void loadSuggestions()
+  }
+
+  const closeSuggestions = () => {
+    setSuggestionsOpen(false)
+  }
 
   const loadCaseOptions = useCallback(async (search: string) => {
     const requestId = searchRequestRef.current + 1
@@ -216,7 +230,7 @@ export default function CaseRelationshipsView({
         message.success('Case relationship created')
       }
       setModalOpen(false)
-      await refresh()
+      refreshRelationships()
     } catch (error) {
       if ((error as {errorFields?: unknown}).errorFields) return
       message.error(apiErrorMessage(error, 'Failed to save Case relationship'))
@@ -229,13 +243,13 @@ export default function CaseRelationshipsView({
     try {
       await deleteCaseRelationship(relationship.id)
       message.success('Case relationship deleted')
-      await refresh()
+      refreshRelationships()
     } catch (error) {
       message.error(apiErrorMessage(error, 'Failed to delete Case relationship'))
     }
   }
 
-  const acceptSuggestion = async (suggestion: CaseRelationshipSuggestion) => {
+  const acceptSuggestion = useCallback(async (suggestion: CaseRelationshipSuggestion) => {
     try {
       await createCaseRelationship({
         source_case_id: caseId,
@@ -244,11 +258,12 @@ export default function CaseRelationshipsView({
         note: '',
       })
       message.success('Related Case added')
-      await refresh()
+      setSuggestions((current) => current.filter((item) => item.case.id !== suggestion.case.id))
+      refreshRelationships()
     } catch (error) {
       message.error(apiErrorMessage(error, 'Failed to add related Case'))
     }
-  }
+  }, [caseId, refreshRelationships])
 
   const caseSelectOptions = useMemo(
     () => caseOptions.map((item) => ({
@@ -258,158 +273,264 @@ export default function CaseRelationshipsView({
     [caseOptions],
   )
 
-  const columns = [
+  const relationshipColumns = useMemo<ResourceColumn<CaseRelationship>[]>(() => [
     {
       title: 'Relationship',
       key: 'relationship',
+      dataIndex: 'relationship_type',
       width: 140,
-      render: (_: unknown, row: CaseRelationship) => <Tag color="blue">{relationLabel(row, caseId)}</Tag>,
+      defaultVisible: true,
+      sorter: true,
+      render: (value, row) => (
+        <Tag color="blue">
+          {row.source_case && row.target_case
+            ? relationLabel(row, caseId)
+            : String(value || '')}
+        </Tag>
+      ),
     },
     {
-      title: 'Case',
-      key: 'case',
-      render: (_: unknown, row: CaseRelationship) => {
-        const related = otherCase(row, caseId)
-        return (
-          <Space direction="vertical" size={0}>
-            <Button type="link" style={{padding: 0}} onClick={() => onOpenCase?.(related.id)}>
-              {related.case_id.toUpperCase()}
-            </Button>
-            <Typography.Text>{related.title}</Typography.Text>
-          </Space>
-        )
+      title: 'Case ID',
+      key: 'case_id',
+      required: true,
+      defaultVisible: true,
+      fixed: 'left',
+      width: 160,
+      render: (_value, row) => otherCase(row, caseId).case_id.toUpperCase(),
+      openResource: {
+        resourceKey: 'cases',
+        rowId: (row) => otherCase(row, caseId).id,
       },
+    },
+    {
+      title: 'Title',
+      key: 'title',
+      defaultVisible: true,
+      width: 360,
+      render: (_value, row) => otherCase(row, caseId).title,
     },
     {
       title: 'Status',
       key: 'status',
       width: 130,
-      render: (_: unknown, row: CaseRelationship) => statusTag(otherCase(row, caseId).status),
+      defaultVisible: true,
+      render: (_value, row) => statusTag(otherCase(row, caseId).status),
     },
     {
       title: 'Severity',
       key: 'severity',
       width: 120,
-      render: (_: unknown, row: CaseRelationship) => severityTag(otherCase(row, caseId).severity),
+      defaultVisible: true,
+      render: (_value, row) => severityTag(otherCase(row, caseId).severity),
     },
     {
       title: 'Verdict',
       key: 'verdict',
       width: 150,
-      render: (_: unknown, row: CaseRelationship) => verdictTag(otherCase(row, caseId).verdict),
+      defaultVisible: true,
+      render: (_value, row) => verdictTag(otherCase(row, caseId).verdict),
     },
     {
       title: 'Note',
       dataIndex: 'note',
       key: 'note',
-      ellipsis: true,
-      render: (value: string) => value || '—',
+      width: 280,
+      defaultVisible: true,
+      render: (value) => String(value || '—'),
     },
     {
       title: 'Created',
       key: 'created',
+      dataIndex: 'created_at',
       width: 190,
-      render: (_: unknown, row: CaseRelationship) => (
-        <Space direction="vertical" size={0}>
-          <Typography.Text>{formatDateTime(row.created_at)}</Typography.Text>
-          <Typography.Text type="secondary">{row.created_by || 'System'}</Typography.Text>
+      defaultVisible: true,
+      sorter: true,
+      render: (_value, row) => formatDateTime(row.created_at),
+    },
+    {
+      title: 'Created By',
+      key: 'created_by',
+      dataIndex: 'created_by',
+      width: 140,
+      defaultVisible: true,
+      render: (value) => String(value || 'System'),
+    },
+  ], [caseId])
+
+  const suggestionColumns = useMemo<ColumnsType<CaseRelationshipSuggestion>>(() => [
+    {
+      title: 'Case',
+      key: 'case',
+      width: 360,
+      render: (_value, suggestion) => (
+        <div>
+          <Button
+            type="link"
+            size="small"
+            style={{padding: 0, height: 'auto'}}
+            onClick={() => onOpenCase?.(suggestion.case.id)}
+          >
+            {suggestion.case.case_id.toUpperCase()}
+          </Button>
+          <Typography.Text ellipsis style={{display: 'block'}}>
+            {suggestion.case.title}
+          </Typography.Text>
+        </div>
+      ),
+    },
+    {
+      title: 'Shared',
+      dataIndex: 'shared_artifact_count',
+      key: 'shared_artifact_count',
+      width: 100,
+      render: (count: number) => `${count} Artifact${count === 1 ? '' : 's'}`,
+    },
+    {
+      title: 'Evidence',
+      key: 'evidence',
+      render: (_value, suggestion) => (
+        <Space wrap size={[4, 4]}>
+          {suggestion.shared_artifacts.map((artifact) => (
+            <Tag
+              key={artifact.id}
+              style={{maxWidth: '100%', whiteSpace: 'normal', overflowWrap: 'anywhere'}}
+            >
+              {artifact.type}: {artifact.value}
+            </Tag>
+          ))}
+          {suggestion.shared_artifact_count > suggestion.shared_artifacts.length && (
+            <Typography.Text type="secondary">
+              +{suggestion.shared_artifact_count - suggestion.shared_artifacts.length}
+            </Typography.Text>
+          )}
         </Space>
       ),
     },
     ...(canWrite ? [{
       title: 'Actions',
       key: 'actions',
-      width: 100,
-      fixed: 'right' as const,
-      render: (_: unknown, row: CaseRelationship) => (
-        <Space>
-          <Tooltip title="Edit relationship">
-            <Button type="text" icon={<EditOutlined />} onClick={() => openEdit(row)} />
-          </Tooltip>
-          <Popconfirm
-            title="Delete this relationship?"
-            okText="Delete"
-            okButtonProps={{danger: true}}
-            onConfirm={() => removeRelationship(row)}
-          >
-            <Tooltip title="Delete relationship">
-              <Button type="text" danger icon={<DeleteOutlined />} />
-            </Tooltip>
-          </Popconfirm>
-        </Space>
+      width: 120,
+      align: 'center' as const,
+      render: (_value: unknown, suggestion: CaseRelationshipSuggestion) => (
+        <Popconfirm
+          title={`Relate ${suggestion.case.case_id.toUpperCase()} to this Case?`}
+          onConfirm={() => acceptSuggestion(suggestion)}
+        >
+          <Button type="link" size="small">Add as Related</Button>
+        </Popconfirm>
       ),
     }] : []),
-  ]
+  ], [acceptSuggestion, canWrite, onOpenCase])
 
   return (
-    <Space direction="vertical" size="middle" style={{width: '100%'}}>
-      <Space style={{width: '100%', justifyContent: 'flex-end'}}>
-        {canWrite && (
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-            Add relationship
-          </Button>
-        )}
-      </Space>
-      <Table<CaseRelationship>
-        rowKey="id"
-        loading={loading}
-        columns={columns}
-        dataSource={relationships}
-        pagination={{
-          current: relationshipPage,
-          pageSize: 20,
-          total: relationshipCount,
-          showSizeChanger: false,
-          onChange: setRelationshipPage,
-        }}
-        locale={{emptyText: <Empty description="No related Cases" />}}
-        scroll={{x: 1100}}
-      />
-      <Card title="Suggested by shared Artifacts" loading={suggestionsLoading}>
-        <List
-          dataSource={suggestions}
-          locale={{emptyText: 'No suggestions'}}
-          renderItem={(suggestion) => (
-            <List.Item
-              actions={canWrite ? [
-                <Popconfirm
-                  key="relate"
-                  title={`Relate ${suggestion.case.case_id.toUpperCase()} to this Case?`}
-                  onConfirm={() => acceptSuggestion(suggestion)}
-                >
-                  <Button type="link">Add as Related</Button>
-                </Popconfirm>,
-              ] : undefined}
-            >
-              <List.Item.Meta
-                title={(
-                  <Button type="link" style={{padding: 0}} onClick={() => onOpenCase?.(suggestion.case.id)}>
-                    {suggestion.case.case_id.toUpperCase()} / {suggestion.case.title}
-                  </Button>
-                )}
-                description={(
-                  <Space wrap>
-                    <Typography.Text>
-                      {suggestion.shared_artifact_count} shared Artifact{suggestion.shared_artifact_count === 1 ? '' : 's'}
-                    </Typography.Text>
-                    {suggestion.shared_artifacts.map((artifact) => (
-                      <Tag key={artifact.id}>{artifact.type}: {artifact.value}</Tag>
-                    ))}
-                    {suggestion.shared_artifact_count > suggestion.shared_artifacts.length && (
-                      <Typography.Text type="secondary">
-                        +{suggestion.shared_artifact_count - suggestion.shared_artifacts.length}
-                      </Typography.Text>
-                    )}
-                  </Space>
-                )}
-              />
-            </List.Item>
+    <>
+      <div style={{height: '100%', padding: 16, boxSizing: 'border-box'}}>
+        <DataTable<CaseRelationship>
+          endpoint="/case-relationships/"
+          tableKey={`case-relationships:${caseId}`}
+          columns={relationshipColumns}
+          filters={relationshipFilters}
+          baseParams={{case: caseId}}
+          refreshToken={relationshipRefreshKey}
+          readOnly
+          fillParent
+          dense
+          onOpenResource={(_resourceKey, rowId) => onOpenCase?.(String(rowId))}
+          actions={(
+            <Space size={4}>
+              {canWrite && (
+                <Tooltip title="Add relationship">
+                  <Button icon={<PlusOutlined />} onClick={openCreate} />
+                </Tooltip>
+              )}
+              <Tooltip title="Find suggestions">
+                <Button
+                  icon={<SearchOutlined />}
+                  loading={suggestionsLoading}
+                  onClick={openSuggestions}
+                />
+              </Tooltip>
+            </Space>
           )}
+          rowActions={canWrite ? (row) => (
+            <Space size={4}>
+              <Tooltip title="Edit relationship">
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<EditOutlined />}
+                  onClick={() => openEdit(row)}
+                />
+              </Tooltip>
+              <Popconfirm
+                title="Delete this relationship?"
+                description="This action cannot be undone."
+                okText="Delete"
+                okButtonProps={{danger: true}}
+                onConfirm={() => removeRelationship(row)}
+              >
+                <Tooltip title="Delete relationship">
+                  <Button type="text" size="small" danger icon={<DeleteOutlined />} />
+                </Tooltip>
+              </Popconfirm>
+            </Space>
+          ) : undefined}
         />
-      </Card>
+      </div>
+      <Modal
+        title={(
+          <span style={{display: 'inline-flex', alignItems: 'center', gap: 10}}>
+            <SearchOutlined style={{color: token.colorPrimary}} />
+            <span>Suggested Cases</span>
+          </span>
+        )}
+        open={suggestionsOpen}
+        footer={null}
+        width="min(1280px, calc(100vw - 64px))"
+        destroyOnHidden
+        styles={{
+          container: {
+            background: token.colorBgContainer,
+            border: `1px solid ${token.colorBorder}`,
+          },
+          header: {background: token.colorBgContainer},
+          body: {background: token.colorBgContainer},
+        }}
+        onCancel={closeSuggestions}
+      >
+        {suggestionsError ? (
+          <Alert
+            type="error"
+            showIcon
+            title={suggestionsError}
+            action={(
+              <Button
+                size="small"
+                icon={<ReloadOutlined />}
+                loading={suggestionsLoading}
+                onClick={() => void loadSuggestions()}
+              >
+                Retry
+              </Button>
+            )}
+          />
+        ) : (
+          <Table<CaseRelationshipSuggestion>
+            rowKey={(suggestion) => suggestion.case.id}
+            columns={suggestionColumns}
+            dataSource={suggestions}
+            loading={suggestionsLoading}
+            size="small"
+            tableLayout="fixed"
+            pagination={false}
+            locale={{emptyText: <Empty description="No suggestions" />}}
+          />
+        )}
+      </Modal>
       <Modal
         title={editing ? 'Edit Case relationship' : 'Add Case relationship'}
         open={modalOpen}
+        width={640}
         confirmLoading={saving}
         okText={editing ? 'Save' : 'Add'}
         onOk={() => void saveRelationship()}
@@ -474,6 +595,6 @@ export default function CaseRelationshipsView({
           </Form.Item>
         </Form>
       </Modal>
-    </Space>
+    </>
   )
 }

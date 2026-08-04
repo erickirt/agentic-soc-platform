@@ -14,6 +14,7 @@ export interface RelatedCaseSummary {
 }
 
 export interface CaseRelationship {
+  [key: string]: unknown
   id: string
   source_case: RelatedCaseSummary
   target_case: RelatedCaseSummary
@@ -39,27 +40,6 @@ export interface CaseRelationshipInput {
   target_case_id: string
   relationship_type: CaseRelationshipType
   note: string
-}
-
-export interface CaseRelationshipPage {
-  count: number
-  results: CaseRelationship[]
-}
-
-function results<T>(data: T[] | {results?: T[]}) {
-  return Array.isArray(data) ? data : data.results || []
-}
-
-export async function fetchCaseRelationships(caseId: string, page = 1) {
-  const {data} = await client.get<CaseRelationship[] | {count?: number; results?: CaseRelationship[]}>(
-    '/case-relationships/',
-    {params: {case: caseId, page, page_size: 20}},
-  )
-  const pageResults = results(data)
-  return {
-    count: Array.isArray(data) ? data.length : data.count || pageResults.length,
-    results: pageResults,
-  }
 }
 
 export async function fetchCaseRelationshipSuggestions(caseId: string) {

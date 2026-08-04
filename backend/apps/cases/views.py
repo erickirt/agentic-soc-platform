@@ -200,8 +200,16 @@ class CaseRelationshipViewSet(AuditActorMixin, viewsets.ModelViewSet):
     ).order_by("-created_at")
     serializer_class = CaseRelationshipSerializer
     permission_classes = [permissions.IsAuthenticated, IsBusinessWriterOrReadOnly]
-    filter_backends = (DjangoFilterBackend, OrderingFilter)
+    filter_backends = (DjangoFilterBackend, SearchFilter, OrderingFilter)
     filterset_fields = ("relationship_type",)
+    search_fields = (
+        "source_case__case_id",
+        "source_case__title",
+        "target_case__case_id",
+        "target_case__title",
+        "note",
+        "created_by__username",
+    )
     ordering_fields = ("relationship_type", "created_at", "updated_at")
 
     def get_queryset(self):

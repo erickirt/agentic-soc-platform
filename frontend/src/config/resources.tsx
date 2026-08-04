@@ -250,6 +250,18 @@ const emptyTabs = {
             render: (record: RecordRow, options?: RecordTabRenderOptions) => relatedEnrichmentsTable('case', record, options?.onOpenResource, options?.onChanged),
         },
         {
+            key: 'related-cases',
+            label: 'Related Cases',
+            icon: <Link2 {...lucideIconProps}/>,
+            render: (record: RecordRow, options?: RecordTabRenderOptions) => (
+                <CaseRelationshipsView
+                    caseId={String(record.id || '')}
+                    onOpenCase={(caseId) => options?.onOpenResource?.('cases', caseId)}
+                    onChanged={options?.onChanged}
+                />
+            ),
+        },
+        {
             key: 'knowledge',
             label: 'Knowledge',
             icon: <BookOpenText {...lucideIconProps}/>,
@@ -279,18 +291,6 @@ const emptyTabs = {
             label: 'Investigation',
             icon: <FileTextOutlined/>,
             render: (record: RecordRow) => <CaseInvestigationView caseId={String(record.id || '')}/>,
-        },
-        {
-            key: 'related-cases',
-            label: 'Related Cases',
-            icon: <Link2 {...lucideIconProps}/>,
-            render: (record: RecordRow, options?: RecordTabRenderOptions) => (
-                <CaseRelationshipsView
-                    caseId={String(record.id || '')}
-                    onOpenCase={(caseId) => options?.onOpenResource?.('cases', caseId)}
-                    onChanged={options?.onChanged}
-                />
-            ),
         },
     ],
     alert: [

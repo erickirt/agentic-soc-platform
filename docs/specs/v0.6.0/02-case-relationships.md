@@ -124,6 +124,7 @@ DELETE /api/case-relationships/{id}/
 
 - `case=<uuid>`：返回该 Case 的入边和出边。
 - `relationship_type=<value>`。
+- Case readable ID/title、note 和 creator 搜索。
 - created_at/updated_at/relationship_type ordering。
 - 标准分页。
 
@@ -164,14 +165,16 @@ GET /api/case-relationships/suggestions/?case=<uuid>
 
 规则：
 
-1. 取当前 Case 的 Alert 已关联 Artifact 记录。
-2. 查找共享至少一个相同 Artifact 记录的其他 Case。
-3. 排除当前 Case 和已经存在正式关系的 Case。
-4. 按共享 Artifact 去重数量降序。
-5. 相同数量按 Case updated_at 降序。
-6. 最多返回 10 个候选。
-7. 每项返回共享数量和最多 3 个 Artifact 摘要（id/type/value）。
-8. 不应用时间窗口、类型权重、文本相似度或 LLM 判断。
+1. 用户或 Agent 显式请求时才执行，不随 Related Cases Tab 加载或关系变更自动执行。
+2. 按最近关联顺序最多取当前 Case 的 20 个去重 Artifact 记录。
+3. 查找共享至少一个相同 Artifact 记录的其他 Case。
+4. 排除当前 Case 和已经存在正式关系的 Case。
+5. 按共享 Artifact 去重数量降序。
+6. 相同数量按 Case updated_at 降序。
+7. 最多返回 10 个候选。
+8. 每项返回共享数量和最多 3 个 Artifact 摘要（id/type/value）。
+9. 数据库查询超时为 3 秒；超时返回 503，不继续占用数据库连接执行。
+10. 不应用时间窗口、类型权重、文本相似度或 LLM 判断。
 
 候选按请求动态计算，不持久化、不写 AuditLog、不需要 Worker。
 
@@ -229,7 +232,8 @@ Case Relationship 不参与：
 
 新增 Related Cases Tab：
 
-- 正式关系列表。
+- 使用与其他关联 Tab 一致的全高度 DataTable 展示正式关系列表。
+- 工具栏使用图标按钮添加关系和查找候选。
 - 相对当前 Case 的关系语义。
 - 对端 Case readable ID/title/status/severity/verdict。
 - note、creator、created time。
@@ -247,9 +251,13 @@ Add/Edit：
 
 Suggestions：
 
+- 默认不查询；用户点击工具栏查找图标后打开弹窗并发起请求。
+- 查询期间按钮不可重复触发。
+- 候选在弹窗内使用紧凑表格展示，错误在弹窗内提示并支持 Retry。
 - 展示共享 Artifact 数量。
 - 展示最多 3 个 type/value，剩余显示 +N。
 - Admin/User 可确认 Add as Related。
+- 确认后保持弹窗打开、移除已处理候选并刷新正式关系表。
 - Viewer 只读。
 
 ### Case list
@@ -278,7 +286,7 @@ Suggestions：
 8. 关系不改变 Case 或任何关联业务对象。
 9. Case list/detail relationship_count 正确，列表列默认隐藏。
 10. Related Cases Tab 从任一端显示正确反向语义并可打开对端。
-11. Artifact suggestions 排除自身和正式关联，按共享数量返回 Top 10。
+11. Artifact suggestions 仅手动触发，最多使用 20 个 Artifact，排除自身和正式关联并按共享数量返回 Top 10。
 12. 每项 suggestion 返回数量和最多 3 个 Artifact 证据。
 13. 确认 suggestion 只创建 Related。
 14. Agent 默认只读取直接正式关系，suggestions 需主动查询。
@@ -289,6 +297,7 @@ Suggestions：
 
 - 共享 Artifact 必须是同一个数据库记录；同值但不同 name/role 的 Artifact 可能无法互相建议。
 - 常见 Artifact 可能产生弱相关候选，因此必须人工确认。
+- 候选查询是有界的低频辅助功能；超过 3 秒会终止并提示数据量过大。
 - 不做递归图展示，跨多跳关系需要逐个打开 Case。
 - 不支持自定义关系类型。
 - Case 删除会删除当前关系边，历史只通过 AuditLog 追溯。

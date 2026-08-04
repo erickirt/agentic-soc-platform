@@ -1,11 +1,23 @@
 from collections import defaultdict
 
-from django.db.models import Count, Q, Subquery
-from rest_framework.exceptions import ValidationError
+from django.db import OperationalError, connection, transaction
+from django.db.models import Count, Max, Q, Subquery
+from rest_framework import status
+from rest_framework.exceptions import APIException, ValidationError
 
+from apps.alerts.models import Alert
 from apps.artifacts.models import Artifact
 
 from .models import Case, CaseRelationship, CaseRelationshipType
+
+SUGGESTION_ARTIFACT_LIMIT = 20
+SUGGESTION_QUERY_TIMEOUT_MS = 3000
+
+
+class SuggestionQueryTimeout(APIException):
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    default_detail = "Case relationship suggestions timed out because the dataset is too large."
+    default_code = "suggestion_query_timeout"
 
 
 def case_summary(case):
@@ -142,13 +154,14 @@ def validate_relationship(source_case, target_case, relationship_type, relations
         _validate_duplicate_relationship(source_case, target_case, relationship_id)
 
 
-def suggest_related_cases(case, limit=10):
+def _suggest_related_cases(case, limit):
     source_artifact_ids = (
-        Artifact.objects
-        .filter(alerts__case=case)
-        .order_by()
-        .values("id")
-        .distinct()
+        Alert.artifacts.through.objects
+        .filter(alert__case=case)
+        .values("artifact_id")
+        .annotate(last_link_id=Max("id"))
+        .order_by("-last_link_id")
+        .values("artifact_id")[:SUGGESTION_ARTIFACT_LIMIT]
     )
     related_case_ids = set()
     for source_case_id, target_case_id in (
@@ -202,3 +215,22 @@ def suggest_related_cases(case, limit=10):
         }
         for candidate in candidates
     ]
+
+
+def suggest_related_cases(case, limit=10):
+    try:
+        with transaction.atomic():
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT set_config('statement_timeout', %s, true)",
+                    [f"{SUGGESTION_QUERY_TIMEOUT_MS}ms"],
+                )
+            return _suggest_related_cases(case, limit)
+    except OperationalError as exc:
+        cause = exc.__cause__
+        if (
+            getattr(cause, "sqlstate", None) == "57014"
+            or getattr(cause, "pgcode", None) == "57014"
+        ):
+            raise SuggestionQueryTimeout() from exc
+        raise
