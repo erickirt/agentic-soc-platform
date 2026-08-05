@@ -23,11 +23,11 @@ def run_playbook_once(*, scripts_dir=None):
     try:
         playbook_class = find_playbook_class(playbook_run.name, scripts_dir=scripts_dir)
         result = playbook_class(playbook_run=playbook_run).run()
+        mark_playbook_success(playbook_run, str(result))
     except Exception as exc:
         mark_playbook_failed(playbook_run, exc)
         return True
 
-    mark_playbook_success(playbook_run, str(result))
     return True
 
 
