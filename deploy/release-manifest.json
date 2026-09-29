@@ -1,8 +1,8 @@
 {
-  "version": "0.5.2",
-  "title": "When all is darkest",
-  "previousVersion": "0.5.1",
-  "releaseDocSlug": "0_5_2_When_all_is_darkest",
+  "version": "0.6.0",
+  "title": "Winter is Coming",
+  "previousVersion": "0.5.2",
+  "releaseDocSlug": "0_6_0_Winter_is_Coming",
   "releaseDocsBaseUrl": "https://asp.viperrtp.com/release",
   "surfaces": [
     "cli_version",
