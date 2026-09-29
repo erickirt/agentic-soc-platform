@@ -80,15 +80,18 @@ v0.6.0 保持三个固定角色：
 
 ## 9. Confirmed functional domains
 
-1. Case 批量分诊。
-2. Case Relationships。
-3. Playbook 执行可观测性和控制。
-4. Custom Variables。
-5. Worker Health。
+v0.6.0 包含：
+
+1. Case Relationships。
+2. Playbook 执行可观测性和控制。
+3. Custom Variables。
+4. Worker Health。
+
+延期到后续版本，不作为 v0.6.0 发布阻断项：
+
+5. Case 批量分诊。
 6. SLA 管理。
 7. AI 质量评估。
-
-SLA 和 AI 质量评估是 v0.6.0 正式发布的阻断项。
 
 ## 10. Explicit exclusions
 

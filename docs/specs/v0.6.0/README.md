@@ -2,28 +2,27 @@
 
 本目录是 v0.6.0 的跨会话实施依据。已完成讨论的功能使用实施级 Spec 固化；尚未完成讨论的功能只记录 TODO 和待决策问题，不得把 TODO 中的推荐项当作已经确认的需求。
 
-## 已确认 Spec
+## Spec 状态
 
 | 文档 | 状态 | 内容 |
 | --- | --- | --- |
 | [00-release-scope.md](00-release-scope.md) | Confirmed | 版本目标、部署边界、兼容矩阵、容量、权限与排除项 |
-| [01-bulk-case-triage.md](01-bulk-case-triage.md) | Confirmed | Case 批量分诊、共享状态机、通知与审计 |
-| [02-case-relationships.md](02-case-relationships.md) | Confirmed | Case 弱关联、关系约束、Artifact 候选与 Agent 读取 |
-| [03-playbook-execution.md](03-playbook-execution.md) | Confirmed | Playbook Run、结构化 Stage、取消、重试与 Worker 语义 |
-| [05-worker-health.md](05-worker-health.md) | Confirmed | Redis 心跳、Worker 状态与 Admin API |
-| [07-sla-management.md](07-sla-management.md) | Confirmed | TTD/TTA/TTR 时限、Severity 策略、通知和 Dashboard 达标率 |
-| [08-ai-quality-evaluation.md](08-ai-quality-evaluation.md) | Confirmed | AI–Human Agreement、Coverage、混淆矩阵和样本下钻 |
+| [01-bulk-case-triage.md](01-bulk-case-triage.md) | Deferred | Case 批量分诊、共享状态机、通知与审计 |
+| [07-sla-management.md](07-sla-management.md) | Deferred | TTD/TTA/TTR 时限、Severity 策略、通知和 Dashboard 达标率 |
+| [08-ai-quality-evaluation.md](08-ai-quality-evaluation.md) | Deferred | AI–Human Agreement、Coverage、混淆矩阵和样本下钻 |
+
+`Deferred` 表示设计已确认但延期到后续版本，不作为 v0.6.0 发布阻断项。已实现的功能域（Case Relationships、Custom Variables、Playbook 执行、Worker Health）按仓库惯例在验收后移除对应 Spec 文件。
 
 ## 待讨论
 
-[TODO-remaining-domains.md](TODO-remaining-domains.md) 仅记录版本验收。所有 v0.6.0 功能域均已确认或明确排除。
+无。所有 v0.6.0 功能域均已实现或明确延期。
 
 ## 实施顺序
 
-1. 先完成 Case 状态机，再实现批量分诊和 Case Relationships。
-2. 完成 Playbook Run/Stage。
-3. 完成通用 Worker Health 基础设施并接入五类 Worker。
-4. 完成 SLA 和 AI Quality。
+1. Case Relationships 已完成；Case 批量分诊延期。
+2. Playbook Run/Stage 已完成。
+3. 通用 Worker Health 基础设施已完成并接入五类 Worker。
+4. SLA 和 AI Quality 延期到后续版本。
 5. 最后统一补齐 v0.6.0 验收规范。
 
 ## Spec 使用规则
